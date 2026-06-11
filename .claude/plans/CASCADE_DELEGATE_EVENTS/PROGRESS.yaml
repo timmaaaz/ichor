@@ -42,8 +42,62 @@ core:
 
   P1:
     title: "Runtime loop guard (visited-set)"
-    status: not_started
+    status: done
     gate: "after P0"
+    note: |
+      RUNTIME half only. Cascades remain OFF (M1/M2 still don't synthesize; the gate stays at
+      P4). No behavior change for non-looping chains; the guard applies to the already-firing
+      Category-B cascades too (correct — INVESTIGATION §8/§17: 0 real loops exist, so nothing
+      legitimate breaks). WorkflowInput struct shape UNCHANGED (lineage rides the existing
+      TriggerData map), so the ⚠ "Changing WorkflowInput shape" checklist did NOT apply.
+      No maxReEntries knob (F7) and no depth-cap (HELD — no bulk multi-row-write/fan-out handler
+      exists; update_field/create_entity are single-row).
+    tasks:
+      - id: P1.1
+        title: "Carrier — extensible WorkflowLineage{Visited[], OriginatingExecutionID} + helpers"
+        status: done
+        verified: |
+          NEW business/sdk/workflow/temporal/lineage.go. Visited = []string of "ruleID:entityID"
+          (clean JSON round-trip); cascadeLineageKey="__cascade_lineage" reserved TriggerData/Context
+          key. Contains/With (immutable copy), contextWithLineage/lineageFromContext (ctx transport),
+          lineageFromContextMap (decodes BOTH same-process struct value AND Temporal-deserialized
+          map[string]any; missing/nil/garbage -> empty set). Extensible for F8 traceparent without
+          re-plumbing. Unit tests green.
+      - id: P1.2
+        title: "Chokepoint threading — stamp activity ctx; read before goroutine; check+seed at dispatch"
+        status: done
+        verified: |
+          activities.go: ExecuteActionActivity (before handler.Execute) + ExecuteAsyncActionActivity
+          (before handler.StartAsync) stamp ctx = contextWithLineage(ctx, lineageFromContextMap(input.Context)).
+          delegatehandler.go: handleEvent reads parent := lineageFromContext(ctx) BEFORE the :86
+          goroutine (which uses context.Background() and would drop ctx values), re-stamps it onto the
+          dispatch ctx. trigger.go OnEntityEvent (:128 matched-rule loop): parent := lineageFromContext(ctx);
+          Contains(rule,entity) -> Warn "cascade loop prevented" + skip; else child := parent.With(rule,
+          entity) -> startWorkflowForRule(…, child), which stamps OriginatingExecutionID (first hop) and
+          triggerData[cascadeLineageKey]=child (also persisted on the execution record's TriggerData JSON
+          = free provenance). go build+vet clean across temporal + all importers (worker main, apitest,
+          all.go, approvalapi).
+      - id: P1.3
+        title: "Integration tests — the 4 DESIGN scenarios + over-block guard + chokepoint e2e"
+        status: done
+        verified: |
+          NEW lineage_test.go (package temporal, internal — needs unexported contextWithLineage). All
+          drive the REAL WorkflowTrigger.OnEntityEvent / real DelegateHandler, stubbing only leaf I/O
+          (WorkflowStarter/RuleMatcher/EdgeStore/ExecutionStore). Each hop's dispatched lineage feeds
+          the next hop via a JSON round-trip (faithful to Temporal serialization + activity decode).
+          GREEN: A->B->A stops after one hop; A->B->C->done progresses; convergent ALLOCATED/PROCESSING
+          pair (§4a) runs once & self-terminates (modeled as the re-entry backstop; comment notes the
+          real matcher's changed_to latch terminates it even earlier); same-rule-different-entity is
+          ALLOWED (no over-block); visited-set survives Continue-As-New (WorkflowInput JSON round-trip
+          via ContinuationState.Flattened); chokepoint e2e via DelegateHandler.handleEvent proves the
+          lineage survives the dispatch goroutine + seeds the next gen. Full temporal suite green incl.
+          `go test -race` (goroutine ctx test race-free).
+    done_when: "guard verified end-to-end (no cascades enabled yet) — ALL MET"
+    deferred:
+      - "Full real-Temporal + real-DB cascade-LOOP integration test -> P4. A real A->B->A loop cannot
+         fire in P1 because M1 cascades are OFF (generic handlers emit no delegate yet), so there is
+         nothing to loop. P4 already lists 'loop guard catches an A->B->A across synthesized events'
+         as a test — that is its natural home."
   P2:
     title: "Static loop detector (graph + SCC + 3-tier)"
     status: not_started

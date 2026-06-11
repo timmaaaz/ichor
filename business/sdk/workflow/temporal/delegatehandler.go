@@ -82,9 +82,18 @@ func (h *DelegateHandler) handleEvent(ctx context.Context, eventType, entityName
 		}
 	}
 
+	// Read the cascade lineage stamped on ctx by the action activity (if this write
+	// originated from a workflow action). This MUST happen before the goroutine: the
+	// goroutine dispatches from a fresh context.Background() that would drop ctx
+	// values. The lineage is re-stamped onto the dispatch context so OnEntityEvent
+	// can apply the runtime loop guard (P1). A human/non-workflow write carries no
+	// lineage, so this is the zero value (empty set) and the chain starts fresh.
+	parentLineage := lineageFromContext(ctx)
+
 	// Fire in goroutine to avoid blocking the delegate chain.
 	go func() {
-		if err := h.trigger.OnEntityEvent(context.Background(), event); err != nil {
+		dispatchCtx := contextWithLineage(context.Background(), parentLineage)
+		if err := h.trigger.OnEntityEvent(dispatchCtx, event); err != nil {
 			h.log.Error(context.Background(), "temporal delegate: dispatch failed",
 				"entity", entityName, "event_type", eventType, "error", err)
 		}
