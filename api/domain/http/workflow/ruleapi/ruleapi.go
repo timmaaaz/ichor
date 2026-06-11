@@ -26,16 +26,15 @@ type api struct {
 	log         *logger.Logger
 	workflowBus *workflow.Business
 	ruleApp     *ruleapp.App
-	registry    *workflow.ActionRegistry // For cascade visualization (Phase 12.8)
 }
 
-// newAPI creates a new rule API handler.
+// newAPI creates a new rule API handler. The ActionRegistry (a composition-root concern) is
+// passed straight into the app layer (ruleApp) — the HTTP layer no longer holds it directly.
 func newAPI(log *logger.Logger, workflowBus *workflow.Business, registry *workflow.ActionRegistry) *api {
 	return &api{
 		log:         log,
 		workflowBus: workflowBus,
 		ruleApp:     ruleapp.NewApp(log, workflowBus, registry),
-		registry:    registry,
 	}
 }
 
