@@ -90,7 +90,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (ActionSeedData, error)
 		return ActionSeedData{}, fmt.Errorf("creating basic role: %w", err)
 	}
 
-	transitionRole, err := busDomain.Role.Create(ctx, rolebus.NewRole{Name: "transition_manager", Description: "Can execute transition_status actions"})
+	transitionRole, err := busDomain.Role.Create(ctx, rolebus.NewRole{Name: "transition_manager", Description: "Can execute the generic data actions (transition_status, create_entity, update_field)"})
 	if err != nil {
 		return ActionSeedData{}, fmt.Errorf("creating transition role: %w", err)
 	}
@@ -184,7 +184,7 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (ActionSeedData, error)
 
 	transitionPerms, err := actionpermissionsbus.TestSeedActionPermissions(
 		ctx, busDomain.ActionPermissions, transitionRole.ID,
-		[]string{"transition_status"},
+		[]string{"transition_status", "create_entity", "update_field"},
 	)
 	if err != nil {
 		return ActionSeedData{}, fmt.Errorf("creating transition permissions: %w", err)
