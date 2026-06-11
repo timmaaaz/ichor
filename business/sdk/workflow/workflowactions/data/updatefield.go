@@ -366,10 +366,32 @@ func (h *UpdateFieldHandler) GetEntityModifications(config json.RawMessage) []wo
 		return nil
 	}
 
+	// The produced value is statically known only when new_value is a plain literal:
+	// a templated string ("{{...}}") or a foreign-key lookup resolves at runtime, so
+	// the value is indeterminate (the operator is still known to be a set/changed_to).
+	change := workflow.ProducedChange{FieldName: cfg.TargetField, Operator: workflow.OperatorChangedTo}
+	switch v := cfg.NewValue.(type) {
+	case nil:
+		change.Indeterminate = true
+	case string:
+		if strings.Contains(v, "{{") || cfg.ForeignKeyConfig != nil {
+			change.Indeterminate = true
+		} else {
+			change.Value = v
+		}
+	default:
+		if cfg.ForeignKeyConfig != nil {
+			change.Indeterminate = true
+		} else {
+			change.Value = cfg.NewValue
+		}
+	}
+
 	// update_field always triggers an on_update event for the target entity
 	return []workflow.EntityModification{{
 		EntityName: cfg.TargetEntity,
 		EventType:  "on_update",
 		Fields:     []string{cfg.TargetField},
+		Changes:    []workflow.ProducedChange{change},
 	}}
 }

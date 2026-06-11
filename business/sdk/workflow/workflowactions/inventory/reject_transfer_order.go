@@ -75,7 +75,16 @@ func (h *RejectTransferOrderHandler) GetOutputPorts() []workflow.OutputPort {
 // GetEntityModifications implements workflow.EntityModifier.
 func (h *RejectTransferOrderHandler) GetEntityModifications(config json.RawMessage) []workflow.EntityModification {
 	return []workflow.EntityModification{
-		{EntityName: "inventory.transfer_orders", EventType: "on_update", Fields: []string{"status", "rejected_by_id", "rejection_reason"}},
+		{
+			EntityName: "inventory.transfer_orders",
+			EventType:  "on_update",
+			Fields:     []string{"status", "rejected_by_id", "rejection_reason"},
+			// status is set to a fixed enum constant. rejected_by_id (runtime user) and
+			// rejection_reason (config) are left indeterminate (no Change entry).
+			Changes: []workflow.ProducedChange{
+				{FieldName: "status", Operator: workflow.OperatorChangedTo, Value: transferorderbus.StatusRejected},
+			},
+		},
 	}
 }
 

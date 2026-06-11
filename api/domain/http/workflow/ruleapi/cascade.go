@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
@@ -104,10 +103,20 @@ func (a *api) cascadeMap(ctx context.Context, r *http.Request) web.Encoder {
 					info.TriggersEvent = mod.EventType
 					info.ModifiedFields = mod.Fields
 
-					// Find rules that listen to this entity
-					downstreamRules := a.findDownstreamRules(ctx, mod.EntityName, mod.EventType, ruleID)
-					for _, downstream := range downstreamRules {
-						info.DownstreamWorkflows = append(info.DownstreamWorkflows, downstream)
+					// Find active rules that listen to this entity mutation.
+					downstreamRules, err := a.workflowBus.FindDownstreamRules(ctx, mod.EntityName, mod.EventType, ruleID)
+					if err != nil {
+						// Fail-soft: show no downstreams for this modification rather than
+						// failing the whole endpoint.
+						a.log.Error(ctx, "cascade map: find downstream rules", "entity", mod.EntityName, "event", mod.EventType, "error", err)
+					}
+					for _, rule := range downstreamRules {
+						info.DownstreamWorkflows = append(info.DownstreamWorkflows, DownstreamWorkflowInfo{
+							RuleID:            rule.ID.String(),
+							RuleName:          rule.Name,
+							TriggerConditions: rule.TriggerConditions,
+							WillTriggerIf:     buildTriggerDescription(mod.EventType, mod.EntityName, rule.TriggerConditions),
+						})
 					}
 				}
 			}
@@ -117,73 +126,6 @@ func (a *api) cascadeMap(ctx context.Context, r *http.Request) web.Encoder {
 	}
 
 	return response
-}
-
-// findDownstreamRules finds automation rules that would be triggered when
-// the specified entity is modified with the given event type.
-// Excludes the current rule to prevent showing self-triggers.
-func (a *api) findDownstreamRules(ctx context.Context, entityName, eventType string, excludeRuleID uuid.UUID) []DownstreamWorkflowInfo {
-	result := make([]DownstreamWorkflowInfo, 0)
-
-	// Extract just the table name if entityName is in "schema.table" format.
-	// The workflow.entities table stores name and schema_name separately,
-	// so we need to query by table name only.
-	tableName := entityName
-	if idx := strings.LastIndex(entityName, "."); idx != -1 {
-		tableName = entityName[idx+1:]
-	}
-
-	// First, find the entity by name to get its ID
-	entity, err := a.workflowBus.QueryEntityByName(ctx, tableName)
-	if err != nil {
-		// Entity not registered in workflow system - no downstream rules
-		a.log.Debug(ctx, "entity not found for cascade lookup", "entity_name", entityName, "error", err)
-		return result
-	}
-
-	// Find the trigger type by name (on_create, on_update, on_delete)
-	triggerType, err := a.workflowBus.QueryTriggerTypeByName(ctx, eventType)
-	if err != nil {
-		a.log.Debug(ctx, "trigger type not found for cascade lookup", "event_type", eventType, "error", err)
-		return result
-	}
-
-	// Query all rules that monitor this entity
-	rules, err := a.workflowBus.QueryRulesByEntity(ctx, entity.ID)
-	if err != nil {
-		a.log.Error(ctx, "failed to query rules by entity", "entity_id", entity.ID, "error", err)
-		return result
-	}
-
-	// Filter rules by trigger type and active status
-	for _, rule := range rules {
-		// Skip the current rule (don't show self-triggers)
-		if rule.ID == excludeRuleID {
-			continue
-		}
-
-		// Skip inactive rules
-		if !rule.IsActive {
-			continue
-		}
-
-		// Skip rules with different trigger type
-		if rule.TriggerTypeID != triggerType.ID {
-			continue
-		}
-
-		// Build human-readable trigger description
-		willTriggerIf := buildTriggerDescription(eventType, entityName, rule.TriggerConditions)
-
-		result = append(result, DownstreamWorkflowInfo{
-			RuleID:            rule.ID.String(),
-			RuleName:          rule.Name,
-			TriggerConditions: rule.TriggerConditions,
-			WillTriggerIf:     willTriggerIf,
-		})
-	}
-
-	return result
 }
 
 // buildTriggerDescription creates a human-readable description of when the rule will trigger.

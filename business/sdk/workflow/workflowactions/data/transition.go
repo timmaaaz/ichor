@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
@@ -182,9 +183,18 @@ func (h *TransitionStatusHandler) GetEntityModifications(config json.RawMessage)
 		return nil
 	}
 
+	// to_status is the produced value; statically known unless it is templated ("{{...}}").
+	change := workflow.ProducedChange{FieldName: cfg.StatusField, Operator: workflow.OperatorChangedTo}
+	if cfg.ToStatus == "" || strings.Contains(cfg.ToStatus, "{{") {
+		change.Indeterminate = true
+	} else {
+		change.Value = cfg.ToStatus
+	}
+
 	return []workflow.EntityModification{{
 		EntityName: cfg.TargetEntity,
 		EventType:  "on_update",
 		Fields:     []string{cfg.StatusField},
+		Changes:    []workflow.ProducedChange{change},
 	}}
 }

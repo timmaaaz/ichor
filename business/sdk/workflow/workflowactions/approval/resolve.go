@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/workflow/approvalrequestbus"
@@ -75,8 +76,22 @@ func (h *ResolveApprovalHandler) GetOutputPorts() []workflow.OutputPort {
 
 // GetEntityModifications declares which entities this handler modifies.
 func (h *ResolveApprovalHandler) GetEntityModifications(config json.RawMessage) []workflow.EntityModification {
+	var cfg ResolveApprovalConfig
+	if err := json.Unmarshal(config, &cfg); err != nil {
+		return nil
+	}
+
+	// status is set from the config-supplied resolution (validated to "approved"/"rejected");
+	// statically known unless empty or templated.
+	change := workflow.ProducedChange{FieldName: "status", Operator: workflow.OperatorChangedTo}
+	if cfg.Resolution == "" || strings.Contains(cfg.Resolution, "{{") {
+		change.Indeterminate = true
+	} else {
+		change.Value = cfg.Resolution
+	}
+
 	return []workflow.EntityModification{
-		{EntityName: "workflow.approval_requests", EventType: "on_update", Fields: []string{"status"}},
+		{EntityName: "workflow.approval_requests", EventType: "on_update", Fields: []string{"status"}, Changes: []workflow.ProducedChange{change}},
 	}
 }
 

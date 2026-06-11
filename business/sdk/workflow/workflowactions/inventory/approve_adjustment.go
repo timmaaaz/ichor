@@ -72,7 +72,16 @@ func (h *ApproveInventoryAdjustmentHandler) GetOutputPorts() []workflow.OutputPo
 // GetEntityModifications implements workflow.EntityModifier.
 func (h *ApproveInventoryAdjustmentHandler) GetEntityModifications(config json.RawMessage) []workflow.EntityModification {
 	return []workflow.EntityModification{
-		{EntityName: "inventory.inventory_adjustments", EventType: "on_update", Fields: []string{"approval_status", "approved_by", "approval_reason"}},
+		{
+			EntityName: "inventory.inventory_adjustments",
+			EventType:  "on_update",
+			Fields:     []string{"approval_status", "approved_by", "approval_reason"},
+			// approval_status is set to a fixed enum constant. approved_by (runtime user)
+			// and approval_reason (config) are left indeterminate (no Change entry).
+			Changes: []workflow.ProducedChange{
+				{FieldName: "approval_status", Operator: workflow.OperatorChangedTo, Value: inventoryadjustmentbus.ApprovalStatusApproved},
+			},
+		},
 	}
 }
 
