@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
@@ -127,10 +128,14 @@ func execute403NoPermission(sd ActionSeedData) []apitest.Table {
 	}
 }
 
-// executeTransitionStatus200 verifies that a user holding the transition_status
-// permission can manually execute a PENDING → PICKING transition and gets back
-// transitioned=true / output="success".
-func executeTransitionStatus200(sd ActionSeedData) []apitest.Table {
+// executeTransitionStatusProtected400 verifies that the protected-list (P3) rejects a manual
+// transition_status on an invariant-bearing status field via the HTTP manual-execute path.
+// order_fulfillment_status_id is recomputed by the picking flow, so a generic write must be
+// blocked (400 InvalidArgument) with a clear, actionable message — the backend-authoritative
+// rejection the FE error toast surfaces (Path A). This replaces the former "200 success"
+// expectation, which P3 intentionally invalidated by protecting this field; the transition
+// success / invalid-from mechanics remain covered at the handler level (Test_TransitionStatusAction).
+func executeTransitionStatusProtected400(sd ActionSeedData) []apitest.Table {
 	config := map[string]any{
 		"target_entity":       "sales.orders",
 		"target_id":           sd.PendingOrderID.String(),
@@ -146,36 +151,30 @@ func executeTransitionStatus200(sd ActionSeedData) []apitest.Table {
 	entityID := sd.PendingOrderID.String()
 	return []apitest.Table{
 		{
-			Name:       "transition-status-200-granted-user",
+			Name:       "transition-status-protected-400",
 			URL:        "/v1/workflow/actions/transition_status/execute",
 			Token:      sd.UserWithTransitionPerm.Token,
-			StatusCode: http.StatusOK,
+			StatusCode: http.StatusBadRequest,
 			Method:     http.MethodPost,
 			Input: &actionapp.ExecuteRequest{
 				Config:     configBytes,
 				EntityID:   &entityID,
 				EntityName: "sales.orders",
 			},
-			GotResp: &actionapp.ExecuteResponse{},
-			ExpResp: &actionapp.ExecuteResponse{},
+			GotResp: &errs.Error{},
+			ExpResp: &errs.Error{},
 			CmpFunc: func(got any, exp any) string {
-				gotResp, ok := got.(*actionapp.ExecuteResponse)
+				gotErr, ok := got.(*errs.Error)
 				if !ok {
 					return fmt.Sprintf("unexpected response type: %T", got)
 				}
-				if gotResp.ExecutionID == "" {
-					return "expected non-empty execution_id in response"
+				if !gotErr.Code.Equal(errs.InvalidArgument) {
+					return "expected InvalidArgument, got " + gotErr.Code.String()
 				}
-				// Result is deserialized as map[string]any by JSON round-trip.
-				resultMap, ok := gotResp.Result.(map[string]any)
-				if !ok {
-					return fmt.Sprintf("expected map[string]any result, got %T: %v", gotResp.Result, gotResp.Result)
-				}
-				if resultMap["transitioned"] != true {
-					return fmt.Sprintf("expected transitioned=true, got %v", resultMap["transitioned"])
-				}
-				if resultMap["output"] != "success" {
-					return fmt.Sprintf("expected output=success, got %v", resultMap["output"])
+				for _, want := range []string{"order_fulfillment_status_id", "sales.orders", "protected"} {
+					if !strings.Contains(gotErr.Message, want) {
+						return fmt.Sprintf("error message %q missing %q (the FE toast must name the field + reason)", gotErr.Message, want)
+					}
 				}
 				return ""
 			},
@@ -221,55 +220,91 @@ func executeTransitionStatus403Denied(sd ActionSeedData) []apitest.Table {
 	}
 }
 
-// executeTransitionStatusInvalidFrom verifies that a granted user posting a
-// transition where the order's current status is NOT in valid_from_statuses
-// gets back a 200 with transitioned=false / output="invalid_transition" (no error).
-func executeTransitionStatusInvalidFrom(sd ActionSeedData) []apitest.Table {
+// executeCreateEntityProtected400 verifies the protected-list rejects a manual create_entity into
+// a whole-table-protected entity via the HTTP manual-execute path (the create arm of Path A).
+// inventory.inventory_transactions is an append-only ledger; a generic create must be blocked
+// (400 InvalidArgument). create_entity supports manual execution, so the protected check is
+// reached (unlike update_field — see executeUpdateFieldNotManuallyExecutable).
+func executeCreateEntityProtected400(sd ActionSeedData) []apitest.Table {
 	config := map[string]any{
-		"target_entity": "sales.orders",
-		"target_id":     sd.NonTransitionableOrderID.String(),
-		"status_field":  "order_fulfillment_status_id",
-		"to_status":     sd.PickingStatusID.String(),
-		// valid_from_statuses lists only PENDING; the order is at PICKING → invalid
-		"valid_from_statuses": []string{sd.PendingStatusID.String()},
+		"target_entity": "inventory.inventory_transactions",
+		"fields":        map[string]any{"quantity": 1},
 	}
 	configBytes, err := json.Marshal(config)
 	if err != nil {
-		panic(fmt.Sprintf("marshal transition config: %v", err))
+		panic(fmt.Sprintf("marshal create_entity config: %v", err))
 	}
 
-	entityID := sd.NonTransitionableOrderID.String()
 	return []apitest.Table{
 		{
-			Name:       "transition-status-200-invalid-from",
-			URL:        "/v1/workflow/actions/transition_status/execute",
-			Token:      sd.UserWithTransitionPerm.Token,
-			StatusCode: http.StatusOK,
+			Name:       "create-entity-protected-400",
+			URL:        "/v1/workflow/actions/create_entity/execute",
+			Token:      sd.UserWithTransitionPerm.Token, // role grants create_entity
+			StatusCode: http.StatusBadRequest,
 			Method:     http.MethodPost,
 			Input: &actionapp.ExecuteRequest{
-				Config:     configBytes,
-				EntityID:   &entityID,
-				EntityName: "sales.orders",
+				Config: configBytes,
 			},
-			GotResp: &actionapp.ExecuteResponse{},
-			ExpResp: &actionapp.ExecuteResponse{},
+			GotResp: &errs.Error{},
+			ExpResp: &errs.Error{},
 			CmpFunc: func(got any, exp any) string {
-				gotResp, ok := got.(*actionapp.ExecuteResponse)
+				gotErr, ok := got.(*errs.Error)
 				if !ok {
 					return fmt.Sprintf("unexpected response type: %T", got)
 				}
-				if gotResp.ExecutionID == "" {
-					return "expected non-empty execution_id in response"
+				if !gotErr.Code.Equal(errs.InvalidArgument) {
+					return "expected InvalidArgument, got " + gotErr.Code.String()
 				}
-				resultMap, ok := gotResp.Result.(map[string]any)
+				for _, want := range []string{"inventory.inventory_transactions", "protected"} {
+					if !strings.Contains(gotErr.Message, want) {
+						return fmt.Sprintf("error message %q missing %q", gotErr.Message, want)
+					}
+				}
+				return ""
+			},
+		},
+	}
+}
+
+// executeUpdateFieldNotManuallyExecutable documents that update_field cannot be triggered via the
+// manual-execute HTTP path at all (SupportsManualExecution=false — raw field writes are
+// automation-only), so its protected-list is enforced only on the cascade/worker path (covered by
+// data/protected_enforcement_test.go), never here. A permitted user still gets FailedPrecondition,
+// not a protected 400. This is the honest answer to "does a manual update_field on a protected
+// field return 400?" — it never reaches the protected check.
+func executeUpdateFieldNotManuallyExecutable(sd ActionSeedData) []apitest.Table {
+	config := map[string]any{
+		"target_entity": "sales.orders",
+		"target_field":  "order_fulfillment_status_id",
+		"new_value":     sd.PickingStatusID.String(),
+		"conditions": []map[string]any{
+			{"field_name": "id", "operator": "equals", "value": sd.PendingOrderID.String()},
+		},
+	}
+	configBytes, err := json.Marshal(config)
+	if err != nil {
+		panic(fmt.Sprintf("marshal update_field config: %v", err))
+	}
+
+	return []apitest.Table{
+		{
+			Name:       "update-field-not-manually-executable",
+			URL:        "/v1/workflow/actions/update_field/execute",
+			Token:      sd.UserWithTransitionPerm.Token, // role grants update_field (so we pass the perm gate)
+			StatusCode: http.StatusBadRequest,
+			Method:     http.MethodPost,
+			Input: &actionapp.ExecuteRequest{
+				Config: configBytes,
+			},
+			GotResp: &errs.Error{},
+			ExpResp: &errs.Error{},
+			CmpFunc: func(got any, exp any) string {
+				gotErr, ok := got.(*errs.Error)
 				if !ok {
-					return fmt.Sprintf("expected map[string]any result, got %T: %v", gotResp.Result, gotResp.Result)
+					return fmt.Sprintf("unexpected response type: %T", got)
 				}
-				if resultMap["transitioned"] != false {
-					return fmt.Sprintf("expected transitioned=false, got %v", resultMap["transitioned"])
-				}
-				if resultMap["output"] != "invalid_transition" {
-					return fmt.Sprintf("expected output=invalid_transition, got %v", resultMap["output"])
+				if !gotErr.Code.Equal(errs.FailedPrecondition) {
+					return "expected FailedPrecondition (update_field is automation-only), got " + gotErr.Code.String()
 				}
 				return ""
 			},

@@ -26,9 +26,12 @@ func Test_ActionAPI(t *testing.T) {
 	test.Run(t, execute200CreateAlert(sd), "execute-200-create-alert")
 
 	// Execute action tests - transition_status
-	test.Run(t, executeTransitionStatus200(sd), "execute-transition-status-200")
 	test.Run(t, executeTransitionStatus403Denied(sd), "execute-transition-status-403")
-	test.Run(t, executeTransitionStatusInvalidFrom(sd), "execute-transition-status-invalid-from")
+
+	// Protected-list (P3) enforcement on the manual-execute HTTP path (Path A, backend-authoritative)
+	test.Run(t, executeTransitionStatusProtected400(sd), "execute-transition-status-protected-400")
+	test.Run(t, executeCreateEntityProtected400(sd), "execute-create-entity-protected-400")
+	test.Run(t, executeUpdateFieldNotManuallyExecutable(sd), "execute-update-field-not-manually-executable")
 
 	// Execute action tests - error cases
 	test.Run(t, execute401(sd), "execute-401")
