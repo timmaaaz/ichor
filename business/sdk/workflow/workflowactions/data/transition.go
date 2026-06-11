@@ -10,6 +10,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/protected"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
@@ -27,14 +28,17 @@ type TransitionStatusHandler struct {
 	log          *logger.Logger
 	db           *sqlx.DB
 	templateProc *workflow.TemplateProcessor
+	protected    *protected.Registry
 }
 
 // NewTransitionStatusHandler creates a new transition status handler.
-func NewTransitionStatusHandler(log *logger.Logger, db *sqlx.DB) *TransitionStatusHandler {
+func NewTransitionStatusHandler(log *logger.Logger, db *sqlx.DB, opts ...Option) *TransitionStatusHandler {
+	o := newOptions(opts)
 	return &TransitionStatusHandler{
 		log:          log,
 		db:           db,
 		templateProc: workflow.NewTemplateProcessor(workflow.DefaultTemplateProcessingOptions()),
+		protected:    o.protected,
 	}
 }
 
@@ -106,6 +110,12 @@ func (h *TransitionStatusHandler) Execute(ctx context.Context, config json.RawMe
 	var cfg TransitionStatusConfig
 	if err := json.Unmarshal(config, &cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
+	}
+
+	// transition_status is a generic handler: reject transitions of an invariant
+	// (protected) status field — those belong to a typed action-verb (DESIGN §10).
+	if err := checkProtectedField(h.protected, cfg.TargetEntity, cfg.StatusField); err != nil {
+		return nil, err
 	}
 
 	templateContext := buildTemplateContext(execContext)

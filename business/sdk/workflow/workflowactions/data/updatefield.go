@@ -12,6 +12,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/protected"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
@@ -40,14 +41,17 @@ type UpdateFieldHandler struct {
 	log          *logger.Logger
 	db           *sqlx.DB
 	templateProc *workflow.TemplateProcessor
+	protected    *protected.Registry
 }
 
 // NewUpdateFieldHandler creates a new update field handler
-func NewUpdateFieldHandler(log *logger.Logger, db *sqlx.DB) *UpdateFieldHandler {
+func NewUpdateFieldHandler(log *logger.Logger, db *sqlx.DB, opts ...Option) *UpdateFieldHandler {
+	o := newOptions(opts)
 	return &UpdateFieldHandler{
 		log:          log,
 		db:           db,
 		templateProc: workflow.NewTemplateProcessor(workflow.DefaultTemplateProcessingOptions()),
+		protected:    o.protected,
 	}
 }
 
@@ -162,6 +166,15 @@ func (h *UpdateFieldHandler) Execute(ctx context.Context, config json.RawMessage
 		"records_affected": int64(0),
 		"warnings":         []string{},
 		"created_at":       startTime,
+	}
+
+	// Reject writes to protected (invariant-bearing) fields — those must go through
+	// the typed action-verb, not the generic raw-SQL path (DESIGN §10 protected-list).
+	if err := checkProtectedField(h.protected, cfg.TargetEntity, cfg.TargetField); err != nil {
+		result["error_message"] = err.Error()
+		result["completed_at"] = time.Now()
+		result["execution_time_ms"] = time.Since(startTime).Milliseconds()
+		return result, err
 	}
 
 	// Process template variables
@@ -355,8 +368,6 @@ func (h *UpdateFieldHandler) resolveForeignKey(ctx context.Context, value any, f
 
 	return nil, fmt.Errorf("referenced record not found: %v in %s.%s", value, fkConfig.ReferenceTable, fkConfig.LookupField)
 }
-
-
 
 // GetEntityModifications implements workflow.EntityModifier for cascade visualization.
 // Returns the entity and field that this action will modify based on its configuration.

@@ -200,8 +200,85 @@ core:
     done_when: "detector enforces at both hooks, active-only — ALL MET"
   P3:
     title: "Protected-list (validation fix)"
-    status: not_started
+    status: done
     gate: "after P0"
+    note: |
+      Closes the raw-SQL validation/integrity bypass (INVESTIGATION §5; WRITE_PATH §8 Verdict a)
+      — orthogonal to the loop guard. Cascades remain OFF (gate stays P4). Block-now for all
+      guarded (entity,field) pairs (Option A); Execute-time enforcement only (NOT Validate — avoids
+      breaking already-saved rules; the cascaded path never calls Validate). FE = Path A
+      backend-authoritative (no FE code; existing error toast surfaces the rejection on the manual-
+      execute path). Build+vet clean; protected/workflowactions/data tests green; ruleapi +
+      actionhandlers (DB) regression green; no legitimate write newly blocked.
+    decisions:
+      - "Mechanism = NEW SDK pkg business/sdk/workflow/protected (leaf: Registry{ProtectField/
+         ProtectEntity/Check}, CollectStructTags reflection, ErrProtectedField sentinel + NewError).
+         Injected into the 3 generic data handlers via a variadic Option (data.WithProtectedRegistry);
+         nil = disabled, so the 3 existing unit tests / admin / consistency test compile & run
+         unchanged. Enforced in updatefield/create/transition Execute BEFORE any SQL."
+      - "Source split (the key P3 detail): (1) AUTO-SOURCE = on_update GetEntityModifications claims
+         only (skip the 3 generic by type). Verified blast radius: feeding ALL EntityModifiers
+         over-blocks create constructors (createpo→purchase_orders, createputawaytask→put_away_tasks
+         — NOT in the protected set). on_update == illegal-state-transition guard; create-time
+         validation is Option B/F1, deliberately excluded. Routes to the claiming action's GetType().
+         (2) DOMAIN-TAG SOURCE = protected:\"true\" tags on the **db STORE models** (NOT bus models)
+         collected by a per-store RegisterProtected via CollectStructTags reading the **db tag**."
+      - "CORRECTION forced by code (silent-drop hazard, WRITE_PATH §8): bus-model json tags do NOT
+         equal DB columns — orders.fulfillment_status_id→col order_fulfillment_status_id; transfer
+         claimed_by_id/completed_by_id→cols claimed_by/completed_by; users user_approval_status→col
+         user_approval_status_id. The db store model `db:` tag is the ONLY authoritative column
+         source (matches what update_field targets), so tags live there + CollectStructTags reads `db`."
+      - "Tagged db models (6, route in parens): purchaseorderdb purchase_order_status_id
+         (approve/reject_purchase_order); transferorderdb quantity/claimed_by/completed_by (no route
+         — F3); ordersdb order_fulfillment_status_id; orderlineitemsdb picked_quantity/
+         backordered_quantity/line_item_fulfillment_statuses_id/quantity; purchaseorderlineitemdb
+         quantity_received/quantity_cancelled; userdb approved_by/user_approval_status_id/
+         date_approved. Whole-table ProtectEntity(inventory.inventory_transactions). PO approve/
+         reject + adjustments + transfer status + inventory_items qty come FREE via the auto-source."
+      - "Wiring: RegisterAll (Temporal worker — executes cascaded writes) self-contains create+wire+
+         PopulateProtected (worker call site unchanged). all.go (API server / manual-execute toast):
+         re-registers the 3 generic handlers with the registry (mirrors the existing seek_approval/
+         create_alert upgrade pattern) then PopulateProtected — RegisterCoreActions signature
+         unchanged (no loopdetect_test/actionapi churn)."
+    tasks:
+      - id: P3.1
+        title: "protected SDK package + unit tests (Registry/Check/CollectStructTags/NewError)"
+        status: done
+        verified: "business/sdk/workflow/protected/{protected.go,protected_test.go} — 8 unit tests GREEN; vet clean."
+      - id: P3.2
+        title: "Execute-time enforcement + variadic Option in the 3 generic handlers"
+        status: done
+        verified: |
+          data/{protected.go (Option+helpers), updatefield.go, create.go, transition.go}.
+          NEW data/protected_enforcement_test.go: pure blocked paths (update_field, transition
+          invariant-status, create whole-table + create protected-field), allowed-through-gate, +
+          DB-backed Test_UpdateField_PopulatedRegistry_AllowsAndBlocks (populated registry: allowed
+          field writes, protected field rejected). Full data pkg (incl. existing handler tests) GREEN.
+      - id: P3.3
+        title: "PopulateProtected (on_update auto-source + domain db-tags + ledger) + test"
+        status: done
+        verified: |
+          workflowactions/protected.go + NEW protected_populate_test.go GREEN: asserts auto-source
+          on_update claims protected & routed, on_create EXCLUDED (put_away_tasks allowed), generic
+          skipped, all 6 db-tag entities + whole-table ledger protected.
+      - id: P3.4
+        title: "Domain protected:\"true\" tags on the 6 db store models + per-store RegisterProtected"
+        status: done
+        verified: "Tags on authoritative db columns (verified vs json mismatches); 6 stores build clean."
+      - id: P3.5
+        title: "Wire worker (RegisterAll) + API server (all.go) + regression"
+        status: done
+        verified: |
+          register.go RegisterAll self-populates; all.go upgrades the 3 generic handlers +
+          PopulateProtected. Builds: workflow SDK, all.go, workflow-worker, admin, 6 stores GREEN;
+          vet clean. Regression GREEN: ruleapi (detector/toggle/cascade-map, DB), actionhandlers
+          (DB manifest consistency, executes firing handlers), workflowsaveapi/actionapi compile.
+    deferred:
+      - "Frontend field-picker (grey-out protected fields w/ 'requires Approve PO' messaging) = F4
+         (Path B). v1 is backend-authoritative (existing error toast)."
+      - "Typed actions for the no-route protected fields (claim/execute_transfer_order,
+         receive_po_line_item, approve/deny_user) = F3 — built on demand; blocked-with-no-route now."
+    done_when: "protected-list enforced at update_field/create_entity/transition_status + FE shows the rejection (backend-authoritative) — ALL MET"
 
   # ── Construction is TWO pieces, each with its own testing phase; P4 (the gate) is the seam. ──
   # Piece 1 = build the guard (P0-P3) then PG verifies it with cascades OFF. PG green is the

@@ -13,8 +13,8 @@ type purchaseOrderLineItem struct {
 	PurchaseOrderID      uuid.UUID      `db:"purchase_order_id"`
 	SupplierProductID    uuid.UUID      `db:"supplier_product_id"`
 	QuantityOrdered      int            `db:"quantity_ordered"`
-	QuantityReceived     int            `db:"quantity_received"`
-	QuantityCancelled    int            `db:"quantity_cancelled"`
+	QuantityReceived     int            `db:"quantity_received" protected:"true"`
+	QuantityCancelled    int            `db:"quantity_cancelled" protected:"true"`
 	UnitCost             float64        `db:"unit_cost"`
 	Discount             float64        `db:"discount"`
 	LineTotal            float64        `db:"line_total"`

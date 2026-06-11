@@ -12,7 +12,7 @@ type purchaseOrder struct {
 	ID                      uuid.UUID      `db:"id"`
 	OrderNumber             string         `db:"order_number"`
 	SupplierID              uuid.UUID      `db:"supplier_id"`
-	PurchaseOrderStatusID   uuid.UUID      `db:"purchase_order_status_id"`
+	PurchaseOrderStatusID   uuid.UUID      `db:"purchase_order_status_id" protected:"true"`
 	DeliveryWarehouseID     uuid.UUID      `db:"delivery_warehouse_id"`
 	DeliveryLocationID      uuid.NullUUID  `db:"delivery_location_id"`
 	DeliveryStreetID        uuid.NullUUID  `db:"delivery_street_id"`
