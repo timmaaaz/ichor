@@ -14,8 +14,10 @@
 | P1 | Runtime loop guard (visited-set) | core | ☐ | after P0 |
 | P2 | Static loop detector (graph + SCC + 3-tier) | core | ☐ | after P0 |
 | P3 | Protected-list (validation fix) | core | ☐ | after P0 |
-| P4 | **Cascade enablement (THE GATE)** | core | ☐ | **requires P1+P2+P3 verified** |
-| P5 | Verification + supersede PR #176 + arch-doc fixes | core | ☐ | after P4 |
+| PG | **Guard Verification** (cascades OFF — prove the guard correct in isolation) | core | ☐ | after P0–P3; **GREEN = the §0 precondition that opens P4** |
+| P4 | **Cascade enablement (THE GATE)** | core | ☐ | **requires P1+P2+P3 built AND PG green** |
+| PL | **Live-System Verification** (cascades ON — prove the live guarded pipeline) | core | ☐ | after P4 |
+| P5 | Ship — supersede PR #176 + arch-doc fixes | core | ☐ | after PL |
 | F1 | Bus-routing consolidation (Option B) | **committed** | ☐ | after core, per-entity |
 | F2 | **Reliability hardening — transactional outbox** | **committed** | ☐ | after core — DO NOT SKIP |
 | F3 | Missing typed actions (claim/execute_transfer_order, receive_po_line_item, approve/deny_user) | on-demand | ☐ | a workflow needs the field |
@@ -29,7 +31,13 @@
 
 ## CORE PLAN
 
-> Hard rule (DESIGN §0): the loop guard (P1+P2) **must be complete and verified before P4 opens the cascade gate.** The broken state is the safe state; turning cascades on is the last mile.
+> Hard rule (DESIGN §0): the loop guard **must be complete and verified before P4 opens the cascade gate.** The broken state is the safe state; turning cascades on is the last mile.
+>
+> **Construction is two pieces, each with its own testing phase — the gate (P4) is the seam:**
+> - **Piece 1 — Build the guard (cascades stay OFF):** P0 → P1 → P2 → P3, then **PG (Guard Verification)**. Each build phase carries its own inline tests; PG is the consolidated adversarial/property/cross-cutting pass that proves the *assembled* guard in isolation. **PG green is the concrete, auditable form of the §0 precondition — it gates P4.**
+> - **Piece 2 — Turn it on (cascades ON):** P4 enablement, then **PL (Live-System Verification)** — the end-to-end tests that are *structurally impossible* before P4 (a real loop being stopped, fan-out storms, read-after-commit ordering), then P5 ship/cleanup.
+>
+> Why split testing per piece: the two pieces test different things under different preconditions. Piece 1's tests run now with cascades OFF; Piece 2's tests *require* cascades ON, so they can't move earlier. Making each a phase turns "verify before the gate" from a sentence into a checkpoint.
 
 ### P0 — Foundations / build-prep
 **Goal:** shared substrate all later phases need.
@@ -62,19 +70,35 @@
 **Tests:** guarded write blocked + clear error · plain write allowed · `transition_status` blocked on invariant status.
 **Done when:** protected-list enforced + FE shows the rejection.
 
+### PG — Guard Verification (Piece 1 exit — cascades stay OFF)
+**Goal:** prove the *assembled* loop guard is correct in isolation, before anything is allowed to turn cascades on. This is the §0 hard rule made into an auditable checkpoint. (P1/P2/P3 each ship with their own inline tests; PG is the consolidated cross-cutting pass over the whole guard.)
+- **Static detector (P2):** differential test (static `evalGate`/`classifyEdge` ⟺ runtime `evaluateFieldCondition` agree on every decidable verdict — pins static==runtime, fails on drift); property test (Tarjan SCC vs brute-force oracle over random graphs); must-not-block corpus (legitimate state machines / fan-out / convergent syncs → zero blocks); adversarial loop corpus; full operator-matrix coverage. *(Started in P2.4.)*
+- **Runtime guard (P1):** visited-set unit + the 4 DESIGN scenarios, Continue-As-New survival, goroutine-ctx propagation. *(Built in P1.3.)*
+- **Protected-list (P3):** guarded-field block + clear "needs typed action X" error; `transition_status` blocked on invariant status; plain writes allowed.
+- **Coverage discipline:** no silent caps; assert the indeterminate band is *correctly* indeterminate (warns, not blocks).
+**Done when:** the guard is provably correct with cascades OFF → **this green is the precondition that unlocks P4.** No flaky/skipped guard tests.
+
 ### P4 — Cascade enablement (THE GATE)
-**Precondition:** P1 + P2 + P3 complete & verified. The only phase that turns events on.
+**Precondition:** P1 + P2 + P3 built **and PG green**. The only phase that turns events on.
 - M1 **synthesize** (manifest-driven) for `update_field`/`create_entity`/`transition_status`; thread the visited-set lineage onto the synthesized event.
 - M2: add `delegate.Call` to `workflowbus.CreateAllocationResult` + fix the unqualified `allocation_results` entity name.
 - Keep the three sinks (`log_audit_entry`, `create_alert`, `seek_approval`) silent.
-**Tests:** the 4 advertised handlers cascade end-to-end · loop guard catches an A→B→A across synthesized events · sinks stay silent · consistency test still green.
+**Tests (inline smoke):** the 4 advertised handlers cascade end-to-end · sinks stay silent · consistency test still green. (The exhaustive end-to-end pass is PL.)
 **Done when:** cascades live behind the guard.
 
-### P5 — Verification + cleanup
-- Full integration sweep across the pipeline.
+### PL — Live-System Verification (Piece 2 exit — cascades ON)
+**Goal:** prove the *enabled, guarded* pipeline end-to-end — the tests that are structurally impossible before P4 (nothing loops while M1/M2 are off). This is where "does this critical thing actually work" gets answered against a live system (real Temporal + real DB).
+- **The decisive test:** a real `A→B→A` across *synthesized* events is actually stopped by the runtime visited-set (the loop that could not fire in P1). Plus `A→B→C→done` progresses.
+- **Fan-out / storm:** one write → N rows → N cascades; confirm bounded behavior (static analysis is blind to this; depth-cap was HELD in P1 — re-evaluate here with real fan-out).
+- **Ordering / read-after-commit:** a cascaded rule that reads the entity it was triggered by (DESIGN §9 best-effort accepted for v1 — assert the actual behavior; flag if the read-your-writes hazard bites, → F2 outbox).
+- **Idempotency / soak:** repeated/duplicate delegate fires don't double-cascade beyond intent; convergent syncs self-terminate live.
+- **Full pipeline integration sweep:** the 4 handlers, sinks stay silent, consistency test green, guard never over-blocks a legitimate live chain.
+**Done when:** the live guarded pipeline is proven end-to-end; the decisive loop-stopped test is green.
+
+### P5 — Ship + cleanup
 - Supersede PR #176 (close it; fold its accurate `update_field` prose into user docs; drop the broken `allocation_results` workaround).
 - Fix stale arch docs (workflow-engine.md → 24 handlers; cascade-visualization.md → 19 implementors).
-**Done when:** green + docs honest → ship.
+**Done when:** PL green + docs honest → ship.
 
 ---
 
