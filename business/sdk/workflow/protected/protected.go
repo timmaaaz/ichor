@@ -84,6 +84,30 @@ func (r *Registry) Check(entity, field string) (route string, blocked bool) {
 	return "", false
 }
 
+// Entry is one registered protection, returned by Entries for read-only introspection.
+// Field is empty ("") for a whole-table protection (every column blocked).
+type Entry struct {
+	Entity string
+	Field  string // "" → whole-table protection
+	Route  string
+}
+
+// Entries returns every registered protection (whole-table and field-level) as a flat slice.
+// It exists for verification/introspection — e.g. asserting each protected column resolves to a
+// real DB column — and is NOT used on the enforcement hot path. Order is unspecified.
+func (r *Registry) Entries() []Entry {
+	out := make([]Entry, 0, len(r.entities)+len(r.fields))
+	for entity, route := range r.entities {
+		out = append(out, Entry{Entity: entity, Field: "", Route: route})
+	}
+	for entity, fm := range r.fields {
+		for field, route := range fm {
+			out = append(out, Entry{Entity: entity, Field: field, Route: route})
+		}
+	}
+	return out
+}
+
 // CollectStructTags registers every field of model that carries a `protected:"true"`
 // struct tag, keyed by the field's `db` tag — the authoritative column name the generic
 // raw-SQL handlers target. (The db store model is the source of truth: bus-model json

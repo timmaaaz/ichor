@@ -100,6 +100,40 @@ func TestCollectStructTags(t *testing.T) {
 	}
 }
 
+func TestRegistry_Entries(t *testing.T) {
+	r := protected.New()
+	r.ProtectField("procurement.purchase_orders", "purchase_order_status_id", "approve_purchase_order")
+	r.ProtectField("sales.orders", "order_fulfillment_status_id", "")
+	r.ProtectEntity("inventory.inventory_transactions", "")
+
+	entries := protected.New() // sanity: a fresh registry enumerates nothing
+	if len(entries.Entries()) != 0 {
+		t.Fatalf("empty registry should have no entries, got %d", len(entries.Entries()))
+	}
+
+	got := r.Entries()
+	if len(got) != 3 {
+		t.Fatalf("expected 3 entries, got %d: %+v", len(got), got)
+	}
+
+	// Every registered protection must round-trip through Entries with its route, and whole-table
+	// protection must surface as a Field=="" entry.
+	type key struct{ entity, field string }
+	seen := map[key]string{}
+	for _, e := range got {
+		seen[key{e.Entity, e.Field}] = e.Route
+	}
+	if route, ok := seen[key{"procurement.purchase_orders", "purchase_order_status_id"}]; !ok || route != "approve_purchase_order" {
+		t.Fatalf("missing/wrong field entry: %+v", got)
+	}
+	if _, ok := seen[key{"sales.orders", "order_fulfillment_status_id"}]; !ok {
+		t.Fatalf("missing field entry for sales.orders: %+v", got)
+	}
+	if _, ok := seen[key{"inventory.inventory_transactions", ""}]; !ok {
+		t.Fatalf("whole-table protection must surface as a Field=\"\" entry: %+v", got)
+	}
+}
+
 func TestNewError_WrapsSentinelAndIsClear(t *testing.T) {
 	err := protected.NewError("procurement.purchase_orders", "purchase_order_status_id", "approve_purchase_order")
 
