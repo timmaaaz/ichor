@@ -38,6 +38,7 @@ type ReserveInventoryResult struct {
 	TotalRequested  int            `json:"total_requested"`
 	TotalReserved   int            `json:"total_reserved"`
 	IdempotencyKey  string         `json:"idempotency_key"`
+	ReferenceID     string         `json:"reference_id,omitempty"` // Order ID etc. — surfaced for {{reference_id}} in cascaded rules (PL.M2)
 	ExecutionTimeMs int64          `json:"execution_time_ms"`
 	ExpiresAt       *time.Time     `json:"expires_at,omitempty"`
 	CreatedAt       time.Time      `json:"created_at"`
@@ -367,6 +368,10 @@ func (h *ReserveInventoryHandler) processReservation(
 	} else {
 		result.Status = "failed"
 	}
+
+	// Carry the reference id (e.g. order id) into the persisted blob so the M2 delegate
+	// event surfaces it for {{reference_id}} in cascaded rules (PL.M2).
+	result.ReferenceID = cfg.ReferenceID
 
 	// Store idempotency result.
 	data, err := json.Marshal(result)
