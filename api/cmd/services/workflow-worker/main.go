@@ -16,6 +16,7 @@ import (
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
 
+	"github.com/timmaaaz/ichor/api/cmd/services/ichor/build/all/workflowdomains"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryitembus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryitembus/stores/inventoryitemdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus"
@@ -33,6 +34,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/stores/workflowdb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/temporal"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/temporal/stores/edgedb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/approval"
 	"github.com/timmaaaz/ichor/foundation/logger"
@@ -190,6 +192,11 @@ func run(log *logger.Logger) error {
 		Log:         log,
 		DB:          db,
 		QueueClient: workflowQueue, // Enables real-time WebSocket notifications
+		// Cascade synthesis (P4 M1): the generic data handlers fire a delegate event
+		// after a successful write so it cascades to downstream automation. The reverse
+		// map resolves the target table → delegate (domain, entity).
+		Delegate:       del,
+		EntityRegistry: workflowdomains.ReverseMap(),
 		Buses: workflowactions.BusDependencies{
 			InventoryItem:        inventoryItemBus,
 			InventoryLocation:    inventoryLocationBus,
@@ -204,6 +211,35 @@ func run(log *logger.Logger) error {
 	// Create async registry for human-in-the-loop actions.
 	asyncRegistry := temporal.NewAsyncRegistry()
 	asyncRegistry.Register("seek_approval", approval.NewSeekApprovalHandler(log, db, approvalRequestBus, alertBus, workflowQueue))
+
+	// =========================================================================
+	// Workflow Delegate Subscriber (P4)
+	// =========================================================================
+	//
+	// Cascaded writes happen inside THIS worker's activities, so the worker needs its
+	// own delegate subscriber: without it a synthesized/bus delegate.Call here reaches
+	// zero subscribers and the cascade dies at hop 1. Mirrors the in-process wiring in
+	// api/cmd/services/ichor/build/all/all.go, registering the identical domain set via
+	// the shared workflowdomains.Registrations() source.
+	edgeStore := edgedb.NewStore(log, db)
+	workflowStore := workflowdb.NewStore(log, db)
+
+	triggerProcessor := workflow.NewTriggerProcessor(log, db, workflowBus)
+	if err := triggerProcessor.Initialize(context.Background()); err != nil {
+		// The worker's job includes cascading the writes its activities make; a worker
+		// that can't dispatch triggers is broken. Fail fast so the pod restarts and
+		// retries rather than silently running without a subscriber.
+		return fmt.Errorf("initializing workflow trigger processor: %w", err)
+	}
+	workflowTrigger := temporal.NewWorkflowTrigger(log, tc, triggerProcessor, edgeStore, workflowStore)
+	triggerProcessor.RegisterCacheInvalidation(del)
+
+	delegateHandler := temporal.NewDelegateHandler(log, workflowTrigger)
+	for _, r := range workflowdomains.Registrations() {
+		delegateHandler.RegisterDomain(del, r.Domain, r.Entity)
+	}
+	log.Info(context.Background(), "workflow delegate subscriber registered",
+		"domains", len(workflowdomains.Registrations()))
 
 	// =========================================================================
 	// Temporal Worker

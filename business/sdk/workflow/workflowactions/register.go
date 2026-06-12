@@ -15,6 +15,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/products/productbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/approvalrequestbus"
+	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/protected"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/approval"
@@ -40,6 +41,15 @@ type ActionConfig struct {
 	EmailClient communication.EmailClient
 	// EmailFrom is the sender address used when EmailClient is set.
 	EmailFrom string
+
+	// Delegate is fired by the generic data handlers after a successful raw-SQL write so
+	// the write cascades to downstream automation (P4 M1). Nil = synthesis disabled.
+	Delegate *delegate.Delegate
+	// EntityRegistry maps a schema-qualified target table to the delegate (domain, bare
+	// entity) the generic handlers fire under. Nil = synthesis disabled. Both this and
+	// Delegate must be set (and non-empty) for cascades to fire. Build via
+	// workflowdomains.ReverseMap().
+	EntityRegistry map[string]data.EntityRef
 
 	// Business layer dependencies
 	Buses BusDependencies
@@ -80,11 +90,18 @@ func RegisterAll(registry *workflow.ActionRegistry, config ActionConfig) {
 	registry.Register(control.NewDelayHandler(config.Log))
 
 	// Data actions - only need log and db. The three generic raw-SQL handlers also take
-	// the protected registry so they reject writes to guarded fields.
-	registry.Register(data.NewUpdateFieldHandler(config.Log, config.DB, data.WithProtectedRegistry(reg)))
+	// the protected registry so they reject writes to guarded fields, and the delegate +
+	// entity-registry so a successful write cascades to downstream automation (P4 M1).
+	// Nil delegate/registry (e.g. tests) keeps synthesis off.
+	dataOpts := []data.Option{
+		data.WithProtectedRegistry(reg),
+		data.WithDelegate(config.Delegate),
+		data.WithEntityRegistry(config.EntityRegistry),
+	}
+	registry.Register(data.NewUpdateFieldHandler(config.Log, config.DB, dataOpts...))
 	registry.Register(data.NewLookupEntityHandler(config.Log, config.DB))
-	registry.Register(data.NewCreateEntityHandler(config.Log, config.DB, data.WithProtectedRegistry(reg)))
-	registry.Register(data.NewTransitionStatusHandler(config.Log, config.DB, data.WithProtectedRegistry(reg)))
+	registry.Register(data.NewCreateEntityHandler(config.Log, config.DB, dataOpts...))
+	registry.Register(data.NewTransitionStatusHandler(config.Log, config.DB, dataOpts...))
 	registry.Register(data.NewAuditLogHandler(config.Log, config.DB))
 
 	// Approval actions

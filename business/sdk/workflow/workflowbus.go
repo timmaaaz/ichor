@@ -1051,6 +1051,17 @@ func (b *Business) CreateAllocationResult(ctx context.Context, nar NewAllocation
 		return AllocationResult{}, fmt.Errorf("create: %w", err)
 	}
 
+	// Fire the delegate so a created allocation result cascades to downstream
+	// automation (P4 M2 — e.g. the seeded "Allocation Success - Update Line Items"
+	// rule). nil-guarded + error-logged-not-failed, mirroring the rule-CRUD emits.
+	// NOTE: this fires pre-commit inside the allocate/reserve handler tx (DESIGN §9
+	// best-effort accepted for v1; the downstream rule reads order_line_items).
+	if b.delegate != nil {
+		if err := b.delegate.Call(ctx, ActionAllocationResultCreatedData(allocationResult)); err != nil {
+			b.log.Error(ctx, "workflowbus: delegate call failed", "action", ActionCreated, "entity", "allocation_results", "err", err)
+		}
+	}
+
 	return allocationResult, nil
 }
 

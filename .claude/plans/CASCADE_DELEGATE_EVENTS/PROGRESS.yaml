@@ -339,8 +339,87 @@ core:
       NEXT = P4 (THE GATE — the only phase that turns cascades ON; M1 synthesize + M2 allocation_results).
   P4:
     title: "Cascade enablement (THE GATE)"
-    status: not_started
-    gate: "requires P1+P2+P3 built AND PG green"
+    status: done
+    gate: "requires P1+P2+P3 built AND PG green — MET (PG green)"
+    note: |
+      ★ THE GATE IS OPEN — cascades are now LIVE behind the P1+P2+P3 guard. The 4 advertised
+      domain-state handlers fire delegate events; the 3 sinks (log_audit_entry/create_alert/
+      seek_approval) stay silent (untouched). §E decisions resolved WITH the user before coding:
+      A1 inject *delegate.Delegate; A2 real-domain reverse map (single source); E3 wire worker
+      subscriber; E4 bare "allocation_results"; A5/6 new-value-only + log, suppress no-op; A7
+      manual execute cascades (fresh chain); E8 RegisterCoreActions stays delegate-free.
+    decisions:
+      - "Channel (E.1=A): WithDelegate Option mirrors WithProtectedRegistry in data/protected.go;
+         handlers fire h.delegate.Call(ctx, workflow.SyntheticEventData(...)). Lineage rides ctx for
+         free (delegate.Call synchronous; activities.go stamps ctx before Execute; delegatehandler
+         reads it before the dispatch goroutine). delegatehandler.go UNCHANGED — extractEntityData
+         JSON-roundtrips a synthesized map[string]any Entity, so the existing real-domain subscribers
+         handle synthesized events with zero new code."
+      - "Mapping (E.2=A): NEW pkg api/cmd/services/ichor/build/all/workflowdomains — Registrations()
+         reproduces the all.go RegisterDomain block (68 pairs) 1:1 from the bus consts (build-checked,
+         zero unused imports after refactor); drives all.go loop + worker loop + ReverseMap(). The
+         reverse map keys schema.<bus.EntityName> and is gated by data.IsValidTableName, so EntityName
+         mismatches (metricsbus 'metrics' vs quality_metrics) and non-writable targets auto-degrade
+         (no map entry → no event, logged). data.EntityRef + WithEntityRegistry consume it."
+      - "Worker (E.3): workflow-worker/main.go now builds TriggerProcessor(+Initialize) + WorkflowTrigger
+         + DelegateHandler + RegisterDomain loop (mirrors all.go:574-681) and passes Delegate+EntityRegistry
+         into RegisterAll. Closes the structural gap (worker had del but NO subscriber → cascades died
+         at hop 1). all.go RegisterDomain block refactored to the shared loop (single source, DESIGN §6)."
+      - "M2 (allocation_results, bare per E.4): event.go AllocationResultDomainName='allocation_result'
+         + ActionAllocationResultCreatedData (Action='created'); workflowbus.CreateAllocationResult fires
+         nil-guarded delegate.Call after the store write (covers allocate + reserve via the tx bus);
+         reserve_inventory manifest now declares allocation_results/on_create (matches allocate). Fires
+         PRE-COMMIT (DESIGN §9 best-effort v1 — flagged for PL ordering test)."
+      - "M1 fire-only-on-write (E.5/E.6): create_entity always fires (INSERT=1 row); transition_status
+         fires only on the success branch (invalid-transition + zero-row paths return earlier) and carries
+         BeforeEntity(currentStatus)+Entity(toStatus) → full changed_to fidelity; update_field suppresses
+         records_affected==0, carries new value only (no pre-read) — prev-aware changed_to deferred to
+         F-tier (manifest already marks it indeterminate; P1 backstops). Helper data.fireSynthesizedEvent."
+    tasks:
+      - id: P4.1
+        title: "workflowdomains single-source registration list + reverse map"
+        status: done
+        verified: "NEW api/cmd/services/ichor/build/all/workflowdomains; all.go RegisterDomain block refactored to loop (zero unused imports); go build clean; reverse map verified to include inventory.inventory_items, sales.orders, products.product_categories, etc."
+      - id: P4.2
+        title: "Worker delegate subscriber + all.go/worker share the registration loop"
+        status: done
+        verified: "workflow-worker/main.go wires subscriber mirroring all.go; go build ./api/cmd/... clean."
+      - id: P4.3
+        title: "M2 allocation_results delegate fire + reserve manifest + registration"
+        status: done
+        verified: "event.go consts/constructor + SyntheticEventData helper; workflowbus.CreateAllocationResult delegate.Call; reserve manifest; allocation_results row in Registrations. Trip-wire allocate+reserve now assert allocation_results fires — GREEN."
+      - id: P4.4
+        title: "M1 synthesize in update_field/create_entity/transition_status + wiring"
+        status: done
+        verified: |
+          data/protected.go WithDelegate+WithEntityRegistry Options + EntityRef; data/synthesize.go
+          fireSynthesizedEvent; 3 handlers fire on success only. register.go ActionConfig gains
+          Delegate+EntityRegistry threaded into the 3 handlers; all.go upgrade site + worker wire them;
+          RegisterCoreActions stays delegate-free (E.8). go build ./... + go vet clean.
+      - id: P4.5
+        title: "Flip the ONE trip-wire test (+ smoke)"
+        status: done
+        verified: |
+          actionhandlers/manifest_consistency_test.go: removed allocation_results from knownSilent
+          (now empty) + added it to entityDomain/spy; deleted update_field_known_silent negative subtest;
+          added positive update_field/create_entity/transition_status subtests (product_categories target).
+          ALL 14 subtests GREEN (incl. allocate/reserve now asserting allocation_results). Structural test
+          unchanged + green. REGRESSION GREEN: go build ./...; go test temporal -race, protected,
+          workflow (TestCascade), workflowactions (populate+column backstop), workflowactions/data
+          (protected enforcement), ruleapi (detector/cascade-map/enforcement/toggle). Sinks untouched.
+    done_when: "cascades live behind the guard; 4 advertised handlers cascade; sinks silent; both consistency tests green — ALL MET. NEXT = PL (live A->B->A-stopped, fan-out, ordering, idempotency)."
+    review:
+      summary: "superpowers code review (senior opus reviewer) — 1 Critical + 3 Important + 4 Minor; Critical+Important fixed, build+tests re-green (15 trip-wire subtests)."
+      fixed:
+        - "C1 (Critical, loop-guard correctness): update_field synthesized the WRONG EntityID for a non-id condition — it fell back to execContext.EntityID (the TRIGGERING entity, a foreign entity) when there was no single id= condition. Since the runtime guard keys on (rule.ID, event.EntityID), a wrong id can MISS a real A->B->A loop. FIX (updatefield.go): use execContext.EntityID ONLY for the default WHERE id=entity_id path (no conditions); for any other condition (e.g. the seeded Allocation-Success WHERE order_id=…) leave EntityID zero (omit id from Entity) rather than borrow a foreign id — conservative-safe. Nuance: that specific seeded rule's target field is itself P3-protected (blocked pre-write), but the bug applies to any non-id-condition update on a non-protected field."
+        - "I1 (test gap for C1): NEW subtest update_field_nonid_condition_entityid asserts a WHERE product_id=… update fires with EntityID==uuid.Nil, never the execContext.EntityID sentinel. RED with old code, GREEN with fix."
+        - "I2 (gofmt): workflow-worker/main.go + actionhandlers test import grouping fixed (gofmt -w)."
+        - "I3 (worker resilience): workflow-worker now FAILS FAST (returns err) if TriggerProcessor.Initialize fails, instead of logging+continuing subscriber-less — a worker that can't cascade should restart, not run half-functional."
+      accepted_limitations:
+        - "Multi-row update_field (non-id condition matching N rows) fires ONE event with a zero EntityID — per-row fan-out events are F-tier (the manifest is value-blind on row count; P1 over-blocks conservatively on (rule, Nil))."
+        - "products.quality_metrics is generically-writable but metricsbus.EntityName='metrics' != table 'quality_metrics', so it gets no reverse-map entry → a generic write there cascades to nothing (degrade-safe, logged). The other EntityName!=table writables the reviewer flagged (hr.user_approval_status, config.table_configs) are whole-table P3-protected, so no real gap."
+      not_changed:
+        - "M-b AllocationResult has no json tags (event RawData keys are Go field names) — harmless (EntityID set explicitly; seeded consumer reads order_line_items) — left to avoid changing a shared model's serialization. M-c fireSynthesizedEvent error branch is effectively dead (delegate.Call always returns nil) — kept as defensive. M-d transition_status test uses a description text column — reviewer agreed it's a legitimate (column-agnostic) exercise."
   PL:
     title: "Live-System Verification (Piece 2 exit — cascades ON)"
     status: not_started

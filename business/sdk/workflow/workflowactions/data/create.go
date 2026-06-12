@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/protected"
@@ -28,6 +29,8 @@ type CreateEntityHandler struct {
 	db           *sqlx.DB
 	templateProc *workflow.TemplateProcessor
 	protected    *protected.Registry
+	delegate     *delegate.Delegate
+	entityMap    map[string]EntityRef
 }
 
 // NewCreateEntityHandler creates a new create entity handler.
@@ -38,6 +41,8 @@ func NewCreateEntityHandler(log *logger.Logger, db *sqlx.DB, opts ...Option) *Cr
 		db:           db,
 		templateProc: workflow.NewTemplateProcessor(workflow.DefaultTemplateProcessingOptions()),
 		protected:    o.protected,
+		delegate:     o.delegate,
+		entityMap:    o.entityMap,
 	}
 }
 
@@ -145,6 +150,25 @@ func (h *CreateEntityHandler) Execute(ctx context.Context, config json.RawMessag
 	h.log.Info(ctx, "create_entity completed",
 		"entity", cfg.TargetEntity,
 		"created_id", createdID)
+
+	// Cascade (P4 M1): announce the new record (on_create) so it triggers any downstream
+	// rule whose trigger matches. INSERT always wrote one row, so this always fires. The
+	// full created record rides Entity for downstream field access.
+	var entityID uuid.UUID
+	switch v := createdID.(type) {
+	case uuid.UUID:
+		entityID = v
+	case string:
+		if parsed, perr := uuid.Parse(v); perr == nil {
+			entityID = parsed
+		}
+	}
+	fireSynthesizedEvent(ctx, h.log, h.delegate, h.entityMap, cfg.TargetEntity, workflow.ActionCreated,
+		workflow.DelegateEventParams{
+			EntityID: entityID,
+			UserID:   execContext.UserID,
+			Entity:   processedFields,
+		})
 
 	return result, nil
 }

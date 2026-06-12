@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/protected"
@@ -42,6 +43,8 @@ type UpdateFieldHandler struct {
 	db           *sqlx.DB
 	templateProc *workflow.TemplateProcessor
 	protected    *protected.Registry
+	delegate     *delegate.Delegate
+	entityMap    map[string]EntityRef
 }
 
 // NewUpdateFieldHandler creates a new update field handler
@@ -52,6 +55,8 @@ func NewUpdateFieldHandler(log *logger.Logger, db *sqlx.DB, opts ...Option) *Upd
 		db:           db,
 		templateProc: workflow.NewTemplateProcessor(workflow.DefaultTemplateProcessingOptions()),
 		protected:    o.protected,
+		delegate:     o.delegate,
+		entityMap:    o.entityMap,
 	}
 }
 
@@ -225,6 +230,38 @@ func (h *UpdateFieldHandler) Execute(ctx context.Context, config json.RawMessage
 		"field", cfg.TargetField,
 		"recordsAffected", recordsAffected,
 		"duration", result["execution_time_ms"])
+
+	// Cascade (P4 M1): announce the write so it triggers any downstream rule whose
+	// trigger matches. Suppress a no-op (records_affected == 0) — no phantom cascade.
+	// update_field is a blind UPDATE (no prior value), so the event carries the new
+	// value only (no BeforeEntity); prev-aware downstream conditions (changed_to) are
+	// deferred (the manifest marks this change indeterminate; P1 backstops). §E.5/E.6.
+	if recordsAffected > 0 {
+		// The synthesized event must identify the WRITTEN row, not the triggering entity.
+		// We know it only when the update targeted a single row by id: an explicit id=
+		// condition (target_record_id) or the default WHERE id = entity_id (no
+		// conditions). For any other condition (e.g. WHERE order_id=…) the write may
+		// touch multiple rows whose ids we don't capture (no RETURNING) — leave EntityID
+		// zero rather than borrow the triggering entity's id (a foreign entity), so the
+		// runtime loop guard never seeds a wrong (rule, entity) pair. (Per-row fan-out
+		// events for the multi-row case are a follow-up — F-tier.)
+		var entityID uuid.UUID
+		if rid, ok := result["target_record_id"].(uuid.UUID); ok {
+			entityID = rid
+		} else if len(cfg.Conditions) == 0 {
+			entityID = execContext.EntityID
+		}
+		entity := map[string]any{cfg.TargetField: resolvedValue}
+		if entityID != uuid.Nil {
+			entity["id"] = entityID
+		}
+		fireSynthesizedEvent(ctx, h.log, h.delegate, h.entityMap, cfg.TargetEntity, workflow.ActionUpdated,
+			workflow.DelegateEventParams{
+				EntityID: entityID,
+				UserID:   execContext.UserID,
+				Entity:   entity,
+			})
+	}
 
 	return result, nil
 }
