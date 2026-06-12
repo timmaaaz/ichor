@@ -93,7 +93,8 @@
 - **Ordering / read-after-commit:** a cascaded rule that reads the entity it was triggered by (DESIGN §9 best-effort accepted for v1 — assert the actual behavior; flag if the read-your-writes hazard bites, → F2 outbox).
 - **Idempotency / soak:** repeated/duplicate delegate fires don't double-cascade beyond intent; convergent syncs self-terminate live.
 - **Full pipeline integration sweep:** the 4 handlers, sinks stay silent, consistency test green, guard never over-blocks a legitimate live chain.
-**Done when:** the live guarded pipeline is proven end-to-end; the decisive loop-stopped test is green.
+- **M2 allocation_results cascade (PL.M2 — ADDED 2026-06-12, was unowned):** the M2 event is currently non-functional — it passes the tagless `AllocationResult` struct, so `status` (buried in the `AllocationData` blob) never reaches a trigger condition and the seeded Allocation-Success/Failed rules can never fire (zero prod impact: both `IsActive:false`, no prod rules). Make M2 real: (1) flatten the blob into a map Entity in `event.go ActionAllocationResultCreatedData` to surface `status` (retires the M-b note); (2) add `reference_id` to the `allocate.go`/`reserve_inventory.go` result structs so `{{reference_id}}` resolves; (3) activate the rules + prove the live `allocate→order_line_items` cascade — which also unblocks the read-after-commit bullet above for the M2 path. Steps 1–2 are a low-risk event-contract fix that could alternatively land in PR #182. Full detail in `PROGRESS.yaml` PL.M2.
+**Done when:** the live guarded pipeline is proven end-to-end; the decisive loop-stopped test is green; the M2 allocation_results cascade is proven live.
 
 ### P5 — Ship + cleanup
 - Supersede PR #176 (close it; fold its accurate `update_field` prose into user docs; drop the broken `allocation_results` workaround).
