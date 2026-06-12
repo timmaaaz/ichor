@@ -16,7 +16,25 @@ The generic raw-SQL actions (`update_field`, `create_entity`, `transition_status
 - PROTECTED ≈ **9 entities / ~30 (entity,field) pairs**: `purchase_orders`, `inventory_adjustments`, `transfer_orders`, `orders`, `order_line_items`, `inventory_items`, `purchase_order_line_items`, `users` (+ `inventory_transactions` ledger by convention). Load-bearing fields = **status/state fields + a few quantity/ledger fields**.
 - **FK columns drop out** — Postgres enforces existence (`REFERENCES … ON DELETE RESTRICT`); no app-layer protection needed.
 - **Money fields mostly drop out** — pass-through; no bus recomputes totals from line items.
-- Protected unit is **(entity, field)**, not whole table.
+- Protected unit is **(entity, field)** for the field-level guards — *but see §1b for the whole-table category, where the unit is the entire table.*
+
+## 1b. Whole-table protections — control plane, status defs, warehouse structure (added 2026-06-12)
+
+Beyond the field-level state-machine guards (§1), **21 tables are protected whole-table** (`reg.ProtectEntity(table, "")` in `PopulateProtected`, alongside the pre-existing `inventory.inventory_transactions` ledger). A generic action targeting any of these is rejected regardless of column. These are *not* data invariants — they are structural / authority / tie-in invariants that a workflow has no business touching. **Workflow-protected only:** the normal domain CRUD path (`bus.Create/Update`, admin UI, REST, seeds) never consults this registry, so humans still curate these freely; "protected" means "not mutable BY A WORKFLOW," not "immutable." `ProtectEntity` blocks only *writes whose target is the table* — a protected status table can still be used as a `ForeignKeyConfig.ReferenceTable` lookup (read) to resolve an id by name.
+
+| Category (count) | Tables | Invariant a workflow would break |
+|---|---|---|
+| **ENGINE (9)** | `workflow.automation_rules`, `rule_actions`, `action_templates`, `rule_dependencies`, `trigger_types`, `entity_types`, `entities`, `automation_executions`, `notification_deliveries` | A rule rewriting rules/edges/executions makes the cascade-loop guard **undecidable** and can **forge the P1 lineage**. The engine's own state is off-limits to the automations it runs. |
+| **TABLE BUILDER (1)** | `config.table_configs` | The dynamic table-builder config surface — a workflow rewriting it reshapes the app's own configuration. |
+| **RBAC (3)** | `core.roles`, `core.user_roles`, `core.table_access` | Writing roles / assignments / table access from a workflow is **privilege escalation**. |
+| **STATUS / REF DEFS (5)** | `sales.order_fulfillment_statuses`, `sales.line_item_fulfillment_statuses`, `procurement.purchase_order_statuses`, `procurement.purchase_order_line_item_statuses`, `hr.user_approval_status` | Row values are wired into **frontend + backend code** (status-name constants, badges); mutating a definition breaks those tie-ins. (Workflows still READ them as FK lookups.) |
+| **WAREHOUSE STRUCTURE (3)** | `inventory.warehouses`, `inventory.zones`, `inventory.inventory_locations` | `inventory_items` reference locations by id; restructuring them **orphans physical inventory**. Automations allocate/putaway INTO existing locations (writing `inventory_items`, still writable) — they must not restructure the facility. |
+
+**Deliberately LEFT writable** (decided with maintainer): `core.users` (onboarding/user workflows; sensitive columns already FIELD-protected via `userdb`), `hr.user_approval_comments` (per-user data), and taxonomy/reference tables with NO code tie-ins (`products.brands`/`product_categories`, `assets.asset_conditions`/`asset_types`/`asset_tags`, `geography.*`, `hr.offices`/`titles`) — workflow-customizable for now, revisit if tie-ins appear. All transactional/operational data stays writable (the point of the feature).
+
+**Tests:** `Test_PopulateProtected_WholeTableInvariants` (non-DB) asserts all 21 blocked (grouped by category) **and** pins the opposite drift direction — that deliberately-writable tables (`core.users`, `products.brands`) stay open, so an over-broad future protection trips it. The existing DB-backed `Test_ProtectedFields_ResolveToRealColumns` asserts each whole-table protection resolves to a real table. *Note: a handler-driven "does the generic handler actually reject table X" test was considered and rejected as tautological — the handlers are a pure table-agnostic pass-through to `Check`, already proven once by `data/Test_CreateEntity_BlocksWholeTableEntity`; per-table re-proof adds nothing over membership ∘ mechanism.*
+
+**Out of scope (separate follow-ups):** finding C5 (`ruleapi.create/update` can set `is_active` outside the activation-cascade gate — HTTP author, not the engine); and the FormData write path's own access to RBAC tables (`formdata_registry`).
 
 ## 2. The bus-routing mechanism — FormData IS a generic entity→bus dispatcher
 

@@ -81,3 +81,12 @@ The ~30 guarded `(entity,field)` pairs, each blocked from the generic handlers (
 **Carrier note:** P1 builds the lineage carrier as a small *extensible* struct so `traceparent` slots in without re-plumbing.
 
 **Note:** the "Validated → bus-routing" rows (priority, reason_code, etc.) are guarded only by field-level validation in `bus.Update`, so the bus-routing follow-up (§1) resolves them; until then they're low-risk (worst case an invalid enum, often also DB-CHECK-guarded). The "Protect-only" rows should never be workflow-settable at all — they're side-effects of picking/ledger ops, written by those flows, not by setting the field.
+
+## 11. Whole-table protections — control plane / status defs / warehouse structure (SHIPPED 2026-06-12)
+**What shipped:** 21 tables protected whole-table (`reg.ProtectEntity(table, "")` in `PopulateProtected`), extending the §9 field-level list. Categories: ENGINE (9 workflow.* tables), TABLE BUILDER (`config.table_configs`), RBAC (`core.roles`/`user_roles`/`table_access`), STATUS/REF DEFS (5 status-definition tables), WAREHOUSE STRUCTURE (`inventory.warehouses`/`zones`/`inventory_locations`). Full table + rationale in **WRITE_PATH §1b**. Workflow-protected only (not immutable — humans curate via the normal CRUD path). Tests: `Test_PopulateProtected_WholeTableInvariants` + DB-backed `Test_ProtectedFields_ResolveToRealColumns`.
+
+**Deliberately left writable:** `core.users`, `hr.user_approval_comments`, and tie-in-free taxonomy tables (`products.brands`/`product_categories`, `assets.asset_conditions`/`asset_types`/`asset_tags`, `geography.*`, `hr.offices`/`titles`). Revisit taxonomy if code tie-ins ever appear.
+
+**Two out-of-scope follow-ups surfaced here (NOT done):**
+1. **Finding C5** — `ruleapi.create`/`update` can set `is_active` outside the activation-cascade gate. This is an HTTP author path (not the engine, not the generic handlers), so the protected registry does not cover it. Needs a separate gate at the ruleapi/ruleapp layer.
+2. **FormData RBAC access** — the FormData write path (`formdata_registry`) has its own entity→bus dispatch and does not consult the protected registry; whether it should be blocked from RBAC tables is a separate question from the generic-workflow-handler block shipped here.
