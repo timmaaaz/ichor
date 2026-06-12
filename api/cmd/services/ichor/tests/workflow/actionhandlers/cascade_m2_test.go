@@ -175,7 +175,7 @@ func TestCascade_M2_LiveCascade(t *testing.T) {
 		t.Fatalf("refreshing rules: %v", err)
 	}
 
-	// Fire the allocation. It fires the M2 delegate PRE-COMMIT (allocate.go:474 < tx.Commit:483) —
+	// Fire the allocation. It fires the M2 delegate PRE-COMMIT (allocate.go:479 < tx.Commit:488) —
 	// DESIGN §9 best-effort. The cascade nonetheless observes committed state below because the
 	// worker dispatch lag exceeds the commit; the read-your-writes guarantee is F2's job (outbox).
 	if _, err := inventoryitembus.TestSeedInventoryItems(ctx, 1, []uuid.UUID{base.loc0}, []uuid.UUID{base.productIDs[0]}, db.BusDomain.InventoryItem); err != nil {
