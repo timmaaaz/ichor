@@ -67,4 +67,51 @@ func PopulateProtected(reg *protected.Registry, registry *workflow.ActionRegistr
 
 	// (3) whole-table: the inventory transaction ledger is append-only.
 	reg.ProtectEntity("inventory.inventory_transactions", "")
+
+	// (4) whole-table: tables a generic workflow action must NEVER mutate. These are
+	// protected against the WORKFLOW write path only — the normal domain CRUD path
+	// (bus.Create/Update, admin UI, REST endpoints, seeds) never consults this registry,
+	// so humans still curate them freely. routeAction is "" (no typed action substitutes).
+	//
+	// ENGINE — a rule that rewrites rules/edges/executions makes the cascade-loop guard
+	// undecidable and can forge the P1 lineage. The engine's own state is off-limits to
+	// the automations it runs.
+	reg.ProtectEntity("workflow.automation_rules", "")
+	reg.ProtectEntity("workflow.rule_actions", "")
+	reg.ProtectEntity("workflow.action_templates", "")
+	reg.ProtectEntity("workflow.rule_dependencies", "")
+	reg.ProtectEntity("workflow.trigger_types", "")
+	reg.ProtectEntity("workflow.entity_types", "")
+	reg.ProtectEntity("workflow.entities", "")
+	reg.ProtectEntity("workflow.automation_executions", "")
+	reg.ProtectEntity("workflow.notification_deliveries", "")
+
+	// TABLE BUILDER — config.table_configs drives the dynamic table-builder UI; a workflow
+	// rewriting it would reshape the app's own configuration surface.
+	reg.ProtectEntity("config.table_configs", "")
+
+	// RBAC — writing roles / role assignments / table access from a workflow is privilege
+	// escalation. Access control is curated by humans, never by an automation.
+	reg.ProtectEntity("core.roles", "")
+	reg.ProtectEntity("core.user_roles", "")
+	reg.ProtectEntity("core.table_access", "")
+
+	// STATUS / REFERENCE DEFINITIONS — these rows' values are wired into both frontend and
+	// backend code (status-name constants, badges); mutating a definition breaks those tie-ins.
+	// Workflows still READ them as FK lookups to resolve an id by name (ProtectEntity blocks
+	// writes TO the table, not its use as a ForeignKeyConfig.ReferenceTable); they must not
+	// rewrite the definitions themselves.
+	reg.ProtectEntity("sales.order_fulfillment_statuses", "")
+	reg.ProtectEntity("sales.line_item_fulfillment_statuses", "")
+	reg.ProtectEntity("procurement.purchase_order_statuses", "")
+	reg.ProtectEntity("procurement.purchase_order_line_item_statuses", "")
+	reg.ProtectEntity("hr.user_approval_status", "")
+
+	// WAREHOUSE STRUCTURE — inventory_items reference locations by id, so a workflow that
+	// restructured warehouses/zones/locations would orphan physical inventory. Automations
+	// allocate/putaway INTO existing locations (writing inventory_items, which stays writable);
+	// they must not create or restructure the facility itself.
+	reg.ProtectEntity("inventory.warehouses", "")
+	reg.ProtectEntity("inventory.zones", "")
+	reg.ProtectEntity("inventory.inventory_locations", "")
 }
