@@ -419,7 +419,7 @@ core:
         - "Multi-row update_field (non-id condition matching N rows) fires ONE event with a zero EntityID — per-row fan-out events are F-tier (the manifest is value-blind on row count; P1 over-blocks conservatively on (rule, Nil))."
         - "products.quality_metrics is generically-writable but metricsbus.EntityName='metrics' != table 'quality_metrics', so it gets no reverse-map entry → a generic write there cascades to nothing (degrade-safe, logged). The other EntityName!=table writables the reviewer flagged (hr.user_approval_status, config.table_configs) are whole-table P3-protected, so no real gap."
       not_changed:
-        - "M-b AllocationResult has no json tags (event RawData keys are Go field names) — harmless (EntityID set explicitly; seeded consumer reads order_line_items) — left to avoid changing a shared model's serialization. M-c fireSynthesizedEvent error branch is effectively dead (delegate.Call always returns nil) — kept as defensive. M-d transition_status test uses a description text column — reviewer agreed it's a legitimate (column-agnostic) exercise."
+        - "M-b AllocationResult has no json tags AND its real fields live inside the AllocationData []byte blob, so the event surfaces only PascalCase {ID, IdempotencyKey, AllocationData, CreatedDate} and a trigger condition on status can NEVER match (trigger.go:326 reads RawData[status]==nil). CORRECTION (2026-06-12, PR #182 2nd-review investigation): the original 'harmless' rationale was WRONG — it cited the seeded consumer's ACTION (writes order_line_items) but the rule's TRIGGER gates on status, so the rule never fires at all and the M2 allocation cascade is non-functional end-to-end (test-only rules, both IsActive:false; zero prod impact today). This is NOT left-as-is — it is now TRACKED for fix in PL (see PL note → PL.M2). M-c fireSynthesizedEvent error branch is effectively dead (delegate.Call always returns nil) — kept as defensive. M-d transition_status test uses a description text column — reviewer agreed it's a legitimate (column-agnostic) exercise."
   PL:
     title: "Live-System Verification (Piece 2 exit — cascades ON)"
     status: not_started
@@ -432,7 +432,28 @@ core:
       real fan-out), read-after-commit ordering (DESIGN §9 best-effort — assert actual behavior,
       flag if read-your-writes bites -> F2), idempotency/soak, full pipeline sweep (4 handlers
       cascade, sinks silent, consistency green, guard never over-blocks a live chain).
-      done_when: live guarded pipeline proven end-to-end; decisive loop-stopped test green.
+      PL.M2 (ADDED 2026-06-12, from the PR #182 second-review investigation) — the M2
+      allocation_results cascade is NOT functional end-to-end yet; PL is its logical home.
+      WHY: AllocationResult has no json tags AND its real fields live inside the AllocationData
+      []byte blob, so the event surfaces only {ID,IdempotencyKey,AllocationData,CreatedDate}; the
+      seeded "Allocation Success/Failed" rules (seed_workflow.go:367-373 & 472-479) gate on
+      field_name=status, which reads RawData[status]==nil (trigger.go:326) and can NEVER match.
+      reference_id (Rule A's update {{reference_id}}) is not even in the blob — only on the action
+      config. IMPACT: test-only rules, both IsActive:false; production seed.sql has ZERO
+      allocation_results rules -> zero prod impact today, BUT M2 is unproven end-to-end and the
+      read-after-commit bullet above CANNOT exercise the allocation path until this is fixed (it is
+      a prerequisite). DO IN PL: (1) surface status — flatten AllocationData into a map[string]any
+      Entity in event.go ActionAllocationResultCreatedData (mirrors the M1 map-Entity at
+      updatefield.go:260; 1 file, no model/store/migration change; this also retires the M-b note);
+      (2) surface reference_id — add ReferenceID (json:"reference_id,omitempty") to
+      InventoryAllocationResult (allocate.go:64-76) + ReserveInventoryResult (reserve_inventory.go:33-45),
+      populate from cfg.ReferenceID at the marshal sites (allocate.go:~464, reserve:~372);
+      (3) activate the seeded rules (or a test copy) and prove the live allocate->order_line_items
+      cascade — which also satisfies the read-after-commit ordering bullet for M2. NOTE: steps 1-2
+      are the low-risk event-CONTRACT fix and could alternatively land in PR #182; step 3 is the
+      live-verification proper.
+      done_when: live guarded pipeline proven end-to-end; decisive loop-stopped test green; M2
+      allocation_results cascade (PL.M2) proven live.
   P5:
     title: "Ship — supersede PR #176 + arch-doc fixes"
     status: not_started
