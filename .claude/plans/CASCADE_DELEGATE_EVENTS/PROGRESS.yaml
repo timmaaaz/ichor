@@ -422,8 +422,62 @@ core:
         - "M-b AllocationResult has no json tags AND its real fields live inside the AllocationData []byte blob, so the event surfaces only PascalCase {ID, IdempotencyKey, AllocationData, CreatedDate} and a trigger condition on status can NEVER match (trigger.go:326 reads RawData[status]==nil). CORRECTION (2026-06-12, PR #182 2nd-review investigation): the original 'harmless' rationale was WRONG — it cited the seeded consumer's ACTION (writes order_line_items) but the rule's TRIGGER gates on status, so the rule never fires at all and the M2 allocation cascade is non-functional end-to-end (test-only rules, both IsActive:false; zero prod impact today). This is NOT left-as-is — it is now TRACKED for fix in PL (see PL note → PL.M2). M-c fireSynthesizedEvent error branch is effectively dead (delegate.Call always returns nil) — kept as defensive. M-d transition_status test uses a description text column — reviewer agreed it's a legitimate (column-agnostic) exercise."
   PL:
     title: "Live-System Verification (Piece 2 exit — cascades ON)"
-    status: not_started
+    status: done
     gate: "after P4"
+    branch: feature/cascade-PL
+    verified: |
+      ★ PL GREEN — the enabled, guarded cascade pipeline is proven end-to-end against a real
+      Temporal worker + real Postgres. New tests under api/cmd/services/ichor/tests/workflow/
+      actionhandlers/ (shared rig: cascade_rig_test.go). Full package + guard regression green:
+      go build ./...; temporal -race; business/sdk/workflow; workflowactions/inventory; the full
+      actionhandlers package (PL + existing manifest/lineage together, no interference).
+
+      PART 1 — PL.M2 event-contract fix (production, committed first):
+        event.go ActionAllocationResultCreatedData now FLATTENS the AllocationData blob into a
+        map[string]any Entity (json.Unmarshal + maps.Copy, then authoritative id/idempotency_key)
+        so status/reference_id/allocation_id surface as RawData keys (retires the M-b note).
+        InventoryAllocationResult (allocate.go) + ReserveInventoryResult (reserve_inventory.go)
+        gained ReferenceID json:"reference_id,omitempty", populated from Config.ReferenceID /
+        cfg.ReferenceID at the marshal sites. Mirrors the M1 map-Entity precedent; no model/store/
+        migration change. Verified: existing manifest allocate/reserve subtests stay green.
+
+      THE DECISIVE TEST (cascade_loop_test.go, TestCascade_LoopGuard):
+        loop_stopped_across_synthesized_events — a real A→B→A across SYNTHESIZED M1 update_field
+        events (two product_categories rows, equals gates that always re-arm, explicit id=
+        conditions so the guard keys on the real written row) is STOPPED by the runtime visited-
+        set: rule A executes EXACTLY ONCE (the third-hop (ruleA,e1) re-entry is refused before
+        startWorkflowForRule → no execution row), rule B once, final state bounded. A broken guard
+        would loop unbounded. progression_does_not_false_stop — A→B→C→done reaches rule C with all
+        three distinct (rule,entity) pairs on its lineage; no false-stop.
+        NOTE: rules are created via the BUS (bypasses the P2 static detector by design) so the
+        real runtime loop can be constructed — PL exercises the runtime guard in isolation.
+
+      PL.M2 LIVE (cascade_m2_test.go):
+        EventContract/allocation_event_surfaces_status_and_reference — the allocation_results.created
+        event RawData now carries status + reference_id (the Part-1 fix, asserted via a recorder).
+        EventContract/seeded_rule_protected_target_blocked — the REAL seeded rule's
+        line_item_fulfillment_statuses_id write is rejected by P3 (ErrProtectedField); the real
+        fulfillment write awaits F3 (typed action). LiveCascade — allocate(status=success,
+        reference_id=order) → allocation_results.created → a status==success rule → update_field a
+        CLEAN order_line_items column (short_pick_reason) WHERE order_id={{reference_id}} → the line
+        item is updated end-to-end through the real worker. (Option A: clean-column positive +
+        assert-blocked compose; F3 stays deferred per user decision.)
+
+      READ-AFTER-COMMIT (DESIGN §9): the M2 delegate fires PRE-COMMIT (allocate.go:474 < Commit:483).
+        The live cascade nonetheless observes committed state because the worker dispatch lag
+        exceeds the commit — assert/documented in the live test. The read-your-writes GUARANTEE is
+        F2's job (transactional outbox); not reordered in PL (DESIGN §9 best-effort v1 stands).
+
+      FAN-OUT / DEPTH-CAP (cascade_fanout_test.go): a 3-row update_field (non-id condition) fires
+        EXACTLY ONE synthesized event with a zero EntityID — the P4 accepted limitation. With
+        create_entity/allocate single-row, no unbounded 1→N source exists → the HELD depth-cap
+        stays correct (no cap built). Convergence/idempotency and sinks-silent intentionally NOT
+        re-tested: covered decisively by TestCascade_LoopGuard (visited-set stops re-arming) + PG
+        (static convergent classification + static⟺runtime matcher) + manifest tests (the firing
+        set is enumerated; the 3 sinks carry no delegate channel by construction). Documented in
+        the test file headers rather than re-proven.
+
+      NEXT = P5 (Ship): supersede PR #176, fix stale arch-doc handler counts. F2/F3/F5/F8 tracked.
     note: |
       The end-to-end tests structurally IMPOSSIBLE before P4 (nothing loops while M1/M2 are off),
       run against real Temporal + real DB. THE DECISIVE TEST: a real A->B->A across SYNTHESIZED

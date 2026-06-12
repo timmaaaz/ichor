@@ -3,6 +3,7 @@ package workflow
 
 import (
 	"encoding/json"
+	"maps"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
@@ -74,12 +75,32 @@ const AllocationResultDomainName = "allocation_result"
 
 // ActionAllocationResultCreatedData constructs the delegate event fired after a new
 // allocation_results row is written (P4 M2). The Action is the standard "created"
-// constant so it registers under on_create; the full row rides Entity for any
-// downstream field access.
+// constant so it registers under on_create.
+//
+// The Entity is a FLATTENED map of the allocation payload, not the AllocationResult
+// struct itself (PL.M2). AllocationResult has no json tags and buries every meaningful
+// field inside the AllocationData []byte blob (which marshals to a base64 string), so
+// passing the struct directly would surface only {ID, IdempotencyKey, AllocationData,
+// CreatedDate} as event RawData — leaving RawData["status"]/["reference_id"] nil, so a
+// trigger condition on status (the seeded Allocation-Success/Failed rules) could never
+// match. Unmarshaling the blob into the Entity map lifts status, reference_id,
+// allocation_id, … to top-level RawData keys, where trigger.go reads them. Mirrors the
+// M1 map[string]any Entity precedent (updatefield.go).
 func ActionAllocationResultCreatedData(ar AllocationResult) delegate.Data {
+	entity := map[string]any{}
+	if len(ar.AllocationData) > 0 {
+		var blob map[string]any
+		if err := json.Unmarshal(ar.AllocationData, &blob); err == nil {
+			maps.Copy(entity, blob)
+		}
+	}
+	// id / idempotency_key are authoritative from the row, set after the blob merge.
+	entity["id"] = ar.ID
+	entity["idempotency_key"] = ar.IdempotencyKey
+
 	params := DelegateEventParams{
 		EntityID: ar.ID,
-		Entity:   ar,
+		Entity:   entity,
 	}
 	rawParams, err := json.Marshal(&params)
 	if err != nil {

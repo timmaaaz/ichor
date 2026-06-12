@@ -70,6 +70,7 @@ type InventoryAllocationResult struct {
 	TotalAllocated  int             `json:"total_allocated"`
 	ExecutionTimeMs int64           `json:"execution_time_ms"`
 	IdempotencyKey  string          `json:"idempotency_key"`
+	ReferenceID     string          `json:"reference_id,omitempty"` // Order ID etc. — surfaced for {{reference_id}} in cascaded rules (PL.M2)
 	Warnings        []string        `json:"warnings"`
 	CreatedAt       time.Time       `json:"created_at"`
 	CompletedAt     time.Time       `json:"completed_at"`
@@ -460,6 +461,10 @@ func (h *AllocateInventoryHandler) ProcessAllocation(ctx context.Context, reques
 	} else {
 		result.Status = "failed"
 	}
+
+	// Carry the reference id (e.g. order id) into the persisted blob so the M2 delegate
+	// event surfaces it for {{reference_id}} in cascaded rules (PL.M2).
+	result.ReferenceID = request.Config.ReferenceID
 
 	data, err := json.Marshal(result)
 	if err != nil {
