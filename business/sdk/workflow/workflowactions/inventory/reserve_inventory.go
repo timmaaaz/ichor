@@ -406,11 +406,19 @@ func (h *ReserveInventoryHandler) processReservation(
 
 // GetEntityModifications implements workflow.EntityModifier.
 func (h *ReserveInventoryHandler) GetEntityModifications(config json.RawMessage) []workflow.EntityModification {
+	// Reserve, like allocate, both updates inventory_items (reserved_quantity) AND
+	// creates an allocation_results record via CreateAllocationResult — which now fires
+	// an on_create delegate event (P4 M2). Declare both so declared==fired holds.
 	return []workflow.EntityModification{
 		{
 			EntityName: "inventory.inventory_items",
 			EventType:  "on_update",
 			Fields:     []string{"reserved_quantity"},
+		},
+		{
+			EntityName: "allocation_results",
+			EventType:  "on_create",
+			Fields:     nil, // New record, all fields are "created"
 		},
 	}
 }

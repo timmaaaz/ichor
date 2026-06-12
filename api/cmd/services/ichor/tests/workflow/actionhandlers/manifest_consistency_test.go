@@ -60,6 +60,8 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/data"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/inventory"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/procurement"
+
+	"github.com/timmaaaz/ichor/api/cmd/services/ichor/build/all/workflowdomains"
 )
 
 // ─── delegate recorder ───────────────────────────────────────────────────────
@@ -126,12 +128,14 @@ var entityDomain = map[string]string{
 	"procurement.purchase_order_line_items": purchaseorderlineitembus.DomainName,
 	"inventory.inventory_items":             inventoryitembus.DomainName,
 	"inventory.put_away_tasks":              putawaytaskbus.DomainName,
+	"products.product_categories":           productcategorybus.DomainName,       // P4 M1 (create_entity/transition_status)
+	"allocation_results":                    workflow.AllocationResultDomainName, // P4 M2
 }
 
-// knownSilentEntities are declared by a handler but have no delegate today (P4 closes these).
-var knownSilentEntities = map[string]bool{
-	"allocation_results": true, // M2: workflowbus.CreateAllocationResult has no delegate.Call
-}
+// knownSilentEntities are declared by a handler but have no delegate. P4 closed the last
+// two (allocation_results M2 + update_field M1), so this is now empty — every declared
+// modification is asserted to fire. Kept as the mechanism for any future not-yet-wired gap.
+var knownSilentEntities = map[string]bool{}
 
 func actionForEvent(eventType string) string {
 	switch eventType {
@@ -341,10 +345,14 @@ func Test_ManifestConsistency_DeclaredEqualsFired(t *testing.T) {
 	for _, d := range []string{
 		approvalrequestbus.DomainName, inventoryadjustmentbus.DomainName, transferorderbus.DomainName,
 		purchaseorderbus.DomainName, purchaseorderlineitembus.DomainName, inventoryitembus.DomainName,
-		putawaytaskbus.DomainName,
+		putawaytaskbus.DomainName, productcategorybus.DomainName, workflow.AllocationResultDomainName,
 	} {
 		rec.registerOn(db.BusDomain.Delegate, d)
 	}
+
+	// The reverse map the generic data handlers (P4 M1) resolve their target table to a
+	// delegate (domain, entity) through — exercised here so a wiring regression fails.
+	entityRegistry := workflowdomains.ReverseMap()
 
 	base := seedConsistencyBase(t, ctx, db)
 	uid := base.userID
@@ -542,30 +550,101 @@ func Test_ManifestConsistency_DeclaredEqualsFired(t *testing.T) {
 		run(t, "create_put_away_task", h, cfg, execCtx)
 	})
 
-	// 12. update_field known-silent trip-wire: raw SQL, fires NOTHING today (M1 gap).
-	t.Run("update_field_known_silent", func(t *testing.T) {
+	// 12. update_field → inventory_items.updated (P4 M1 — was the known-silent trip-wire).
+	// "quantity" is not a protected field, so the generic write goes through and the
+	// synthesized event fires under the inventoryitem domain.
+	t.Run("update_field", func(t *testing.T) {
 		items, err := inventoryitembus.TestSeedInventoryItems(ctx, 1, []uuid.UUID{base.loc1}, []uuid.UUID{base.productIDs[0]}, db.BusDomain.InventoryItem)
 		if err != nil {
 			t.Fatalf("seeding inventory item: %v", err)
 		}
-		h := data.NewUpdateFieldHandler(db.Log, db.DB)
+		h := data.NewUpdateFieldHandler(db.Log, db.DB,
+			data.WithDelegate(db.BusDomain.Delegate), data.WithEntityRegistry(entityRegistry))
 		cfg := mustJSON(t, map[string]any{
 			"target_entity": "inventory.inventory_items",
 			"target_field":  "quantity",
 			"new_value":     999,
 			"conditions":    []map[string]any{{"field_name": "id", "operator": "equals", "value": items[0].ID.String()}},
 		})
-		mark := rec.mark()
-		res, err := h.Execute(ctx, cfg, workflow.ActionExecutionContext{UserID: uid})
+		run(t, "update_field", h, cfg, workflow.ActionExecutionContext{UserID: uid})
+	})
+
+	// 13. create_entity → product_categories.created (P4 M1). product_categories has no
+	// FKs, no typed action, and no protected fields — a clean generic create target.
+	t.Run("create_entity", func(t *testing.T) {
+		h := data.NewCreateEntityHandler(db.Log, db.DB,
+			data.WithDelegate(db.BusDomain.Delegate), data.WithEntityRegistry(entityRegistry))
+		now := time.Now().UTC().Format(time.RFC3339)
+		cfg := mustJSON(t, map[string]any{
+			"target_entity": "products.product_categories",
+			"fields": map[string]any{
+				"name":         "consistency-cat-" + uuid.NewString()[:8],
+				"description":  "created via create_entity",
+				"created_date": now,
+				"updated_date": now,
+			},
+		})
+		run(t, "create_entity", h, cfg, workflow.ActionExecutionContext{UserID: uid})
+	})
+
+	// 14. transition_status → product_categories.updated (P4 M1). transition_status is the
+	// generic status-transition handler; here it moves a non-protected text column on a
+	// table with no typed action (description: INITIAL → TRANSITIONED).
+	t.Run("transition_status", func(t *testing.T) {
+		pc, err := db.BusDomain.ProductCategory.Create(ctx, productcategorybus.NewProductCategory{
+			Name: "consistency-trans-" + uuid.NewString()[:8], Description: "INITIAL",
+		})
 		if err != nil {
+			t.Fatalf("seeding product category: %v", err)
+		}
+		h := data.NewTransitionStatusHandler(db.Log, db.DB,
+			data.WithDelegate(db.BusDomain.Delegate), data.WithEntityRegistry(entityRegistry))
+		cfg := mustJSON(t, map[string]any{
+			"target_entity":       "products.product_categories",
+			"target_id":           pc.ProductCategoryID.String(),
+			"status_field":        "description",
+			"to_status":           "TRANSITIONED",
+			"valid_from_statuses": []string{"INITIAL"},
+		})
+		run(t, "transition_status", h, cfg, workflow.ActionExecutionContext{UserID: uid})
+	})
+
+	// 15. update_field with a NON-id condition (the WHERE order_id=… shape the seeded
+	// Allocation-Success rule uses): the synthesized event must identify the WRITTEN row,
+	// never borrow the triggering entity's id. A non-id update can touch multiple rows
+	// whose ids we don't capture, so EntityID must be zero — NOT execContext.EntityID.
+	// Guards the loop-guard-correctness fix (the visited-set keys on (rule, EntityID)).
+	t.Run("update_field_nonid_condition_entityid", func(t *testing.T) {
+		if _, err := inventoryitembus.TestSeedInventoryItems(ctx, 1, []uuid.UUID{base.loc0}, []uuid.UUID{base.productIDs[1]}, db.BusDomain.InventoryItem); err != nil {
+			t.Fatalf("seeding inventory item: %v", err)
+		}
+		h := data.NewUpdateFieldHandler(db.Log, db.DB,
+			data.WithDelegate(db.BusDomain.Delegate), data.WithEntityRegistry(entityRegistry))
+		cfg := mustJSON(t, map[string]any{
+			"target_entity": "inventory.inventory_items",
+			"target_field":  "quantity",
+			"new_value":     123,
+			"conditions":    []map[string]any{{"field_name": "product_id", "operator": "equals", "value": base.productIDs[1].String()}},
+		})
+		triggering := uuid.New() // sentinel: the (foreign) triggering-entity id
+		mark := rec.mark()
+		if _, err := h.Execute(ctx, cfg, workflow.ActionExecutionContext{UserID: uid, EntityID: triggering}); err != nil {
 			t.Fatalf("update_field Execute: %v", err)
 		}
-		if m, ok := res.(map[string]any); ok && m["status"] != "success" {
-			t.Fatalf("update_field did not succeed (status=%v) — trip-wire would be a false negative; fix the config", m["status"])
+		var fired bool
+		for _, e := range rec.since(mark) {
+			if e.domain == inventoryitembus.DomainName && e.action == workflow.ActionUpdated {
+				fired = true
+				if e.entityID == triggering {
+					t.Errorf("synthesized event borrowed the triggering entity id %s — must be the written row, not a foreign entity (loop-guard hazard)", triggering)
+				}
+				if e.entityID != uuid.Nil {
+					t.Errorf("expected zero EntityID for a non-id-condition update (written row unknown), got %s", e.entityID)
+				}
+			}
 		}
-		window := rec.since(mark)
-		if contains(window, inventoryitembus.DomainName, workflow.ActionUpdated) {
-			t.Errorf("update_field fired %s.updated — M1 is no longer silent. P4 has enabled cascade synthesis: remove update_field from knownSilent and add its declared==fired assertion.", inventoryitembus.DomainName)
+		if !fired {
+			t.Fatalf("update_field did not fire %s.updated", inventoryitembus.DomainName)
 		}
 	})
 }

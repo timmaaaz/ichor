@@ -359,6 +359,9 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/approval"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/communication"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/data"
+
+	"github.com/timmaaaz/ichor/api/cmd/services/ichor/build/all/workflowdomains"
+
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/rabbitmq"
 	"github.com/timmaaaz/ichor/foundation/web"
@@ -562,9 +565,10 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	// off); replace those three here, then derive the protected set now that every action
 	// handler is registered (on_update manifest claims + domain-declared db-model tags).
 	protectedReg := protected.New()
-	actionRegistry.Register(data.NewUpdateFieldHandler(cfg.Log, cfg.DB, data.WithProtectedRegistry(protectedReg)))
-	actionRegistry.Register(data.NewCreateEntityHandler(cfg.Log, cfg.DB, data.WithProtectedRegistry(protectedReg)))
-	actionRegistry.Register(data.NewTransitionStatusHandler(cfg.Log, cfg.DB, data.WithProtectedRegistry(protectedReg)))
+	entityRegistry := workflowdomains.ReverseMap()
+	actionRegistry.Register(data.NewUpdateFieldHandler(cfg.Log, cfg.DB, data.WithProtectedRegistry(protectedReg), data.WithDelegate(delegate), data.WithEntityRegistry(entityRegistry)))
+	actionRegistry.Register(data.NewCreateEntityHandler(cfg.Log, cfg.DB, data.WithProtectedRegistry(protectedReg), data.WithDelegate(delegate), data.WithEntityRegistry(entityRegistry)))
+	actionRegistry.Register(data.NewTransitionStatusHandler(cfg.Log, cfg.DB, data.WithProtectedRegistry(protectedReg), data.WithDelegate(delegate), data.WithEntityRegistry(entityRegistry)))
 	workflowactions.PopulateProtected(protectedReg, actionRegistry)
 
 	// =========================================================================
@@ -590,95 +594,13 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 			// Create Temporal delegate handler and register all domains.
 			delegateHandler := temporalpkg.NewDelegateHandler(cfg.Log, workflowTrigger)
 
-			// Sales domain
-			delegateHandler.RegisterDomain(delegate, ordersbus.DomainName, ordersbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, ordersbus.BindingDomainName, ordersbus.BindingEntityName)
-			delegateHandler.RegisterDomain(delegate, customersbus.DomainName, customersbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, orderlineitemsbus.DomainName, orderlineitemsbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, orderfulfillmentstatusbus.DomainName, orderfulfillmentstatusbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, lineitemfulfillmentstatusbus.DomainName, lineitemfulfillmentstatusbus.EntityName)
-
-			// Assets domain
-			delegateHandler.RegisterDomain(delegate, assetbus.DomainName, assetbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, validassetbus.DomainName, validassetbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, userassetbus.DomainName, userassetbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, assettypebus.DomainName, assettypebus.EntityName)
-			delegateHandler.RegisterDomain(delegate, assetconditionbus.DomainName, assetconditionbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, assettagbus.DomainName, assettagbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, tagbus.DomainName, tagbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, approvalstatusbus.DomainName, approvalstatusbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, fulfillmentstatusbus.DomainName, fulfillmentstatusbus.EntityName)
-
-			// Core domain
-			delegateHandler.RegisterDomain(delegate, userbus.DomainName, userbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, rolebus.DomainName, rolebus.EntityName)
-			delegateHandler.RegisterDomain(delegate, userrolebus.DomainName, userrolebus.EntityName)
-			delegateHandler.RegisterDomain(delegate, tableaccessbus.DomainName, tableaccessbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, pagebus.DomainName, pagebus.EntityName)
-			delegateHandler.RegisterDomain(delegate, paymenttermbus.DomainName, paymenttermbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, currencybus.DomainName, currencybus.EntityName)
-			delegateHandler.RegisterDomain(delegate, rolepagebus.DomainName, rolepagebus.EntityName)
-			delegateHandler.RegisterDomain(delegate, contactinfosbus.DomainName, contactinfosbus.EntityName)
-
-			// HR domain
-			delegateHandler.RegisterDomain(delegate, approvalbus.DomainName, approvalbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, commentbus.DomainName, commentbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, homebus.DomainName, homebus.EntityName)
-			delegateHandler.RegisterDomain(delegate, officebus.DomainName, officebus.EntityName)
-			delegateHandler.RegisterDomain(delegate, reportstobus.DomainName, reportstobus.EntityName)
-			delegateHandler.RegisterDomain(delegate, titlebus.DomainName, titlebus.EntityName)
-
-			// Geography domain (countrybus/regionbus read-only, no events)
-			delegateHandler.RegisterDomain(delegate, citybus.DomainName, citybus.EntityName)
-			delegateHandler.RegisterDomain(delegate, streetbus.DomainName, streetbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, timezonebus.DomainName, timezonebus.EntityName)
-
-			// Products domain
-			delegateHandler.RegisterDomain(delegate, productbus.DomainName, productbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, productcategorybus.DomainName, productcategorybus.EntityName)
-			delegateHandler.RegisterDomain(delegate, brandbus.DomainName, brandbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, productcostbus.DomainName, productcostbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, costhistorybus.DomainName, costhistorybus.EntityName)
-			delegateHandler.RegisterDomain(delegate, physicalattributebus.DomainName, physicalattributebus.EntityName)
-			delegateHandler.RegisterDomain(delegate, metricsbus.DomainName, metricsbus.EntityName)
-
-			// Procurement domain
-			delegateHandler.RegisterDomain(delegate, supplierbus.DomainName, supplierbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, supplierproductbus.DomainName, supplierproductbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, purchaseorderbus.DomainName, purchaseorderbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, purchaseorderlineitembus.DomainName, purchaseorderlineitembus.EntityName)
-			delegateHandler.RegisterDomain(delegate, purchaseorderstatusbus.DomainName, purchaseorderstatusbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, purchaseorderlineitemstatusbus.DomainName, purchaseorderlineitemstatusbus.EntityName)
-
-			// Inventory domain
-			delegateHandler.RegisterDomain(delegate, warehousebus.DomainName, warehousebus.EntityName)
-			delegateHandler.RegisterDomain(delegate, zonebus.DomainName, zonebus.EntityName)
-			delegateHandler.RegisterDomain(delegate, inventorylocationbus.DomainName, inventorylocationbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, inventoryitembus.DomainName, inventoryitembus.EntityName)
-			delegateHandler.RegisterDomain(delegate, inventorytransactionbus.DomainName, inventorytransactionbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, inventoryadjustmentbus.DomainName, inventoryadjustmentbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, putawaytaskbus.DomainName, putawaytaskbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, picktaskbus.DomainName, picktaskbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, cyclecountsessionbus.DomainName, cyclecountsessionbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, cyclecountitembus.DomainName, cyclecountitembus.EntityName)
-			delegateHandler.RegisterDomain(delegate, transferorderbus.DomainName, transferorderbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, inspectionbus.DomainName, inspectionbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, lottrackingsbus.DomainName, lottrackingsbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, serialnumberbus.DomainName, serialnumberbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, lotlocationbus.DomainName, lotlocationbus.EntityName)
-
-			// Config domain
-			delegateHandler.RegisterDomain(delegate, formbus.DomainName, formbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, formfieldbus.DomainName, formfieldbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, pageconfigbus.DomainName, pageconfigbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, pagecontentbus.DomainName, pagecontentbus.EntityName)
-			delegateHandler.RegisterDomain(delegate, pageactionbus.DomainName, pageactionbus.EntityName)
-
-			// Labels domain
-			delegateHandler.RegisterDomain(delegate, labelbus.DomainName, labelbus.EntityName)
-
-			// Scenarios domain
-			delegateHandler.RegisterDomain(delegate, scenariobus.DomainName, scenariobus.EntityName)
+			// Register every domain the workflow subscriber listens on. Single source:
+			// workflowdomains.Registrations() — shared verbatim with the standalone
+			// Temporal worker (api/cmd/services/workflow-worker/main.go) so both register
+			// the identical set (DESIGN §6 — no drift between server and worker).
+			for _, r := range workflowdomains.Registrations() {
+				delegateHandler.RegisterDomain(delegate, r.Domain, r.Entity)
+			}
 
 			cfg.Log.Info(context.Background(), "temporal workflow infrastructure initialized")
 		}

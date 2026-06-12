@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/protected"
@@ -29,6 +31,8 @@ type TransitionStatusHandler struct {
 	db           *sqlx.DB
 	templateProc *workflow.TemplateProcessor
 	protected    *protected.Registry
+	delegate     *delegate.Delegate
+	entityMap    map[string]EntityRef
 }
 
 // NewTransitionStatusHandler creates a new transition status handler.
@@ -39,6 +43,8 @@ func NewTransitionStatusHandler(log *logger.Logger, db *sqlx.DB, opts ...Option)
 		db:           db,
 		templateProc: workflow.NewTemplateProcessor(workflow.DefaultTemplateProcessingOptions()),
 		protected:    o.protected,
+		delegate:     o.delegate,
+		entityMap:    o.entityMap,
 	}
 }
 
@@ -177,6 +183,22 @@ func (h *TransitionStatusHandler) Execute(ctx context.Context, config json.RawMe
 		"target_id", targetID,
 		"from", currentStatus,
 		"to", toStatus)
+
+	// Cascade (P4 M1): announce the transition (on_update) so it triggers any downstream
+	// rule whose trigger matches — including value-aware changed_to, since we carry both
+	// the prior status (currentStatus) and the new status (toStatus). Reached only on a
+	// real write: the invalid-transition and zero-row paths return earlier.
+	var entityID uuid.UUID
+	if parsed, perr := uuid.Parse(fmt.Sprintf("%v", targetID)); perr == nil {
+		entityID = parsed
+	}
+	fireSynthesizedEvent(ctx, h.log, h.delegate, h.entityMap, cfg.TargetEntity, workflow.ActionUpdated,
+		workflow.DelegateEventParams{
+			EntityID:     entityID,
+			UserID:       execContext.UserID,
+			Entity:       map[string]any{"id": entityID, cfg.StatusField: toStatus},
+			BeforeEntity: map[string]any{"id": entityID, cfg.StatusField: currentStatus},
+		})
 
 	return map[string]any{
 		"transitioned": true,
