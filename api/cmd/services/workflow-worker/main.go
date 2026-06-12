@@ -160,7 +160,9 @@ func run(log *logger.Logger) error {
 	// Business Layer Dependencies
 	// =========================================================================
 
-	// Delegate for UUID generation and timestamps (testing seams).
+	// Delegate: UUID/timestamp seam for the buses below, and the cascade event bus this
+	// worker subscribes to (wired under "Workflow Delegate Subscriber" further down) — a
+	// synthesized/bus delegate.Call inside this worker's activities flows through it.
 	del := delegate.New(log)
 
 	// Inventory domain buses - required for allocate_inventory action.

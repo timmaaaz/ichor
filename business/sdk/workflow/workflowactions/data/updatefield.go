@@ -217,9 +217,15 @@ func (h *UpdateFieldHandler) Execute(ctx context.Context, config json.RawMessage
 	result["completed_at"] = time.Now()
 	result["execution_time_ms"] = time.Since(startTime).Milliseconds()
 
-	// If single record update, set the target record ID
+	// If single record update, set the target record ID. Resolve the condition value
+	// first: the id= condition is canonically written as a template (e.g. {{entity_id}}),
+	// and uuid.Parse on the raw "{{...}}" string would fail — leaving target_record_id
+	// unset, the synthesized EntityID zero, and the runtime loop guard keyed on
+	// (rule, Nil) instead of the real row (so a genuine A→B→A loop could be missed).
+	// transition.go resolves its TargetID the same way before deriving EntityID.
 	if len(cfg.Conditions) == 1 && cfg.Conditions[0].FieldName == "id" {
-		if id, err := uuid.Parse(fmt.Sprintf("%v", cfg.Conditions[0].Value)); err == nil {
+		resolvedID := processTemplateValue(h.templateProc, ctx, h.log, cfg.Conditions[0].Value, templateContext)
+		if id, err := uuid.Parse(fmt.Sprintf("%v", resolvedID)); err == nil {
 			result["target_record_id"] = id
 		}
 	}

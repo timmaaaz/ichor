@@ -11,10 +11,17 @@ file: business/sdk/delegate/delegate.go
 key facts:
   - Delegate struct: log *logger.Logger, funcs map[string]map[string][]Func
   - Thread-safe read after startup registration (no lock on Call path)
-  - One Delegate instance shared across all domains (wired in all.go)
+  - One Delegate instance per binary, shared across all domains in that process.
+    The server wires its instance in all.go; the standalone Temporal worker
+    (api/cmd/services/workflow-worker/main.go) wires its OWN instance — cascaded
+    writes happen inside the worker's activities, so without its own subscriber the
+    cascade dies at hop 1.
   - 205 call sites across 65 files in business/domain/ (verified 2026-03-09)
-  - Subscribers register at startup in all.go via Register()
-  - Current subscriber: workflow DelegateHandler (business/sdk/workflow/temporal/delegatehandler.go)
+  - Subscribers register at startup via Register(), at TWO sites that both draw from
+    the shared workflowdomains.Registrations() source so the domain set never drifts:
+      - server: api/cmd/services/ichor/build/all/all.go (RegisterDomain loop)
+      - worker: api/cmd/services/workflow-worker/main.go (RegisterDomain loop)
+  - Subscriber type: workflow DelegateHandler (business/sdk/workflow/temporal/delegatehandler.go)
 
   // ✓ verified 2026-03-09
   Register(domainType string, actionType string, fn Func)
@@ -58,6 +65,16 @@ Every [bus] Create/Update/Delete calls:
   delegate.Call(ctx, ActionUpdatedData(before, after))
   delegate.Call(ctx, ActionDeletedData(entity))
 
+Beyond typed [bus] writes, two additional paths fire delegate events (P4 cascades):
+  - Synthesized events: generic data handlers (update_field / create_entity /
+    transition_status) fire workflow.SyntheticEventData() after a confirmed raw-SQL
+    write so it cascades like a bus write —
+    business/sdk/workflow/workflowactions/data/synthesize.go. The handler resolves the
+    target table → (domain, entity) via workflowdomains.ReverseMap().
+  - allocation_results: workflowbus fires workflow.ActionAllocationResultCreatedData()
+    (domain workflow.AllocationResultDomainName, action "created") after writing an
+    allocation_results row — business/sdk/workflow/event.go.
+
 ---
 
 ## ⚠ Adding a new domain that calls delegate.Call()
@@ -65,10 +82,13 @@ Every [bus] Create/Update/Delete calls:
   business/domain/{area}/{entity}bus/{entity}bus.go               (call delegate.Call() in Create/Update/Delete)
   business/domain/{area}/{entity}bus/{entity}bus.go               (define ActionCreated/Updated/Deleted consts + ActionCreatedData/etc helpers)
   api/cmd/services/ichor/build/all/all.go                         (pass *delegate.Delegate to NewBusiness)
+  api/cmd/services/ichor/build/all/workflowdomains/workflowdomains.go (add the (schema, domain, entity) registration so the workflow subscriber listens on it)
 
 ## ⚠ Registering a new subscriber (Register() call)
 
-  api/cmd/services/ichor/build/all/all.go                         (delegate.Register(domain, action, fn) for each domain/action pair)
+  api/cmd/services/ichor/build/all/workflowdomains/workflowdomains.go (single source: add the (domain, entity) registration — both consumers pick it up)
+  api/cmd/services/ichor/build/all/all.go                         (RegisterDomain loop over workflowdomains.Registrations())
+  api/cmd/services/workflow-worker/main.go                        (RegisterDomain loop over workflowdomains.Registrations() — both binaries MUST register the identical set)
   {subscriber_package}/{subscriber}.go                             (implement Func signature: func(context.Context, Data) error)
 
 ## ⚠ Changing Data struct shape
