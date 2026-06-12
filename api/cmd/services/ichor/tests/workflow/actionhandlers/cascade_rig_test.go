@@ -5,7 +5,7 @@ package actionhandlers_test
 // These helpers stand up the REAL cascade pipeline — a live Temporal worker bound to a
 // caller-supplied ActionRegistry, plus the WorkflowTrigger + DelegateHandler wiring that
 // turns a bus (or synthesized M1/M2) delegate event into a downstream rule dispatch. It
-// mirrors the production wiring (all.go:574-681) and the one-hop rig in
+// mirrors the production wiring (all.go:574-610) and the one-hop rig in
 // cascade_lineage_test.go, generalized so the PL suites (loop guard, M2 live, fan-out /
 // idempotency) can each build a registry, seed rules, fire an event, and poll
 // automation_executions for the cascade outcome + visited-set lineage.

@@ -463,7 +463,7 @@ core:
         item is updated end-to-end through the real worker. (Option A: clean-column positive +
         assert-blocked compose; F3 stays deferred per user decision.)
 
-      READ-AFTER-COMMIT (DESIGN §9): the M2 delegate fires PRE-COMMIT (allocate.go:474 < Commit:483).
+      READ-AFTER-COMMIT (DESIGN §9): the M2 delegate fires PRE-COMMIT (allocate.go:479 < Commit:488).
         The live cascade nonetheless observes committed state because the worker dispatch lag
         exceeds the commit — assert/documented in the live test. The read-your-writes GUARANTEE is
         F2's job (transactional outbox); not reordered in PL (DESIGN §9 best-effort v1 stands).

@@ -83,8 +83,9 @@ const AllocationResultDomainName = "allocation_result"
 // passing the struct directly would surface only {ID, IdempotencyKey, AllocationData,
 // CreatedDate} as event RawData — leaving RawData["status"]/["reference_id"] nil, so a
 // trigger condition on status (the seeded Allocation-Success/Failed rules) could never
-// match. Unmarshaling the blob into the Entity map lifts status, reference_id,
-// allocation_id, … to top-level RawData keys, where trigger.go reads them. Mirrors the
+// match. Unmarshaling the blob into the Entity map lifts status, reference_id, the
+// result-specific id (allocation_id on the allocate path, reservation_id on the reserve
+// path), … to top-level RawData keys, where trigger.go reads them. Mirrors the
 // M1 map[string]any Entity precedent (updatefield.go).
 func ActionAllocationResultCreatedData(ar AllocationResult) delegate.Data {
 	entity := map[string]any{}
