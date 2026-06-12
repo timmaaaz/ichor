@@ -10,12 +10,12 @@ package actionhandlers_test
 // asserting each declared (non-silent) modification actually fires a matching delegate
 // event.
 //
-// It also pins the two known-silent gaps that P4 will close:
-//   - allocate_inventory declares allocation_results (on_create) but workflowbus.
-//     CreateAllocationResult has no delegate.Call — the "M2" gap. Asserted silent.
-//   - update_field (raw SQL, no bus) fires nothing — the "M1" gap. The trip-wire subtest
-//     executes it and asserts NO delegate fires; when P4 wires synthesis this goes RED,
-//     forcing P4 to move it out of knownSilent and add the firing assertion.
+// P4 closed the two formerly known-silent gaps; this test now asserts both FIRE:
+//   - allocate_inventory declares allocation_results (on_create); workflowbus.
+//     CreateAllocationResult now fires delegate.Call — the "M2" path.
+//   - update_field (raw SQL, no bus) now fires a synthesized delegate event — the "M1"
+//     path. The subtest executes it and asserts the delegate fires. knownSilentEntities
+//     is now empty; any future not-yet-wired gap re-enters through that map.
 //
 // Handlers are executed DIRECTLY (handler.Execute), not through Temporal: delegate.Call is
 // synchronous inside the bus methods, so by the time Execute returns every fire has been
@@ -159,7 +159,7 @@ func assertDeclaredFired(t *testing.T, actionType string, declared []workflow.En
 	}
 	for _, mod := range declared {
 		if knownSilentEntities[mod.EntityName] {
-			t.Logf("%s: %s/%s is known-silent (no delegate today) — P4 will enable + assert it", actionType, mod.EntityName, mod.EventType)
+			t.Logf("%s: %s/%s is known-silent (not yet wired) — a future phase will enable + assert it", actionType, mod.EntityName, mod.EventType)
 			continue
 		}
 		domain, ok := entityDomain[mod.EntityName]
@@ -276,10 +276,10 @@ func seedConsistencyBase(t *testing.T, ctx context.Context, db *dbtest.Database)
 	}
 
 	products, err := productbus.TestSeedProducts(ctx, 5, brandIDs, categoryIDs, db.BusDomain.Product)
-	if err != nil || len(products) < 2 {
+	if err != nil || len(products) < 3 {
 		t.Fatalf("seeding products: %v", err)
 	}
-	productIDs := []uuid.UUID{products[0].ProductID, products[1].ProductID}
+	productIDs := []uuid.UUID{products[0].ProductID, products[1].ProductID, products[2].ProductID}
 
 	supplierProducts, err := supplierproductbus.TestSeedSupplierProducts(ctx, 1, []uuid.UUID{productIDs[0]}, []uuid.UUID{supplierID}, db.BusDomain.SupplierProduct)
 	if err != nil {
@@ -475,7 +475,7 @@ func Test_ManifestConsistency_DeclaredEqualsFired(t *testing.T) {
 		run(t, "reject_purchase_order", h, cfg, workflow.ActionExecutionContext{UserID: uid})
 	})
 
-	// 8. allocate_inventory → inventory_items fires; allocation_results known-silent (M2).
+	// 8. allocate_inventory → inventory_items + allocation_results both fire (M2 wired).
 	t.Run("allocate_inventory", func(t *testing.T) {
 		if _, err := inventoryitembus.TestSeedInventoryItems(ctx, 1, []uuid.UUID{base.loc0}, []uuid.UUID{base.productIDs[0]}, db.BusDomain.InventoryItem); err != nil {
 			t.Fatalf("seeding inventory item: %v", err)
@@ -640,6 +640,43 @@ func Test_ManifestConsistency_DeclaredEqualsFired(t *testing.T) {
 				}
 				if e.entityID != uuid.Nil {
 					t.Errorf("expected zero EntityID for a non-id-condition update (written row unknown), got %s", e.entityID)
+				}
+			}
+		}
+		if !fired {
+			t.Fatalf("update_field did not fire %s.updated", inventoryitembus.DomainName)
+		}
+	})
+
+	// 16. update_field with an id= condition written as a TEMPLATE ({{entity_id}}) — the
+	// canonical "update the triggering entity by id" shape (validateworkflows.go sample,
+	// updatefield_test.go). The condition value must be resolved before deriving EntityID:
+	// parsing the raw "{{entity_id}}" string fails, which would leave EntityID zero and key
+	// the loop guard on (rule, Nil) instead of the real row — risking a missed A→B→A loop.
+	// Asserts the synthesized event carries the RESOLVED row id, not zero.
+	t.Run("update_field_templated_id_entityid", func(t *testing.T) {
+		items, err := inventoryitembus.TestSeedInventoryItems(ctx, 1, []uuid.UUID{base.loc0}, []uuid.UUID{base.productIDs[2]}, db.BusDomain.InventoryItem)
+		if err != nil {
+			t.Fatalf("seeding inventory item: %v", err)
+		}
+		h := data.NewUpdateFieldHandler(db.Log, db.DB,
+			data.WithDelegate(db.BusDomain.Delegate), data.WithEntityRegistry(entityRegistry))
+		cfg := mustJSON(t, map[string]any{
+			"target_entity": "inventory.inventory_items",
+			"target_field":  "quantity",
+			"new_value":     321,
+			"conditions":    []map[string]any{{"field_name": "id", "operator": "equals", "value": "{{entity_id}}"}},
+		})
+		mark := rec.mark()
+		if _, err := h.Execute(ctx, cfg, workflow.ActionExecutionContext{UserID: uid, EntityID: items[0].ID}); err != nil {
+			t.Fatalf("update_field Execute: %v", err)
+		}
+		var fired bool
+		for _, e := range rec.since(mark) {
+			if e.domain == inventoryitembus.DomainName && e.action == workflow.ActionUpdated {
+				fired = true
+				if e.entityID != items[0].ID {
+					t.Errorf("expected resolved row id %s for a templated id= condition, got %s (raw-template parse would leave it zero)", items[0].ID, e.entityID)
 				}
 			}
 		}

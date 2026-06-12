@@ -18,7 +18,18 @@ invariant: each rule execution gets unique executionID; workflow ID deterministi
 
 DelegateHandler[sdk] → WorkflowTrigger[sdk] → Temporal[⚡] → Worker → Activities[sdk]
         ↑
-all domain [bus] Create/Update/Delete → delegate.Call()
+event sources → delegate.Call():
+  - all domain [bus] Create/Update/Delete
+  - generic data handlers (update_field/create_entity/transition_status) fire
+    SyntheticEventData after a confirmed raw-SQL write (synthesize.go) — this is what
+    makes a worker activity's write cascade to downstream rules
+  - workflowbus fires ActionAllocationResultCreatedData (domain "allocation_result")
+
+TWO DelegateHandler subscribers, one per binary (both register the identical domain
+set from workflowdomains.Registrations()):
+  - server: all.go — handles events from in-process bus writes
+  - worker: workflow-worker/main.go — handles events synthesized inside the worker's
+    own activities (own delegate.New(); without it the cascade dies at hop 1)
 
 ---
 
@@ -27,9 +38,26 @@ all domain [bus] Create/Update/Delete → delegate.Call()
 file: business/sdk/workflow/temporal/delegatehandler.go
 imports: delegate.Handler interface, WorkflowTrigger
 key facts:
-  - Implements delegate.Handler — registered in all.go at startup
+  - Implements delegate.Handler — registered at startup in BOTH all.go and
+    workflow-worker/main.go, each over workflowdomains.Registrations()
   - delegate.Data → workflow.TriggerEvent conversion (extractEntityData via reflection)
-  - All domain creates/updates/deletes fire through here automatically
+  - Fires for: domain bus create/update/delete, synthesized generic-write events
+    (synthesize.go), and allocation_results creation
+
+---
+
+## workflowdomains [build]
+
+file: api/cmd/services/ichor/build/all/workflowdomains/workflowdomains.go
+key facts:
+  - Single source of (schema, domain, entity) registrations — consumed by THREE call
+    sites: all.go RegisterDomain loop, worker RegisterDomain loop, and the generic-write
+    handler reverse map
+  - Registrations() → []EntityReg; references bus DomainName/EntityName consts so a
+    drifted name fails the build, not silently at runtime
+  - ReverseMap() → map[schema.table]EntityRef for generic-write synthesis; entries with
+    empty Schema (e.g. allocation_results) are subscriber-only, absent from the map
+  - Lives under build/all/ but imported cross-binary by the worker (see delegate.md)
 
 ---
 
