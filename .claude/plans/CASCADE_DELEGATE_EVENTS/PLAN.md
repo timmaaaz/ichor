@@ -17,7 +17,7 @@
 | PG | **Guard Verification** (cascades OFF — prove the guard correct in isolation) | core | ☐ | after P0–P3; **GREEN = the §0 precondition that opens P4** |
 | P4 | **Cascade enablement (THE GATE)** | core | ☐ | **requires P1+P2+P3 built AND PG green** |
 | PL | **Live-System Verification** (cascades ON — prove the live guarded pipeline) | core | ☐ | after P4 |
-| P5 | Ship — supersede PR #176 + arch-doc fixes | core | ☐ | after PL |
+| P5 | Ship — supersede PR #176 + arch-doc fixes | core | ☑ | after PL |
 | F1 | Bus-routing consolidation (Option B) | **committed** | ☐ | after core, per-entity |
 | F2 | **Reliability hardening — transactional outbox** | **committed** | ☐ | after core — DO NOT SKIP |
 | F3 | Missing typed actions (claim/execute_transfer_order, receive_po_line_item, approve/deny_user) | on-demand | ☐ | a workflow needs the field |
@@ -96,10 +96,10 @@
 - **M2 allocation_results cascade (PL.M2 — ADDED 2026-06-12, was unowned):** the M2 event is currently non-functional — it passes the tagless `AllocationResult` struct, so `status` (buried in the `AllocationData` blob) never reaches a trigger condition and the seeded Allocation-Success/Failed rules can never fire (zero prod impact: both `IsActive:false`, no prod rules). Make M2 real: (1) flatten the blob into a map Entity in `event.go ActionAllocationResultCreatedData` to surface `status` (retires the M-b note); (2) add `reference_id` to the `allocate.go`/`reserve_inventory.go` result structs so `{{reference_id}}` resolves; (3) activate the rules + prove the live `allocate→order_line_items` cascade — which also unblocks the read-after-commit bullet above for the M2 path. Steps 1–2 are a low-risk event-contract fix that could alternatively land in PR #182. Full detail in `PROGRESS.yaml` PL.M2.
 **Done when:** the live guarded pipeline is proven end-to-end; the decisive loop-stopped test is green; the M2 allocation_results cascade is proven live.
 
-### P5 — Ship + cleanup
-- Supersede PR #176 (close it; fold its accurate `update_field` prose into user docs; drop the broken `allocation_results` workaround).
-- Fix stale arch docs (workflow-engine.md → 24 handlers; cascade-visualization.md → 19 implementors).
-**Done when:** PL green + docs honest → ship.
+### P5 — Ship + cleanup ☑ DONE 2026-06-12
+- Supersede PR #176 (already CLOSED — close was a no-op; folded its accurate `update_field` mechanism prose into user docs, **inverted** to the truth since P4 lifted the limitation; dropped the broken `allocation_results` workaround).
+- Fixed stale arch docs (verified counts first — the "24 handlers" figure here was wrong): delegate.md + workflow-engine.md cascade content were already current from the P4 2nd-review; corrected workflow-engine.md handler **count → 28** (was an inconsistent 21/20); cascade-visualization.md EntityModifier implementors **1 → 19** + removed the false `allocate_inventory` "doesn't implement" line + runtime-cascade note. cascade-visualization full rewrite = F5-remainder.
+**Done when:** PL green + docs honest → ship. ✅ (branch `feature/cascade-PL` shipped; Bitbucket ff-synced.)
 
 ---
 

@@ -46,13 +46,24 @@ type EntityModification struct {
 
 ### Handlers That Implement EntityModifier
 
-Currently, the following handlers implement `EntityModifier`:
+**19 handlers** implement `EntityModifier` (verified 2026-06-12). They fall into two groups:
 
-| Handler | Entity Modified | Event Type |
-|---------|-----------------|------------|
-| `update_field` | Configured `target_entity` | `on_update` |
+- **Generic data handlers** — `update_field`, `create_entity`, `transition_status`. The entity
+  and event are configuration-driven (`target_entity` / `on_update` etc.).
+- **Domain action handlers** — `allocate_inventory`, `reserve_inventory`, `release_reservation`,
+  `commit_allocation`, `receive_inventory`, `check_inventory`, `check_reorder_point`,
+  `create_purchase_order`, `create_put_away_task`, `approve_purchase_order`,
+  `reject_purchase_order`, `approve_inventory_adjustment`, `reject_inventory_adjustment`,
+  `approve_transfer_order`, `reject_transfer_order`, `resolve_approval_request`. Each declares the
+  fixed entities/fields it mutates.
 
-Other handlers (`send_email`, `send_notification`, `create_alert`, `allocate_inventory`, `evaluate_condition`) do NOT modify entities and therefore don't appear in cascade detection.
+The authoritative list is the registry itself — each handler's `GetEntityModifications` is the
+source of truth (consumed by the cascade map and, as of P4, the consistency test). Don't maintain a
+separate hand-list here.
+
+Handlers that do NOT modify tracked entities (`send_email`, `send_notification`, `create_alert`,
+`evaluate_condition`, `seek_approval`, `delay`, `log_audit_entry`, `lookup_entity`, `call_webhook`)
+don't implement `EntityModifier` and don't appear in cascade detection.
 
 **Example Implementation** (`update_field`):
 
@@ -314,7 +325,6 @@ Only actions that modify database entities participate in cascade detection. The
 | `send_email` | Sends external email, no DB change |
 | `send_notification` | Creates notification, doesn't modify tracked entities |
 | `create_alert` | Creates alert record, not a tracked entity cascade |
-| `allocate_inventory` | Currently doesn't implement EntityModifier (future enhancement) |
 | `evaluate_condition` | Decision node, doesn't modify anything |
 | `seek_approval` | Waits for human input, no automatic modification |
 
@@ -325,6 +335,12 @@ The cascade map shows **potential** downstream workflows based on configuration.
 - Runtime conditions that may prevent the action from executing
 - Trigger conditions on downstream rules that may not match
 - Field-level matching (conditions checking specific field values)
+
+> The cascade *map* is an authoring-time view. The cascades it describes now actually fire at
+> runtime (P4): generic-write handlers synthesize delegate events and `allocation_results` emits on
+> create, so a rule's mutation triggers downstream rules. These runtime cascades are **loop-guarded**
+> — provable loops are blocked at save time and a runtime visited-set stops re-entry. See
+> [`docs/arch/workflow-engine.md`](../arch/workflow-engine.md) and `docs/arch/delegate.md`.
 
 ### No Recursive Cascade
 

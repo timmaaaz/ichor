@@ -231,14 +231,17 @@ type ActionHandler interface {
 	GetDescription() string
 }
 ```
-<!-- lsp:refs:39:6 --> count=21 (production, excl. test mocks)
+<!-- lsp:refs:39:6 --> count=28 (production, excl. test mocks)
 
-registered action types (21, verified 2026-03-16):
+registered action types (28, verified 2026-06-12):
   seek_approval, evaluate_condition, delay, update_field, create_entity,
   lookup_entity, transition_status, log_audit_entry, check_inventory,
   allocate_inventory, reserve_inventory, release_reservation, check_reorder_point,
   receive_inventory, commit_allocation, send_email, send_notification,
-  create_alert, create_purchase_order, call_webhook, create_put_away_task
+  create_alert, create_purchase_order, call_webhook, create_put_away_task,
+  resolve_approval_request, approve_purchase_order, reject_purchase_order,
+  approve_inventory_adjustment, reject_inventory_adjustment,
+  approve_transfer_order, reject_transfer_order
 
 Implementors (production only — 3 test mocks excluded):
   business/sdk/workflow/workflowactions/approval/seek.go              (seek_approval)
@@ -262,6 +265,13 @@ Implementors (production only — 3 test mocks excluded):
   business/sdk/workflow/workflowactions/inventory/createputawaytask.go (create_put_away_task)
   business/sdk/workflow/workflowactions/inventory/reserve_inventory.go (reserve_inventory)
   business/sdk/workflow/workflowactions/procurement/createpo.go       (create_purchase_order)
+  business/sdk/workflow/workflowactions/approval/resolve.go           (resolve_approval_request)
+  business/sdk/workflow/workflowactions/procurement/approve_po.go     (approve_purchase_order)
+  business/sdk/workflow/workflowactions/procurement/reject_po.go      (reject_purchase_order)
+  business/sdk/workflow/workflowactions/inventory/approve_adjustment.go (approve_inventory_adjustment)
+  business/sdk/workflow/workflowactions/inventory/reject_adjustment.go (reject_inventory_adjustment)
+  business/sdk/workflow/workflowactions/inventory/approve_transfer_order.go (approve_transfer_order)
+  business/sdk/workflow/workflowactions/inventory/reject_transfer_order.go (reject_transfer_order)
 
 ---
 
@@ -339,7 +349,7 @@ tests: assert to map[string]any, never concrete struct
   api/cmd/services/ichor/build/all/all.go                          (Register() call in ActionRegistry setup)
   business/sdk/dbtest/seedmodels/                                   (new test seed if handler needs domain data)
   docs/workflow/README.md                                           (update handler catalog)
-  verify: goToImplementation(business/sdk/workflow/interfaces.go:39:6) — confirm existing 20 implementors; register new handler alongside them in all.go
+  verify: goToImplementation(business/sdk/workflow/interfaces.go:39:6) — confirm existing 28 implementors; register new handler alongside them in all.go
 
 ## ⚠ Adding a new Edge type
 
