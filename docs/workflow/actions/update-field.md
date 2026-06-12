@@ -257,6 +257,22 @@ Only these tables can be updated (security feature):
 3. **Bulk update records** matching specific criteria
 4. **Cascading field updates** in workflow automation
 
+## Cascading: update_field DOES trigger downstream rules
+
+`update_field` runs a raw SQL `UPDATE` (`executeUpdate`), which historically bypassed the
+business layer and emitted no delegate event — so the change could not trigger other rules.
+That limitation is lifted: after a successful write the handler synthesizes a delegate event
+(`synthesize.go`), so an `update_field` change now cascades like a bus-path write.
+
+Caveats:
+
+- **Loop-guarded.** A provable cascade loop (A→B→A) is blocked at save time; at runtime a
+  per-`(rule, entity)` visited-set stops re-entry — no infinite cascade.
+- **`changed_to` is best-effort.** The event carries the new value only (no pre-read of the
+  prior value); prev-value-sensitive triggers are approximate.
+- **Multi-row updates fire once.** A condition matching N rows fires a single cascade event
+  with no specific entity id (not one per row).
+
 ## Error Handling
 
 - Validates all inputs before execution

@@ -510,8 +510,44 @@ core:
       allocation_results cascade (PL.M2) proven live.
   P5:
     title: "Ship — supersede PR #176 + arch-doc fixes"
-    status: not_started
+    status: done
     gate: "after PL"
+    verified: |
+      ★ P5 DONE — branch feature/cascade-PL shipped (PL + P5 doc cleanup), one clean
+      fast-forward descendant of github/master 6db3adee.
+
+      SUPERSEDE PR #176: already CLOSED (closedAt 2026-06-12, mergedAt null) — the close
+      step was a no-op. Its core claim ("update_field cannot cascade") and its
+      allocation_results workaround are BOTH obsolete: P4 shipped exactly #176's own
+      "design option 1" (synthesize a delegate event + cascade-depth/loop guard), so
+      update_field cascades now. Salvaged #176's raw-SQL/business-layer mechanism prose into
+      docs/workflow/actions/update-field.md (new "Cascading" section, inverted to the truth +
+      3 caveats: loop-guarded, changed_to best-effort, multi-row fires once). Did NOT carry
+      over the broken workaround. Kept the now-accurate use-case bullet 4.
+
+      ARCH DOCS (verified before editing — PLAN.md's "24 handlers" was wrong):
+        - delegate.md: already current (P4 2nd-review) — no edit.
+        - workflow-engine.md: cascade/synthesize/subscriber sections already current; only the
+          handler COUNT was stale + internally inconsistent (said "21 registered types" AND
+          "20 implementors"). Reality = 28 ActionHandler implementors (the 7 approve/reject/
+          resolve handlers were omitted). FIXED in P5 (user-chosen, right-sized): count=28 in
+          all three spots (lsp:refs marker, registered-types list +7 names, implementor list
+          +7 files, "Adding a new ActionHandler" verify line).
+        - cascade-visualization.md (the real cascade-relevant staleness, PLAN's "19
+          implementors"): its EntityModifier table listed only update_field (1) and falsely
+          said allocate_inventory "doesn't implement EntityModifier (future enhancement)".
+          FIXED: corrected to 19 implementors (generic + domain groups, pointing to the
+          registry/GetEntityModifications as source of truth), removed the false allocate row
+          from the Limitations table, added a note that runtime cascading is now live + loop-
+          guarded. A full rewrite of this doc's older framing stays F5-remainder.
+
+      SHIP: go build ./... clean (doc-only; PL's green test run in 2f876524 stands).
+      Pushed feature/cascade-PL → github, PR to master, merged, Bitbucket origin/master
+      ff-synced per the dual-remote workflow.
+    note: |
+      F5: workflow-engine.md handler count was corrected in P5; the broader
+      cascade-visualization.md rewrite + any remaining arch-doc drift stays F5-remainder
+      (committed follow-up). F1/F2/F3/F6/F7/F8 unchanged.
 
 follow_up:
   F1: { title: "Bus-routing consolidation (Option B)", type: committed, status: not_started }
