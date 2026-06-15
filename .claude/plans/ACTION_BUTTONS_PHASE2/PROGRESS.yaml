@@ -59,9 +59,11 @@ phases:
       - "protected_populate_test.go: registered the 3 handlers in the local registry; routes now fulfillment_status_id->release_to_picking, claimed_by->claim_transfer_order, completed_by->execute_transfer_order (auto-source beats the empty db-tag route via first-non-empty-wins) — DONE"
       - "structural manifest auto-covers release (registered unconditionally in RegisterAll); integration manifest: +order/picktask delegate domains, +entityDomain entries, +3 declared==fired subtests; parameterized seedOrderWithLineItem by product to avoid the unique (product,location) inventory collision — DONE"
       - "pageactionapi/seed_test.go + query_test.go + pageactionbus_test.go (JSONB-compare): re-pointed button now action_type release_to_picking, config {order_id:{{entity_id}}} — DONE"
+      - "END-TO-END (actionapi Test_ActionAPI): real POST /workflow/actions/{type}/execute through auth + action_permissions gate + production registry. +release_to_picking 200 (literal {{entity_id}} → asserts output=released, tasks_created>=1) + 403-no-grant + claim/execute 200 (literal {{entity_id}} → proves the {{}}-tolerance gap-fix live). Seed extended: button-perm role/user, PROCESSING status, product+wh/zone/locations+stock, release order w/ line item, approved+in-transit transfer orders — DONE"
     verify: |
       go test ./business/sdk/workflow/workflowactions/...               # PASS (structural + inventory)
       go test ./api/cmd/services/ichor/tests/workflow/actionhandlers/... # PASS (incl. 3 new subtests + cascade_m2)
+      go test ./api/cmd/services/ichor/tests/workflow/actionapi/...      # PASS (Test_ActionAPI: 4 new e2e cases)
       go test ./api/cmd/services/ichor/tests/config/pageactionapi/... ./business/domain/config/pageactionbus/...  # PASS
 
 risks:
