@@ -7,12 +7,16 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryitembus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/picktaskbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/putawaytaskbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/transferorderbus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderbus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitembus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/supplierproductbus"
 	"github.com/timmaaaz/ichor/business/domain/products/productbus"
+	"github.com/timmaaaz/ichor/business/domain/sales/orderfulfillmentstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/sales/orderlineitemsbus"
+	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/approvalrequestbus"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
@@ -64,8 +68,14 @@ type BusDependencies struct {
 	InventoryAdjustment  *inventoryadjustmentbus.Business
 	TransferOrder        *transferorderbus.Business
 	PutAwayTask          *putawaytaskbus.Business
+	PickTask             *picktaskbus.Business
 	Product              *productbus.Business
 	Workflow             *workflow.Business
+
+	// Sales domain
+	Orders                 *ordersbus.Business
+	OrderLineItems         *orderlineitemsbus.Business
+	OrderFulfillmentStatus *orderfulfillmentstatusbus.Business
 
 	// Procurement domain
 	PurchaseOrder         *purchaseorderbus.Business
@@ -169,6 +179,8 @@ func RegisterGranularInventoryActions(registry *workflow.ActionRegistry, config 
 	if config.Buses.TransferOrder != nil {
 		registry.Register(inventory.NewApproveTransferOrderHandler(config.Log, config.Buses.TransferOrder))
 		registry.Register(inventory.NewRejectTransferOrderHandler(config.Log, config.Buses.TransferOrder))
+		registry.Register(inventory.NewClaimTransferOrderHandler(config.Log, config.Buses.TransferOrder))
+		registry.Register(inventory.NewExecuteTransferOrderHandler(config.Log, config.Buses.TransferOrder))
 	}
 
 	if config.Buses.PutAwayTask != nil {

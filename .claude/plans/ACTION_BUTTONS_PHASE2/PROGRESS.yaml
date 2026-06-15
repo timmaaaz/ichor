@@ -1,0 +1,69 @@
+# PROGRESS — Configurable Action Buttons Phase 2
+# Branch: feature/action-buttons-phase2 (worktree: ichor-action-buttons-phase2)
+# Created 2026-06-15. Realizes the action=capability / button+workflow=triggers model.
+# Status: not_started | in_progress | done
+
+meta:
+  decided:
+    - "Single button: re-point the existing 'Release to Picking' button at the new release_to_picking action (NOT a second button)."
+    - "release_to_picking is self-contained: flips orders.fulfillment_status_id PENDING/PROCESSING->PICKING AND fans line items into inventory.pick_tasks (directed-work model). Becomes sanctioned writer of fulfillment_status_id."
+    - "FEFO is read-only suggestion at release (no double-allocation; pickingapp/picktaskapp still own the stock move at pick time)."
+    - "Idempotency = status guard (only runs PENDING/PROCESSING) + per-line skip of open tasks."
+    - "Approval gate DEFERRED -> CASCADE_DELEGATE_EVENTS/FOLLOW_UP.md §12."
+    - "Action name = release_to_picking (matches button label); transfer actions = claim_transfer_order + execute_transfer_order."
+
+phases:
+  P1_release_handler:
+    status: done
+    title: "release_to_picking action handler + bus wiring"
+    tasks:
+      - "CREATE inventory/release_to_picking.go (8 ActionHandler methods + config) — DONE (compiles, unit tests pass)"
+      - "register.go: add Orders/OrderLineItems/PickTask/OrderFulfillmentStatus to BusDependencies + guarded Register — DONE"
+      - "all.go: wire the 4 buses into inventoryAndProcurementConfig.Buses — DONE (was the missing gap)"
+    verified: "go build workflowactions + build/all EXIT=0; go vet EXIT=0; TestReleaseToPicking_Validate + _Metadata PASS"
+    note: "gopls diagnostics unreliable in worktree (not in go.work) — phantom undefined/unknown-field errors; go build is authoritative."
+
+  P2_transfer_handlers:
+    status: done
+    title: "claim_transfer_order + execute_transfer_order handlers"
+    tasks:
+      - "CREATE inventory/claim_transfer_order.go (wrap transferorderbus.Claim) — DONE"
+      - "CREATE inventory/execute_transfer_order.go (wrap transferorderbus.Execute) — DONE"
+      - "register both inside the TransferOrder!=nil block in register.go — DONE (TransferOrder bus already wired in all.go)"
+      - "unit tests (Validate + Metadata) for both — DONE"
+    verified: "go build + vet EXIT=0; Claim/Execute Validate+Metadata tests PASS"
+
+  P3_seeds:
+    status: not_started
+    title: "button + page seeds"
+    tasks:
+      - "seed_pages.go: re-point 'Release to Picking' button -> release_to_picking (action_config {order_id:{{entity_id}}})"
+      - "seed_pages.go: new transfer_orders_detail_page + Claim/Execute Transfer buttons"
+    verify: "go build ./business/sdk/dbtest/..."
+
+  P4_permissions:
+    status: not_started
+    title: "action_permissions grants (admin-only)"
+    tasks:
+      - "migrate.sql: append Version 2.41 grants for release_to_picking, claim_transfer_order, execute_transfer_order (admin role)"
+      - "seed.sql: ZZZADMIN block += 3 rows"
+    verify: "last migrate version == 2.41; go build ./business/sdk/migrate/..."
+
+  P5_tests:
+    status: not_started
+    title: "tests"
+    tasks:
+      - "handler unit tests (3 files: validate/ports/manifest)"
+      - "protected_populate_test.go: update routes (fulfillment_status_id, claimed_by, completed_by) + register new handlers in local registry"
+      - "structural + integration manifest_consistency: add buses/domains + new subtests (declared==fired)"
+      - "pageactionapi/seed_test.go + pageactionbus_test.go: update re-pointed button's action_type/action_config expectations (incl. the JSONB-compare test fixed 2026-06-08)"
+    verify: |
+      go test ./business/sdk/workflow/workflowactions/...
+      go test ./api/cmd/services/ichor/tests/workflow/actionhandlers/...
+      go test ./api/cmd/services/ichor/tests/config/pageactionapi/... ./business/domain/config/pageactionbus/...
+
+risks:
+  - "protected_populate_test.go uses a hand-picked registry — must Register new handlers there or routes stay ''."
+  - "integration manifest 'declared==fired' needs seeded inventory so release creates >=1 pick_task (else picktask.created never fires)."
+  - "two fulfillment models (pickingapp per-line vs pick_tasks directed-work) — this feeds directed-work; pickingapp path untouched."
+  - "auth closed-by-default: missing grant -> silent 403 at the execute endpoint."
