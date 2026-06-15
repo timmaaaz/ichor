@@ -38,6 +38,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryadjustmentbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryitembus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/picktaskbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/putawaytaskbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/transferorderbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/warehousebus"
@@ -51,6 +52,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/products/brandbus"
 	"github.com/timmaaaz/ichor/business/domain/products/productbus"
 	"github.com/timmaaaz/ichor/business/domain/products/productcategorybus"
+	"github.com/timmaaaz/ichor/business/domain/sales/orderfulfillmentstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/approvalrequestbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
@@ -128,6 +131,8 @@ var entityDomain = map[string]string{
 	"procurement.purchase_order_line_items": purchaseorderlineitembus.DomainName,
 	"inventory.inventory_items":             inventoryitembus.DomainName,
 	"inventory.put_away_tasks":              putawaytaskbus.DomainName,
+	"inventory.pick_tasks":                  picktaskbus.DomainName,              // release_to_picking fan-out
+	"sales.orders":                          ordersbus.DomainName,                // release_to_picking status flip
 	"products.product_categories":           productcategorybus.DomainName,       // P4 M1 (create_entity/transition_status)
 	"allocation_results":                    workflow.AllocationResultDomainName, // P4 M2
 }
@@ -346,6 +351,7 @@ func Test_ManifestConsistency_DeclaredEqualsFired(t *testing.T) {
 		approvalrequestbus.DomainName, inventoryadjustmentbus.DomainName, transferorderbus.DomainName,
 		purchaseorderbus.DomainName, purchaseorderlineitembus.DomainName, inventoryitembus.DomainName,
 		putawaytaskbus.DomainName, productcategorybus.DomainName, workflow.AllocationResultDomainName,
+		ordersbus.DomainName, picktaskbus.DomainName,
 	} {
 		rec.registerOn(db.BusDomain.Delegate, d)
 	}
@@ -683,6 +689,58 @@ func Test_ManifestConsistency_DeclaredEqualsFired(t *testing.T) {
 		if !fired {
 			t.Fatalf("update_field did not fire %s.updated", inventoryitembus.DomainName)
 		}
+	})
+
+	// 17. release_to_picking → sales.orders.updated (status flip) + inventory.pick_tasks.created
+	// (line-item fan-out). seedOrderWithLineItem builds a PENDING order with one line item for
+	// productIDs[2]; the (productIDs[2], loc1) inventory combo is unused by sibling subtests, so
+	// the seed does not collide with the unique (product, location) constraint. PICKING is not in
+	// the standard fulfillment-status seed set, so create it — the handler resolves it by name.
+	// Seed stock so the FEFO plan is non-empty and at least one pick task is created (else
+	// picktask.created never fires and the order does not transition).
+	t.Run("release_to_picking", func(t *testing.T) {
+		orderID := seedOrderWithLineItem(t, ctx, db, base, base.productIDs[2])
+		if _, err := db.BusDomain.OrderFulfillmentStatus.Create(ctx, orderfulfillmentstatusbus.NewOrderFulfillmentStatus{
+			Name: "PICKING", Description: "Picking",
+		}); err != nil {
+			t.Fatalf("seeding PICKING status: %v", err)
+		}
+		if _, err := inventoryitembus.TestSeedInventoryItems(ctx, 1, []uuid.UUID{base.loc1}, []uuid.UUID{base.productIDs[2]}, db.BusDomain.InventoryItem); err != nil {
+			t.Fatalf("seeding inventory item: %v", err)
+		}
+		h := inventory.NewReleaseToPickingHandler(db.Log, db.DB, db.BusDomain.Order, db.BusDomain.OrderLineItem, db.BusDomain.PickTask, db.BusDomain.InventoryItem, db.BusDomain.OrderFulfillmentStatus)
+		cfg := mustJSON(t, map[string]any{"order_id": orderID.String()})
+		run(t, "release_to_picking", h, cfg, workflow.ActionExecutionContext{UserID: uid})
+	})
+
+	// 18. claim_transfer_order → transfer_orders.updated. Claim requires an APPROVED order;
+	// create it directly in that state (Create accepts an arbitrary initial status).
+	t.Run("claim_transfer_order", func(t *testing.T) {
+		to, err := db.BusDomain.TransferOrder.Create(ctx, transferorderbus.NewTransferOrder{
+			ProductID: base.productIDs[0], FromLocationID: base.loc0, ToLocationID: base.loc1,
+			RequestedByID: uid, Quantity: 5, Status: transferorderbus.StatusApproved, TransferDate: time.Now(),
+		})
+		if err != nil {
+			t.Fatalf("seeding approved transfer order: %v", err)
+		}
+		h := inventory.NewClaimTransferOrderHandler(db.Log, db.BusDomain.TransferOrder)
+		cfg := mustJSON(t, map[string]any{"transfer_order_id": to.TransferID.String()})
+		run(t, "claim_transfer_order", h, cfg, workflow.ActionExecutionContext{UserID: uid})
+	})
+
+	// 19. execute_transfer_order → transfer_orders.updated. Execute requires an IN_TRANSIT
+	// order; create it directly in that state.
+	t.Run("execute_transfer_order", func(t *testing.T) {
+		to, err := db.BusDomain.TransferOrder.Create(ctx, transferorderbus.NewTransferOrder{
+			ProductID: base.productIDs[0], FromLocationID: base.loc0, ToLocationID: base.loc1,
+			RequestedByID: uid, Quantity: 5, Status: transferorderbus.StatusInTransit, TransferDate: time.Now(),
+		})
+		if err != nil {
+			t.Fatalf("seeding in-transit transfer order: %v", err)
+		}
+		h := inventory.NewExecuteTransferOrderHandler(db.Log, db.BusDomain.TransferOrder)
+		cfg := mustJSON(t, map[string]any{"transfer_order_id": to.TransferID.String()})
+		run(t, "execute_transfer_order", h, cfg, workflow.ActionExecutionContext{UserID: uid})
 	})
 }
 

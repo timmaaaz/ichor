@@ -171,6 +171,21 @@ func RegisterGranularInventoryActions(registry *workflow.ActionRegistry, config 
 	registry.Register(inventory.NewReserveInventoryHandler(config.Log, config.DB, config.Buses.InventoryItem, config.Buses.Workflow))
 	registry.Register(inventory.NewReceiveInventoryHandler(config.Log, config.DB, config.Buses.InventoryItem, config.Buses.InventoryTransaction, config.Buses.SupplierProduct))
 
+	// release_to_picking flips a customer order PENDING/PROCESSING->PICKING and fans its
+	// line items into inventory.pick_tasks. Registered unconditionally (like reserve/receive):
+	// the handler nil-guards its buses at Execute time, and GetEntityModifications needs no
+	// dependencies. all.go supplies the real Orders/OrderLineItems/PickTask/InventoryItem/
+	// OrderFulfillmentStatus buses so the "Release to Picking" button can execute.
+	registry.Register(inventory.NewReleaseToPickingHandler(
+		config.Log,
+		config.DB,
+		config.Buses.Orders,
+		config.Buses.OrderLineItems,
+		config.Buses.PickTask,
+		config.Buses.InventoryItem,
+		config.Buses.OrderFulfillmentStatus,
+	))
+
 	if config.Buses.InventoryAdjustment != nil {
 		registry.Register(inventory.NewApproveInventoryAdjustmentHandler(config.Log, config.Buses.InventoryAdjustment))
 		registry.Register(inventory.NewRejectInventoryAdjustmentHandler(config.Log, config.Buses.InventoryAdjustment))

@@ -137,7 +137,7 @@ func TestCascade_M2_LiveCascade(t *testing.T) {
 	base := seedConsistencyBase(t, ctx, db)
 	uid := base.userID
 
-	orderID := seedOrderWithLineItem(t, ctx, db, base)
+	orderID := seedOrderWithLineItem(t, ctx, db, base, base.productIDs[0])
 
 	// The cascaded action is update_field (wired to fire synthesized events).
 	registry := workflow.NewActionRegistry()
@@ -209,9 +209,11 @@ func TestCascade_M2_LiveCascade(t *testing.T) {
 // ── seeding helpers ────────────────────────────────────────────────────────────────────
 
 // seedOrderWithLineItem builds the minimum sales chain (contacts → customer → fulfillment
-// statuses → order → one line item) and returns the order id. The line item's order_id is the
-// returned id, so an update_field WHERE order_id={{reference_id}} (reference_id = order id) hits it.
-func seedOrderWithLineItem(t *testing.T, ctx context.Context, db *dbtest.Database, base baseFixtures) uuid.UUID {
+// statuses → order → one line item for productID) and returns the order id. The line item's
+// order_id is the returned id, so an update_field WHERE order_id={{reference_id}} (reference_id
+// = order id) hits it. Parameterizing the product lets a caller pick a (product, location) combo
+// that does not collide with inventory seeded by sibling subtests.
+func seedOrderWithLineItem(t *testing.T, ctx context.Context, db *dbtest.Database, base baseFixtures, productID uuid.UUID) uuid.UUID {
 	t.Helper()
 
 	tzs, err := db.BusDomain.Timezone.QueryAll(ctx)
@@ -254,7 +256,7 @@ func seedOrderWithLineItem(t *testing.T, ctx context.Context, db *dbtest.Databas
 	orderID := orders[0].ID
 
 	if _, err := orderlineitemsbus.TestSeedOrderLineItems(ctx, 1, []uuid.UUID{orderID},
-		[]uuid.UUID{base.productIDs[0]}, lifIDs, []uuid.UUID{base.userID}, db.BusDomain.OrderLineItem); err != nil {
+		[]uuid.UUID{productID}, lifIDs, []uuid.UUID{base.userID}, db.BusDomain.OrderLineItem); err != nil {
 		t.Fatalf("seeding order line items: %v", err)
 	}
 	return orderID

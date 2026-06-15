@@ -24,6 +24,7 @@ func TestClaimTransferOrder_Validate(t *testing.T) {
 		{name: "missing id", id: "", wantErr: true, errSubstr: "transfer_order_id is required"},
 		{name: "bad uuid", id: "nope", wantErr: true, errSubstr: "invalid transfer_order_id"},
 		{name: "good uuid", id: uuid.New().String(), wantErr: false},
+		{name: "templated id ok", id: "{{entity_id}}", wantErr: false},
 		{name: "invalid json", raw: json.RawMessage(`{bad`), wantErr: true, errSubstr: "invalid config"},
 	}
 

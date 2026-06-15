@@ -2667,3 +2667,19 @@ ALTER TABLE config.page_action_buttons ADD CONSTRAINT page_action_buttons_behavi
 COMMENT ON COLUMN config.page_action_buttons.behavior IS 'navigate = RouterLink/href to target_path; execute_action = run workflow action_type with action_config';
 COMMENT ON COLUMN config.page_action_buttons.action_type IS 'Workflow action type (e.g. transition_status) when behavior=execute_action';
 COMMENT ON COLUMN config.page_action_buttons.action_config IS 'Workflow action config JSON when behavior=execute_action';
+
+-- Version: 2.41
+-- Description: Grant the admin role permission to manually execute the configurable
+--   action-button verbs (release_to_picking, claim_transfer_order, execute_transfer_order).
+--   These are admin-only, mirroring the transition_status precedent (Version 1.994). Without
+--   the grant the POST /v1/workflow/actions/{type}/execute endpoint returns 403 (action
+--   permissions are closed-by-default).
+INSERT INTO workflow.action_permissions (role_id, action_type, is_allowed)
+SELECT r.id, action_type, true
+FROM core.roles r
+CROSS JOIN (VALUES
+    ('release_to_picking'),
+    ('claim_transfer_order'),
+    ('execute_transfer_order')
+) AS actions(action_type)
+WHERE r.name = 'admin';

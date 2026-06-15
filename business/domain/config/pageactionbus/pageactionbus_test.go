@@ -281,7 +281,7 @@ func createButton(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Tab
 }
 
 func createExecuteActionButton(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
-	actionConfig := json.RawMessage(`{"to_status":"PICKING","valid_from_statuses":["PENDING"]}`)
+	actionConfig := json.RawMessage(`{"order_id":"{{entity_id}}"}`)
 
 	table := []unitest.Table{
 		{
@@ -299,7 +299,7 @@ func createExecuteActionButton(busDomain dbtest.BusDomain, sd unitest.SeedData) 
 					Alignment:          "right",
 					ConfirmationPrompt: "Release this order to picking?",
 					Behavior:           "execute_action",
-					ActionType:         "transition_status",
+					ActionType:         "release_to_picking",
 					ActionConfig:       actionConfig,
 				},
 			},
@@ -315,7 +315,7 @@ func createExecuteActionButton(busDomain dbtest.BusDomain, sd unitest.SeedData) 
 					Alignment:          "right",
 					ConfirmationPrompt: "Release this order to picking?",
 					Behavior:           "execute_action",
-					ActionType:         "transition_status",
+					ActionType:         "release_to_picking",
 					ActionConfig:       actionConfig,
 				})
 				if err != nil {

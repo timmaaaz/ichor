@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/domain/inventory/transferorderbus"
@@ -53,8 +54,12 @@ func (h *ExecuteTransferOrderHandler) Validate(config json.RawMessage) error {
 	if cfg.TransferOrderID == "" {
 		return fmt.Errorf("transfer_order_id is required")
 	}
-	if _, err := uuid.Parse(cfg.TransferOrderID); err != nil {
-		return fmt.Errorf("invalid transfer_order_id: %w", err)
+	// A templated transfer_order_id (e.g. "{{entity_id}}") is resolved at runtime from the
+	// execution-context entity; only a static value must parse as a UUID here.
+	if !strings.Contains(cfg.TransferOrderID, "{{") {
+		if _, err := uuid.Parse(cfg.TransferOrderID); err != nil {
+			return fmt.Errorf("invalid transfer_order_id: %w", err)
+		}
 	}
 	return nil
 }
@@ -93,24 +98,34 @@ func (h *ExecuteTransferOrderHandler) Execute(ctx context.Context, config json.R
 		return map[string]any{"output": "failure", "error": err.Error()}, nil
 	}
 
-	id, err := uuid.Parse(cfg.TransferOrderID)
-	if err != nil {
-		return map[string]any{"output": "failure", "error": "invalid transfer_order_id"}, nil
+	// Resolve the transfer order id. Default to the execution-context entity (button path,
+	// where the page entity IS the transfer order). A static config UUID overrides; a
+	// templated value (unresolved "{{...}}") falls back to the entity id.
+	id := execCtx.EntityID
+	if cfg.TransferOrderID != "" && !strings.Contains(cfg.TransferOrderID, "{{") {
+		parsed, err := uuid.Parse(cfg.TransferOrderID)
+		if err != nil {
+			return map[string]any{"output": "failure", "error": "invalid transfer_order_id"}, nil
+		}
+		id = parsed
+	}
+	if id == uuid.Nil {
+		return map[string]any{"output": "failure", "error": "no transfer order id"}, nil
 	}
 
 	to, err := h.transferOrderBus.QueryByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, transferorderbus.ErrNotFound) {
-			return map[string]any{"output": "not_found", "transfer_order_id": cfg.TransferOrderID}, nil
+			return map[string]any{"output": "not_found", "transfer_order_id": id.String()}, nil
 		}
 		return nil, fmt.Errorf("query transfer order: %w", err)
 	}
 
 	if to.Status == transferorderbus.StatusCompleted {
-		return map[string]any{"output": "already_completed", "transfer_order_id": cfg.TransferOrderID}, nil
+		return map[string]any{"output": "already_completed", "transfer_order_id": id.String()}, nil
 	}
 	if to.Status != transferorderbus.StatusInTransit {
-		return map[string]any{"output": "not_in_transit", "transfer_order_id": cfg.TransferOrderID, "current_status": to.Status}, nil
+		return map[string]any{"output": "not_in_transit", "transfer_order_id": id.String(), "current_status": to.Status}, nil
 	}
 
 	executed, err := h.transferOrderBus.Execute(ctx, to, execCtx.UserID)
