@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
+	"github.com/timmaaaz/ichor/business/sdk/outbox"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/foundation/logger"
@@ -42,6 +43,7 @@ type Printer interface {
 type Business struct {
 	log      *logger.Logger
 	delegate *delegate.Delegate
+	outbox   *outbox.Writer
 	storer   Storer
 	printer  Printer
 }
@@ -53,6 +55,14 @@ func NewBusiness(log *logger.Logger, d *delegate.Delegate, storer Storer, printe
 
 // NewWithTx constructs a new Business value replacing the Storer value with
 // a Storer value that is currently inside a transaction.
+// WithOutbox returns a copy of the Business wired to the cascade outbox Writer.
+// Inert until the Writer is injected at the F2 cutover (nil Writer -> Emit no-ops).
+func (b *Business) WithOutbox(w *outbox.Writer) *Business {
+	nb := *b
+	nb.outbox = w
+	return &nb
+}
+
 func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 	storer, err := b.storer.NewWithTx(tx)
 	if err != nil {
@@ -62,6 +72,7 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 	return &Business{
 		log:      b.log,
 		delegate: b.delegate,
+		outbox:   b.outbox,
 		storer:   storer,
 		printer:  b.printer,
 	}, nil
@@ -84,6 +95,10 @@ func (b *Business) Create(ctx context.Context, nlc NewLabelCatalog) (LabelCatalo
 	// Fire delegate event for workflow automation. Errors are logged
 	// but not returned — the DB write already succeeded and the caller
 	// has a valid LabelCatalog back.
+	evtData := ActionCreatedData(lc)
+	if err := b.outbox.Emit(ctx, evtData); err != nil {
+		return LabelCatalog{}, fmt.Errorf("emit cascade event: %w", err)
+	}
 	if err := b.delegate.Call(ctx, ActionCreatedData(lc)); err != nil {
 		b.log.Error(ctx, "labelbus: delegate call failed", "action", ActionCreated, "err", err)
 	}
@@ -112,6 +127,10 @@ func (b *Business) Update(ctx context.Context, lc LabelCatalog, ulc UpdateLabelC
 		return LabelCatalog{}, fmt.Errorf("update: %w", err)
 	}
 
+	evtData := ActionUpdatedData(before, lc)
+	if err := b.outbox.Emit(ctx, evtData); err != nil {
+		return LabelCatalog{}, fmt.Errorf("emit cascade event: %w", err)
+	}
 	if err := b.delegate.Call(ctx, ActionUpdatedData(before, lc)); err != nil {
 		b.log.Error(ctx, "labelbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
@@ -125,6 +144,10 @@ func (b *Business) Delete(ctx context.Context, lc LabelCatalog) error {
 		return fmt.Errorf("delete: %w", err)
 	}
 
+	evtData := ActionDeletedData(lc)
+	if err := b.outbox.Emit(ctx, evtData); err != nil {
+		return fmt.Errorf("emit cascade event: %w", err)
+	}
 	if err := b.delegate.Call(ctx, ActionDeletedData(lc)); err != nil {
 		b.log.Error(ctx, "labelbus: delegate call failed", "action", ActionDeleted, "err", err)
 	}

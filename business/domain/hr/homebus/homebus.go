@@ -11,6 +11,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
+	"github.com/timmaaaz/ichor/business/sdk/outbox"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/foundation/logger"
@@ -41,6 +42,7 @@ type Business struct {
 	log      *logger.Logger
 	userBus  *userbus.Business
 	delegate *delegate.Delegate
+	outbox   *outbox.Writer
 	storer   Storer
 }
 
@@ -56,6 +58,14 @@ func NewBusiness(log *logger.Logger, userBus *userbus.Business, delegate *delega
 
 // NewWithTx constructs a new domain value that will use the
 // specified transaction in any store related calls.
+// WithOutbox returns a copy of the Business wired to the cascade outbox Writer.
+// Inert until the Writer is injected at the F2 cutover (nil Writer -> Emit no-ops).
+func (b *Business) WithOutbox(w *outbox.Writer) *Business {
+	nb := *b
+	nb.outbox = w
+	return &nb
+}
+
 func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 	storer, err := b.storer.NewWithTx(tx)
 	if err != nil {
@@ -71,6 +81,7 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		log:      b.log,
 		userBus:  userBus,
 		delegate: b.delegate,
+		outbox:   b.outbox,
 		storer:   storer,
 	}
 
@@ -117,6 +128,10 @@ func (b *Business) Create(ctx context.Context, nh NewHome) (Home, error) {
 	}
 
 	// Fire delegate event for workflow automation
+	evtData := ActionCreatedData(hme)
+	if err := b.outbox.Emit(ctx, evtData); err != nil {
+		return Home{}, fmt.Errorf("emit cascade event: %w", err)
+	}
 	if err := b.delegate.Call(ctx, ActionCreatedData(hme)); err != nil {
 		b.log.Error(ctx, "homebus: delegate call failed", "action", ActionCreated, "err", err)
 	}
@@ -168,6 +183,10 @@ func (b *Business) Update(ctx context.Context, hme Home, uh UpdateHome) (Home, e
 	}
 
 	// Fire delegate event for workflow automation
+	evtData := ActionUpdatedData(before, hme)
+	if err := b.outbox.Emit(ctx, evtData); err != nil {
+		return Home{}, fmt.Errorf("emit cascade event: %w", err)
+	}
 	if err := b.delegate.Call(ctx, ActionUpdatedData(before, hme)); err != nil {
 		b.log.Error(ctx, "homebus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
@@ -185,6 +204,10 @@ func (b *Business) Delete(ctx context.Context, hme Home) error {
 	}
 
 	// Fire delegate event for workflow automation
+	evtData := ActionDeletedData(hme)
+	if err := b.outbox.Emit(ctx, evtData); err != nil {
+		return fmt.Errorf("emit cascade event: %w", err)
+	}
 	if err := b.delegate.Call(ctx, ActionDeletedData(hme)); err != nil {
 		b.log.Error(ctx, "homebus: delegate call failed", "action", ActionDeleted, "err", err)
 	}

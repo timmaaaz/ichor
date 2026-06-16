@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
+	"github.com/timmaaaz/ichor/business/sdk/outbox"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/foundation/logger"
@@ -38,6 +39,7 @@ type Storer interface {
 type Business struct {
 	log    *logger.Logger
 	del    *delegate.Delegate
+	outbox *outbox.Writer
 	storer Storer
 }
 
@@ -52,6 +54,14 @@ func NewBusiness(log *logger.Logger, del *delegate.Delegate, storer Storer) *Bus
 
 // NewWithTx constructs a new business value that will use the
 // specified transaction in any store related calls.
+// WithOutbox returns a copy of the Business wired to the cascade outbox Writer.
+// Inert until the Writer is injected at the F2 cutover (nil Writer -> Emit no-ops).
+func (b *Business) WithOutbox(w *outbox.Writer) *Business {
+	nb := *b
+	nb.outbox = w
+	return &nb
+}
+
 func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 	storer, err := b.storer.NewWithTx(tx)
 	if err != nil {
@@ -61,6 +71,7 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 	bus := Business{
 		log:    b.log,
 		storer: storer,
+		outbox: b.outbox,
 	}
 
 	return &bus, nil
@@ -82,6 +93,10 @@ func (b *Business) Create(ctx context.Context, nur NewUserRole) (UserRole, error
 	}
 
 	// Fire delegate event for workflow automation
+	evtData := ActionCreatedData(ur)
+	if err := b.outbox.Emit(ctx, evtData); err != nil {
+		return UserRole{}, fmt.Errorf("emit cascade event: %w", err)
+	}
 	if err := b.del.Call(ctx, ActionCreatedData(ur)); err != nil {
 		b.log.Error(ctx, "userrolebus: delegate call failed", "action", ActionCreated, "err", err)
 	}
@@ -105,6 +120,10 @@ func (b *Business) Update(ctx context.Context, ur UserRole, uur UpdateUserRole) 
 	}
 
 	// Fire delegate event for workflow automation
+	evtData := ActionUpdatedData(before, ur)
+	if err := b.outbox.Emit(ctx, evtData); err != nil {
+		return UserRole{}, fmt.Errorf("emit cascade event: %w", err)
+	}
 	if err := b.del.Call(ctx, ActionUpdatedData(before, ur)); err != nil {
 		b.log.Error(ctx, "userrolebus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
@@ -122,6 +141,10 @@ func (b *Business) Delete(ctx context.Context, ur UserRole) error {
 	}
 
 	// Fire delegate event for workflow automation
+	evtData := ActionDeletedData(ur)
+	if err := b.outbox.Emit(ctx, evtData); err != nil {
+		return fmt.Errorf("emit cascade event: %w", err)
+	}
 	if err := b.del.Call(ctx, ActionDeletedData(ur)); err != nil {
 		b.log.Error(ctx, "userrolebus: delegate call failed", "action", ActionDeleted, "err", err)
 	}

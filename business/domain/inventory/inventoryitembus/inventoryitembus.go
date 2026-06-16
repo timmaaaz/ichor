@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
+	"github.com/timmaaaz/ichor/business/sdk/outbox"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/foundation/logger"
@@ -42,6 +43,7 @@ type Storer interface {
 type Business struct {
 	storer   Storer
 	delegate *delegate.Delegate
+	outbox   *outbox.Writer
 	log      *logger.Logger
 }
 
@@ -53,6 +55,14 @@ func NewBusiness(log *logger.Logger, delegate *delegate.Delegate, storer Storer)
 	}
 }
 
+// WithOutbox returns a copy of the Business wired to the cascade outbox Writer.
+// Inert until the Writer is injected at the F2 cutover (nil Writer -> Emit no-ops).
+func (b *Business) WithOutbox(w *outbox.Writer) *Business {
+	nb := *b
+	nb.outbox = w
+	return &nb
+}
+
 func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 	storer, err := b.storer.NewWithTx(tx)
 	if err != nil {
@@ -62,6 +72,7 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 	return &Business{
 		storer:   storer,
 		delegate: b.delegate,
+		outbox:   b.outbox,
 		log:      b.log,
 	}, nil
 }
@@ -99,6 +110,10 @@ func (b *Business) Create(ctx context.Context, nip NewInventoryItem) (InventoryI
 	}
 
 	// Fire delegate event for workflow automation
+	evtData := ActionCreatedData(inventoryItem)
+	if err := b.outbox.Emit(ctx, evtData); err != nil {
+		return InventoryItem{}, fmt.Errorf("emit cascade event: %w", err)
+	}
 	if err := b.delegate.Call(ctx, ActionCreatedData(inventoryItem)); err != nil {
 		b.log.Error(ctx, "inventoryitembus: delegate call failed", "action", ActionCreated, "err", err)
 	}
@@ -154,6 +169,10 @@ func (b *Business) Update(ctx context.Context, ip InventoryItem, up UpdateInvent
 	}
 
 	// Fire delegate event for workflow automation
+	evtData := ActionUpdatedData(before, ip)
+	if err := b.outbox.Emit(ctx, evtData); err != nil {
+		return InventoryItem{}, fmt.Errorf("emit cascade event: %w", err)
+	}
 	if err := b.delegate.Call(ctx, ActionUpdatedData(before, ip)); err != nil {
 		b.log.Error(ctx, "inventoryitembus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
@@ -171,6 +190,10 @@ func (b *Business) Delete(ctx context.Context, ip InventoryItem) error {
 	}
 
 	// Fire delegate event for workflow automation
+	evtData := ActionDeletedData(ip)
+	if err := b.outbox.Emit(ctx, evtData); err != nil {
+		return fmt.Errorf("emit cascade event: %w", err)
+	}
 	if err := b.delegate.Call(ctx, ActionDeletedData(ip)); err != nil {
 		b.log.Error(ctx, "inventoryitembus: delegate call failed", "action", ActionDeleted, "err", err)
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
+	"github.com/timmaaaz/ichor/business/sdk/outbox"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/foundation/logger"
@@ -54,6 +55,7 @@ type Business struct {
 	log      *logger.Logger
 	storer   Storer
 	delegate *delegate.Delegate
+	outbox   *outbox.Writer
 }
 
 // NewBusiness constructs a brand business API for use.
@@ -67,6 +69,14 @@ func NewBusiness(log *logger.Logger, delegate *delegate.Delegate, storer Storer)
 
 // NewWithTx constructs a new Business value replacing the Storer
 // value with a Storer value that is currently inside a transaction.
+// WithOutbox returns a copy of the Business wired to the cascade outbox Writer.
+// Inert until the Writer is injected at the F2 cutover (nil Writer -> Emit no-ops).
+func (b *Business) WithOutbox(w *outbox.Writer) *Business {
+	nb := *b
+	nb.outbox = w
+	return &nb
+}
+
 func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 	storer, err := b.storer.NewWithTx(tx)
 	if err != nil {
@@ -76,6 +86,7 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 	return &Business{
 		log:      b.log,
 		delegate: b.delegate,
+		outbox:   b.outbox,
 		storer:   storer,
 	}, nil
 }
@@ -112,6 +123,10 @@ func (b *Business) Create(ctx context.Context, nto NewTransferOrder) (TransferOr
 	}
 
 	// Fire delegate event for workflow automation
+	evtData := ActionCreatedData(transferOrder)
+	if err := b.outbox.Emit(ctx, evtData); err != nil {
+		return TransferOrder{}, fmt.Errorf("emit cascade event: %w", err)
+	}
 	if err := b.delegate.Call(ctx, ActionCreatedData(transferOrder)); err != nil {
 		b.log.Error(ctx, "transferorderbus: delegate call failed", "action", ActionCreated, "err", err)
 	}
@@ -173,6 +188,10 @@ func (b *Business) Update(ctx context.Context, to TransferOrder, ut UpdateTransf
 	}
 
 	// Fire delegate event for workflow automation
+	evtData := ActionUpdatedData(before, to)
+	if err := b.outbox.Emit(ctx, evtData); err != nil {
+		return TransferOrder{}, fmt.Errorf("emit cascade event: %w", err)
+	}
 	if err := b.delegate.Call(ctx, ActionUpdatedData(before, to)); err != nil {
 		b.log.Error(ctx, "transferorderbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
@@ -190,6 +209,10 @@ func (b *Business) Delete(ctx context.Context, to TransferOrder) error {
 	}
 
 	// Fire delegate event for workflow automation
+	evtData := ActionDeletedData(to)
+	if err := b.outbox.Emit(ctx, evtData); err != nil {
+		return fmt.Errorf("emit cascade event: %w", err)
+	}
 	if err := b.delegate.Call(ctx, ActionDeletedData(to)); err != nil {
 		b.log.Error(ctx, "transferorderbus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
@@ -252,6 +275,10 @@ func (b *Business) Approve(ctx context.Context, to TransferOrder, approvedBy uui
 		return TransferOrder{}, fmt.Errorf("approve: %w", err)
 	}
 
+	evtData := ActionUpdatedData(before, to)
+	if err := b.outbox.Emit(ctx, evtData); err != nil {
+		return TransferOrder{}, fmt.Errorf("emit cascade event: %w", err)
+	}
 	if err := b.delegate.Call(ctx, ActionUpdatedData(before, to)); err != nil {
 		b.log.Error(ctx, "transferorderbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
@@ -287,6 +314,10 @@ func (b *Business) Claim(ctx context.Context, to TransferOrder, claimedBy uuid.U
 		return TransferOrder{}, fmt.Errorf("claim: %w: status changed concurrently", ErrInvalidTransferStatus)
 	}
 
+	evtData := ActionUpdatedData(before, to)
+	if err := b.outbox.Emit(ctx, evtData); err != nil {
+		return TransferOrder{}, fmt.Errorf("emit cascade event: %w", err)
+	}
 	if err := b.delegate.Call(ctx, ActionUpdatedData(before, to)); err != nil {
 		b.log.Error(ctx, "transferorderbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
@@ -323,6 +354,10 @@ func (b *Business) Execute(ctx context.Context, to TransferOrder, completedBy uu
 		return TransferOrder{}, fmt.Errorf("execute: %w: status changed concurrently", ErrInvalidTransferStatus)
 	}
 
+	evtData := ActionUpdatedData(before, to)
+	if err := b.outbox.Emit(ctx, evtData); err != nil {
+		return TransferOrder{}, fmt.Errorf("emit cascade event: %w", err)
+	}
 	if err := b.delegate.Call(ctx, ActionUpdatedData(before, to)); err != nil {
 		b.log.Error(ctx, "transferorderbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
@@ -351,6 +386,10 @@ func (b *Business) Reject(ctx context.Context, to TransferOrder, rejectedBy uuid
 		return TransferOrder{}, fmt.Errorf("reject: %w", err)
 	}
 
+	evtData := ActionUpdatedData(before, to)
+	if err := b.outbox.Emit(ctx, evtData); err != nil {
+		return TransferOrder{}, fmt.Errorf("emit cascade event: %w", err)
+	}
 	if err := b.delegate.Call(ctx, ActionUpdatedData(before, to)); err != nil {
 		b.log.Error(ctx, "transferorderbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
