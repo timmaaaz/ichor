@@ -386,6 +386,62 @@ func executeReleaseToPicking403(sd ActionSeedData) []apitest.Table {
 	}
 }
 
+// executeClaimTransferOrder403 verifies the closed-by-default permission gate: a user without
+// the claim_transfer_order grant is rejected with 403 before the handler runs.
+func executeClaimTransferOrder403(sd ActionSeedData) []apitest.Table {
+	entityID := sd.ApprovedTransferOrderID.String()
+	return []apitest.Table{
+		{
+			Name:       "claim-transfer-order-403-no-permission",
+			URL:        "/v1/workflow/actions/claim_transfer_order/execute",
+			Token:      sd.UserNoPermissions.Token,
+			StatusCode: http.StatusForbidden,
+			Method:     http.MethodPost,
+			Input: &actionapp.ExecuteRequest{
+				Config:   json.RawMessage(`{"transfer_order_id":"{{entity_id}}"}`),
+				EntityID: &entityID,
+			},
+			GotResp: &errs.Error{},
+			ExpResp: &errs.Error{},
+			CmpFunc: func(got any, exp any) string {
+				gotErr := got.(*errs.Error)
+				if gotErr.Code.Value() != errs.PermissionDenied.Value() {
+					return cmp.Diff(gotErr.Code.Value(), errs.PermissionDenied.Value())
+				}
+				return ""
+			},
+		},
+	}
+}
+
+// executeExecuteTransferOrder403 verifies the closed-by-default permission gate: a user without
+// the execute_transfer_order grant is rejected with 403 before the handler runs.
+func executeExecuteTransferOrder403(sd ActionSeedData) []apitest.Table {
+	entityID := sd.InTransitTransferOrderID.String()
+	return []apitest.Table{
+		{
+			Name:       "execute-transfer-order-403-no-permission",
+			URL:        "/v1/workflow/actions/execute_transfer_order/execute",
+			Token:      sd.UserNoPermissions.Token,
+			StatusCode: http.StatusForbidden,
+			Method:     http.MethodPost,
+			Input: &actionapp.ExecuteRequest{
+				Config:   json.RawMessage(`{"transfer_order_id":"{{entity_id}}"}`),
+				EntityID: &entityID,
+			},
+			GotResp: &errs.Error{},
+			ExpResp: &errs.Error{},
+			CmpFunc: func(got any, exp any) string {
+				gotErr := got.(*errs.Error)
+				if gotErr.Code.Value() != errs.PermissionDenied.Value() {
+					return cmp.Diff(gotErr.Code.Value(), errs.PermissionDenied.Value())
+				}
+				return ""
+			},
+		},
+	}
+}
+
 // executeClaimTransferOrder200 drives the "Claim Transfer" button end-to-end against an
 // APPROVED transfer order. The literal "{{entity_id}}" config proves the {{}}-tolerance fix:
 // without it, claim's Validate would 400 on uuid.Parse("{{entity_id}}") before the handler ran.

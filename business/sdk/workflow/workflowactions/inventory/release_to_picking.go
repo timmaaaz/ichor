@@ -204,11 +204,17 @@ func (h *ReleaseToPickingHandler) Execute(ctx context.Context, config json.RawMe
 		}, nil
 	}
 
+	// Single-page read cap shared by the line-item and existing-task reads below. Real
+	// orders stay far under this, but we log if a release ever hits the cap so silent
+	// truncation is visible rather than producing under-released lines or incomplete
+	// idempotency dedup.
+	pg := page.MustParse("1", "1000")
+
 	// Step 6: fetch line items.
 	lineItems, err := h.orderLineItemsBus.Query(ctx,
 		orderlineitemsbus.QueryFilter{OrderID: &orderID},
 		orderlineitemsbus.DefaultOrderBy,
-		page.MustParse("1", "1000"),
+		pg,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("query order line items: %w", err)
@@ -216,15 +222,23 @@ func (h *ReleaseToPickingHandler) Execute(ctx context.Context, config json.RawMe
 	if len(lineItems) == 0 {
 		return map[string]any{"output": "no_line_items", "order_id": orderID.String()}, nil
 	}
+	if len(lineItems) >= pg.RowsPerPage() {
+		h.log.Warn(ctx, "release_to_picking: order line items hit the page cap; lines beyond the cap are not released this run",
+			"order_id", orderID.String(), "cap", pg.RowsPerPage())
+	}
 
 	// Step 7: idempotency pre-read — skip lines that already have a non-terminal pick task.
 	existingTasks, err := h.pickTaskBus.Query(ctx,
 		picktaskbus.QueryFilter{SalesOrderID: &orderID},
 		picktaskbus.DefaultOrderBy,
-		page.MustParse("1", "1000"),
+		pg,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("query existing pick tasks: %w", err)
+	}
+	if len(existingTasks) >= pg.RowsPerPage() {
+		h.log.Warn(ctx, "release_to_picking: existing pick tasks hit the page cap; idempotency dedup may be incomplete and could create duplicate tasks",
+			"order_id", orderID.String(), "cap", pg.RowsPerPage())
 	}
 	activeLines := make(map[uuid.UUID]bool)
 	for _, t := range existingTasks {

@@ -107,6 +107,58 @@ func (s *Store) Update(ctx context.Context, transferOrder transferorderbus.Trans
 	return nil
 }
 
+func (s *Store) UpdateWithStatusGuard(ctx context.Context, to transferorderbus.TransferOrder, expectedStatus string) (int64, error) {
+	// NOTE: the SET column list below is intentionally identical to Update's; keep the two
+	// in sync if a column is added to inventory.transfer_orders. The only difference is the
+	// `AND status = :expected_status` guard, which makes the write conditional on the row
+	// still holding the expected status (closing the read-check-write race in Claim/Execute).
+	const q = `
+    UPDATE
+        inventory.transfer_orders
+    SET
+        transfer_number = :transfer_number,
+        product_id = :product_id,
+		from_location_id = :from_location_id,
+		to_location_id = :to_location_id,
+        requested_by = :requested_by,
+		approved_by = :approved_by,
+		rejected_by_id = :rejected_by_id,
+		approval_reason = :approval_reason,
+		rejection_reason = :rejection_reason,
+		claimed_by = :claimed_by,
+		claimed_at = :claimed_at,
+		completed_by = :completed_by,
+		completed_at = :completed_at,
+		quantity = :quantity,
+        status = :status,
+		transfer_date = :transfer_date,
+		updated_date = :updated_date
+    WHERE
+        id = :id AND status = :expected_status
+    `
+
+	data := struct {
+		transferOrder
+		ExpectedStatus string `db:"expected_status"`
+	}{
+		transferOrder:  toDBTransferOrder(to),
+		ExpectedStatus: expectedStatus,
+	}
+
+	rows, err := sqldb.NamedExecContextWithCount(ctx, s.log, s.db, q, data)
+	if err != nil {
+		if errors.Is(err, sqldb.ErrForeignKeyViolation) {
+			return 0, fmt.Errorf("namedexeccontext %w", transferorderbus.ErrForeignKeyViolation)
+		}
+		if errors.Is(err, sqldb.ErrDBDuplicatedEntry) {
+			return 0, fmt.Errorf("namedexeccontext %w", transferorderbus.ErrUniqueEntry)
+		}
+		return 0, fmt.Errorf("namedexeccontext %w", err)
+	}
+
+	return rows, nil
+}
+
 func (s *Store) Delete(ctx context.Context, transferOrder transferorderbus.TransferOrder) error {
 	const q = `
     DELETE FROM inventory.transfer_orders

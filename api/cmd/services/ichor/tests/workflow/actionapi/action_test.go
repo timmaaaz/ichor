@@ -33,7 +33,9 @@ func Test_ActionAPI(t *testing.T) {
 	test.Run(t, executeReleaseToPicking200(sd), "execute-release-to-picking-200")
 	test.Run(t, executeReleaseToPicking403(sd), "execute-release-to-picking-403")
 	test.Run(t, executeClaimTransferOrder200(sd), "execute-claim-transfer-order-200")
+	test.Run(t, executeClaimTransferOrder403(sd), "execute-claim-transfer-order-403")
 	test.Run(t, executeExecuteTransferOrder200(sd), "execute-execute-transfer-order-200")
+	test.Run(t, executeExecuteTransferOrder403(sd), "execute-execute-transfer-order-403")
 
 	// Protected-list (P3) enforcement on the manual-execute HTTP path (Path A, backend-authoritative)
 	test.Run(t, executeTransitionStatusProtected400(sd), "execute-transition-status-protected-400")

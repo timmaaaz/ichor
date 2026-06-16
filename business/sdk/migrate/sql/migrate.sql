@@ -2674,6 +2674,14 @@ COMMENT ON COLUMN config.page_action_buttons.action_config IS 'Workflow action c
 --   These are admin-only, mirroring the transition_status precedent (Version 1.994). Without
 --   the grant the POST /v1/workflow/actions/{type}/execute endpoint returns 403 (action
 --   permissions are closed-by-default).
+--
+--   The seeded admin role is named 'ZZZADMIN' (UUID 54bb2165-...), not 'admin'. core.roles is
+--   populated by seed.sql, which runs AFTER all migrations on the migrate-seed path, so on a
+--   FRESH install this SELECT matches zero rows (FK-safe no-op) and seed.sql owns the grant.
+--   On an UPGRADE of an existing database ZZZADMIN already exists, so this re-grants idempotently
+--   (ON CONFLICT DO NOTHING vs the UNIQUE(role_id, action_type) constraint). The older 1.991/1.994
+--   grants still carry the dead `WHERE r.name='admin'` clause — left untouched as shipped
+--   migrations; correcting them is deferred to the permissions-consolidation workstream.
 INSERT INTO workflow.action_permissions (role_id, action_type, is_allowed)
 SELECT r.id, action_type, true
 FROM core.roles r
@@ -2682,4 +2690,5 @@ CROSS JOIN (VALUES
     ('claim_transfer_order'),
     ('execute_transfer_order')
 ) AS actions(action_type)
-WHERE r.name = 'admin';
+WHERE r.name = 'ZZZADMIN'
+ON CONFLICT (role_id, action_type) DO NOTHING;

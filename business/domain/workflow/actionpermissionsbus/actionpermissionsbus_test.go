@@ -32,6 +32,54 @@ func Test_ActionPermissions(t *testing.T) {
 	unitest.Run(t, getAllowedActionsTests(db.BusDomain, sd), "getAllowedActions")
 }
 
+// Test_ActionPermissions_ButtonVerbGrantsSeeded proves that on a fresh database built via
+// the production migrate-seed path (migrate.sql then seed.sql — exactly what dbtest and the
+// init-migrate-seed initContainer run), the seeded admin role (ZZZADMIN) is permitted to
+// manually execute the three configurable action-button verbs. This is the load-bearing grant:
+// migrate.sql's grant clauses match zero rows at migration time (core.roles is empty until
+// seed.sql runs), so seed.sql is the source of truth. If that grant is ever dropped — the exact
+// drift that shipped the dead `WHERE r.name='admin'` migrate clauses — this test fails.
+func Test_ActionPermissions_ButtonVerbGrantsSeeded(t *testing.T) {
+	t.Parallel()
+
+	db := dbtest.NewDatabase(t, "Test_ActionPermissions_ButtonVerbGrantsSeeded")
+
+	ctx := context.Background()
+
+	// Resolve the seeded admin role by name (no hardcoded UUID). seed.sql seeds exactly one
+	// admin role: ZZZADMIN.
+	roles, err := db.BusDomain.Role.Query(ctx, rolebus.QueryFilter{}, rolebus.DefaultOrderBy, page.MustParse("1", "50"))
+	if err != nil {
+		t.Fatalf("query roles: %s", err)
+	}
+	var adminRoleID uuid.UUID
+	for _, r := range roles {
+		if r.Name == "ZZZADMIN" {
+			adminRoleID = r.ID
+			break
+		}
+	}
+	if adminRoleID == uuid.Nil {
+		t.Fatal("ZZZADMIN role not found in seeded core.roles")
+	}
+
+	// An admin actor; the permission is role-based via the ZZZADMIN grant.
+	admins, err := userbus.TestSeedUsersWithNoFKs(ctx, 1, userbus.Roles.Admin, db.BusDomain.User)
+	if err != nil {
+		t.Fatalf("seed admin user: %s", err)
+	}
+
+	for _, verb := range []string{"release_to_picking", "claim_transfer_order", "execute_transfer_order"} {
+		can, err := db.BusDomain.ActionPermissions.CanUserExecuteAction(ctx, admins[0].ID, verb, []uuid.UUID{adminRoleID})
+		if err != nil {
+			t.Fatalf("CanUserExecuteAction(%s): %s", verb, err)
+		}
+		if !can {
+			t.Errorf("admin (ZZZADMIN) cannot execute %q on a fresh migrate-seed DB — action-button grant drift regression", verb)
+		}
+	}
+}
+
 type seedData struct {
 	Users       []userbus.User
 	Permissions []actionpermissionsbus.ActionPermission
