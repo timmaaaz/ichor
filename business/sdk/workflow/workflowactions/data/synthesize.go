@@ -2,8 +2,10 @@ package data
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
+	"github.com/timmaaaz/ichor/business/sdk/outbox"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
@@ -22,28 +24,46 @@ import (
 // Callers MUST invoke this only on a confirmed write (success path), and suppress it
 // when nothing was written (records_affected == 0, invalid transition) so no phantom
 // cascade fires.
+//
+// F2: the synthesized event is persisted DURABLY to the transactional outbox (w.Emit)
+// in addition to the best-effort in-process delegate. The caller runs the write and
+// this call inside one transaction (ctx carries it), so the outbox row commits or
+// rolls back atomically with the write. Returning the Emit error lets the caller roll
+// back. A nil Writer (pre-cutover / synthesis-disabled callers) no-ops the emit; a nil
+// delegate skips the best-effort call. entityMap == nil disables synthesis entirely.
 func fireSynthesizedEvent(
 	ctx context.Context,
 	log *logger.Logger,
 	del *delegate.Delegate,
+	w *outbox.Writer,
 	entityMap map[string]EntityRef,
 	target, action string,
 	params workflow.DelegateEventParams,
-) {
-	if del == nil || entityMap == nil {
-		return
+) error {
+	if entityMap == nil {
+		return nil
 	}
 	ref, ok := entityMap[target]
 	if !ok {
 		log.Warn(ctx, "workflow synthesize: cascade skipped, no domain mapping",
 			"target", target, "action", action)
-		return
+		return nil
 	}
-	if err := del.Call(ctx, workflow.SyntheticEventData(ref.Domain, action, params)); err != nil {
-		log.Error(ctx, "workflow synthesize: delegate call failed",
-			"target", target, "domain", ref.Domain, "action", action, "err", err)
-		return
+
+	evtData := workflow.SyntheticEventData(ref.Domain, action, params)
+
+	if err := w.Emit(ctx, evtData); err != nil {
+		return fmt.Errorf("synthesize: emit cascade event: %w", err)
 	}
+
+	if del != nil {
+		if err := del.Call(ctx, evtData); err != nil {
+			log.Error(ctx, "workflow synthesize: delegate call failed",
+				"target", target, "domain", ref.Domain, "action", action, "err", err)
+		}
+	}
+
 	log.Info(ctx, "workflow synthesize: cascade event fired",
 		"target", target, "domain", ref.Domain, "entity", ref.Entity, "action", action)
+	return nil
 }

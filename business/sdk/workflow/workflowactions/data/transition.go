@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
+	"github.com/timmaaaz/ichor/business/sdk/outbox"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/protected"
@@ -33,6 +34,7 @@ type TransitionStatusHandler struct {
 	protected    *protected.Registry
 	delegate     *delegate.Delegate
 	entityMap    map[string]EntityRef
+	outbox       *outbox.Writer
 }
 
 // NewTransitionStatusHandler creates a new transition status handler.
@@ -45,6 +47,7 @@ func NewTransitionStatusHandler(log *logger.Logger, db *sqlx.DB, opts ...Option)
 		protected:    o.protected,
 		delegate:     o.delegate,
 		entityMap:    o.entityMap,
+		outbox:       o.outbox,
 	}
 }
 
@@ -130,12 +133,24 @@ func (h *TransitionStatusHandler) Execute(ctx context.Context, config json.RawMe
 	targetID := processTemplateValue(h.templateProc, ctx, h.log, cfg.TargetID, templateContext)
 	toStatus := processTemplateValue(h.templateProc, ctx, h.log, cfg.ToStatus, templateContext)
 
+	// Wrap the read-validate-update and the cascade-event emit in one transaction so
+	// the outbox row commits or rolls back atomically with the status UPDATE (F2 Path
+	// C). ctx carries the tx so fireSynthesizedEvent's Emit lands on it, and the
+	// read-then-write sees a consistent snapshot. The invalid-transition / not-found
+	// paths return early and the deferred rollback discards the (read-only) tx.
+	tx, err := h.db.Beginx()
+	if err != nil {
+		return nil, fmt.Errorf("transition: begin tx: %w", err)
+	}
+	defer tx.Rollback()
+	ctx = sqldb.WithTx(ctx, tx)
+
 	// Read current status
 	selectQuery := fmt.Sprintf("SELECT %s AS val FROM %s WHERE id = :target_id", cfg.StatusField, cfg.TargetEntity)
 	var statusDest struct {
 		Val string `db:"val"`
 	}
-	err := sqldb.NamedQueryStruct(ctx, h.log, h.db, selectQuery, map[string]any{"target_id": targetID}, &statusDest)
+	err = sqldb.NamedQueryStruct(ctx, h.log, tx, selectQuery, map[string]any{"target_id": targetID}, &statusDest)
 	if err != nil {
 		if errors.Is(err, sqldb.ErrDBNotFound) {
 			return nil, fmt.Errorf("entity not found: %s with id %v", cfg.TargetEntity, targetID)
@@ -169,7 +184,7 @@ func (h *TransitionStatusHandler) Execute(ctx context.Context, config json.RawMe
 		"target_id": targetID,
 	}
 
-	rowsAffected, err := sqldb.NamedExecContextWithCount(ctx, h.log, h.db, updateQuery, args)
+	rowsAffected, err := sqldb.NamedExecContextWithCount(ctx, h.log, tx, updateQuery, args)
 	if err != nil {
 		return nil, fmt.Errorf("transition update failed: %w", err)
 	}
@@ -192,13 +207,19 @@ func (h *TransitionStatusHandler) Execute(ctx context.Context, config json.RawMe
 	if parsed, perr := uuid.Parse(fmt.Sprintf("%v", targetID)); perr == nil {
 		entityID = parsed
 	}
-	fireSynthesizedEvent(ctx, h.log, h.delegate, h.entityMap, cfg.TargetEntity, workflow.ActionUpdated,
+	if err := fireSynthesizedEvent(ctx, h.log, h.delegate, h.outbox, h.entityMap, cfg.TargetEntity, workflow.ActionUpdated,
 		workflow.DelegateEventParams{
 			EntityID:     entityID,
 			UserID:       execContext.UserID,
 			Entity:       map[string]any{"id": entityID, cfg.StatusField: toStatus},
 			BeforeEntity: map[string]any{"id": entityID, cfg.StatusField: currentStatus},
-		})
+		}); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("transition: commit: %w", err)
+	}
 
 	return map[string]any{
 		"transitioned": true,

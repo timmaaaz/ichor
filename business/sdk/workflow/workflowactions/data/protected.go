@@ -2,6 +2,7 @@ package data
 
 import (
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
+	"github.com/timmaaaz/ichor/business/sdk/outbox"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/protected"
 )
 
@@ -24,6 +25,7 @@ type options struct {
 	protected *protected.Registry
 	delegate  *delegate.Delegate
 	entityMap map[string]EntityRef
+	outbox    *outbox.Writer
 }
 
 // WithProtectedRegistry injects the protected-field registry so the handler rejects
@@ -48,6 +50,14 @@ func WithDelegate(d *delegate.Delegate) Option {
 // (logged). Wired only alongside WithDelegate.
 func WithEntityRegistry(m map[string]EntityRef) Option {
 	return func(o *options) { o.entityMap = m }
+}
+
+// WithOutbox injects the transactional-outbox Writer the handler persists its
+// synthesized cascade event to (F2). The handler wraps its raw-SQL write and the
+// emit in one transaction so they commit atomically. A nil Writer (the default)
+// no-ops the emit, preserving pre-cutover behavior; wired alongside WithEntityRegistry.
+func WithOutbox(w *outbox.Writer) Option {
+	return func(o *options) { o.outbox = w }
 }
 
 func newOptions(opts []Option) options {

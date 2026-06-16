@@ -129,6 +129,14 @@ type Business struct {
 	log      *logger.Logger
 	storer   Storer
 	delegate *delegate.Delegate
+	// emit persists a cascade event to the transactional outbox (F2). It is a
+	// bound *outbox.Writer.Emit method value rather than an *outbox.Writer field
+	// because the outbox package imports this (workflow) package, so a direct field
+	// would form an import cycle. nil until injected at the F2 cutover (then a no-op
+	// for any event whose Writer is disabled). Only CreateAllocationResult uses it —
+	// the allocation_results cascade source; rule-lifecycle delegate events are not
+	// cascades and stay delegate-only (best-effort rule-cache reload).
+	emit func(context.Context, delegate.Data) error
 }
 
 // NewBusiness constructs a workflow business API for use.
@@ -138,6 +146,15 @@ func NewBusiness(log *logger.Logger, del *delegate.Delegate, storer Storer) *Bus
 		storer:   storer,
 		delegate: del,
 	}
+}
+
+// WithOutboxEmitter returns a copy of the Business whose allocation_results
+// cascade event is persisted to the transactional outbox via emit (typically an
+// *outbox.Writer.Emit bound method). Inert until injected at the F2 cutover.
+func (b *Business) WithOutboxEmitter(emit func(context.Context, delegate.Data) error) *Business {
+	nb := *b
+	nb.emit = emit
+	return &nb
 }
 
 // NewWithTx constructs a new business value that will use the
@@ -152,6 +169,7 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		log:      b.log,
 		storer:   storer,
 		delegate: b.delegate,
+		emit:     b.emit,
 	}
 
 	return &bus, nil
@@ -1051,13 +1069,22 @@ func (b *Business) CreateAllocationResult(ctx context.Context, nar NewAllocation
 		return AllocationResult{}, fmt.Errorf("create: %w", err)
 	}
 
-	// Fire the delegate so a created allocation result cascades to downstream
-	// automation (P4 M2 — e.g. the seeded "Allocation Success - Update Line Items"
-	// rule). nil-guarded + error-logged-not-failed, mirroring the rule-CRUD emits.
-	// NOTE: this fires pre-commit inside the allocate/reserve handler tx (DESIGN §9
-	// best-effort accepted for v1; the downstream rule reads order_line_items).
+	// Persist the allocation_results cascade event durably in the originating tx
+	// (F2 M2). Runs on the allocate/reserve handler's transaction (Path B set the
+	// tx on ctx), so the outbox row commits or rolls back with the allocation
+	// result — read-your-writes correct (the relay dispatches only after commit).
+	// Inert until the cutover injects the emitter.
+	evtData := ActionAllocationResultCreatedData(allocationResult)
+	if b.emit != nil {
+		if err := b.emit(ctx, evtData); err != nil {
+			return AllocationResult{}, fmt.Errorf("create: emit cascade event: %w", err)
+		}
+	}
+
+	// Best-effort in-process delegate (cycle-breaker; cascade subscriber removed at
+	// cutover). nil-guarded + error-logged-not-failed, mirroring the rule-CRUD emits.
 	if b.delegate != nil {
-		if err := b.delegate.Call(ctx, ActionAllocationResultCreatedData(allocationResult)); err != nil {
+		if err := b.delegate.Call(ctx, evtData); err != nil {
 			b.log.Error(ctx, "workflowbus: delegate call failed", "action", ActionCreated, "entity", "allocation_results", "err", err)
 		}
 	}
