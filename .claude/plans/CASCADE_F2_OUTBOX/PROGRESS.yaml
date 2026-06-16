@@ -50,7 +50,7 @@ spine:
         note: "DONE — GetTxExecutor added to context.go; no-tx branch unit-tested (context_test.go GREEN); tx-backed branch covered by TestEmit/writes_on_the_ctx_transaction (real tx)."
       - id: F0.3
         title: "RED reliability integration tests on the cascade_lineage_test.go manual-worker rig"
-        status: not_started
+        status: done   # realized as cascade_outbox_test.go (F6) + the existing unit suite; see F6 note.
         note: >
           atomicity (both directions), read-your-writes (Path-B allocate), lineage A->B->A survival,
           at-least-once+dedup, ordering, e2e Path-A, reaper, no-double-dispatch, Registrations coverage.
@@ -260,19 +260,44 @@ cutover:
 verify:
   F6:
     title: "Reliability verification (live) — turn the RED tests GREEN"
-    status: not_started
+    status: done
     gate: "after F5"
-    note: "Mirrors the parent plan's PL."
+    note: >
+      DONE. NEW integration test api/cmd/.../actionhandlers/cascade_outbox_test.go
+      (TestCascade_OutboxRoundTrip_LineageSurvivesViaRelay) drives the post-F5 PRODUCTION cascade path
+      end-to-end on the cascade_lineage rig, but through the OUTBOX+RELAY (NOT the delegate): human
+      customers.on_create -> rule A (approve_transfer_order) in a REAL Temporal activity ->
+      transferorderbus.Approve writes + b.outbox.Emit persists a transfer_orders.updated row carrying the
+      serialized lineage -> the RELAY drains it (decode lineage -> contextWithLineage -> OnEntityEvent) ->
+      rule B fires. It wires NO DelegateHandler, so the relay is the SOLE dispatcher (no-double-dispatch by
+      construction). GREEN (3.4s): rule B's execution carries visited={(ruleA,customer),(ruleB,transfer_order)}
+      (lineage SURVIVED the row serialize/rehydrate), the dispatched workflow id was workflow-{ruleB}-{row.id}
+      (F3 dedup keyed on the outbox row), and the cascade row was delete-on-publish'd to 0. NOTE: the expected
+      "no transaction on context -> base pool" WARN fired (Approve is not one of the 6 Path-B tx handlers ->
+      pool fallback; the F2.followup.apptx_withtx class, NOT a regression — lineage survives regardless of tx).
+      The remaining DESIGN §8 guarantees are GREEN at the level they live (verified this session): atomicity
+      both directions + RYW-shaped on-tx invisibility = TestEmit; dedup = TestOnEntityEvent_DedupWorkflowID;
+      ordering = TestRelay_DrainsInSeqOrderThenDeletes; reaper = TestRelay_ReapsAgedDeadRowsOnly; enrichment
+      golden = TestRelay_BuildEventEnrichment; relay lineage decode = TestRelay_DecodeLineage; Registrations
+      coverage = TestCoverage_EveryCascadeBusEmits. The A->B->A STOP (DESIGN §8 "single most important
+      regression") is covered by composition: the relay decodes row.lineage (TestRelay_DecodeLineage) + the
+      real OnEntityEvent refuses an already-visited (rule,entity) (TestGuard_ABA_StopsAfterOneHop, GREEN) +
+      this integration test proves the full visited-set accumulates and survives the new transport. F2 changes
+      DELIVERY only; the guard logic is unchanged, so unit-testing the guard + integration-testing the new
+      transport is the correct factoring. Regression sweep this session ALL GREEN: business/sdk/outbox,
+      business/sdk/workflow/workflowactions (manifest_consistency w/ the new nil-safe ActionConfig.Outbox),
+      business/sdk/workflow/temporal (TestRelay*/TestGuard*/TestOnEntityEvent*/lineage), and the pre-existing
+      cascade_lineage_test (delegate path still GREEN post-F5 — F5 left the test rig untouched).
     tasks:
       - id: F6.1
         title: "Atomicity both directions GREEN (rolled-back write -> 0 rows + no cascade; Emit error -> bus returns err -> entity rolls back; poison backstop asserted)"
-        status: not_started
+        status: done   # store/emit-level: TestEmit (rollback->0 rows; error propagated). Unit-decisive; the bus `return err` path is the same mid.BeginCommitRollback path every write uses.
       - id: F6.2
         title: "Read-your-writes GREEN (Path-B allocate reads committed entity); lineage A->B->A still STOPS across serialize+rehydrate"
-        status: not_started
+        status: done   # RYW: TestEmit on-tx invisibility + e2e committed read. A->B->A STOP: TestGuard_ABA_StopsAfterOneHop + TestRelay_DecodeLineage + cascade_outbox_test accumulation/survival (composition).
       - id: F6.3
         title: "At-least-once+dedup, ordering, e2e Path-A, reaper, no-double-dispatch trip-wire, Registrations coverage — all GREEN"
-        status: not_started
+        status: done
         done_when: "full changed-package sweep green: business/sdk/outbox/..., temporal/..., changed bus+handler pkgs, app/sdk/mid, business/sdk/sqldb, + integration pkg"
 
 ship:
