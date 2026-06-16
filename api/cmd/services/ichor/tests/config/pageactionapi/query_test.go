@@ -139,8 +139,8 @@ func queryByPageConfigIDExecuteAction200(sd apitest.SeedData) []apitest.Table {
 				// Find the execute_action button seeded in seed_test.go
 				for _, pa := range gotResp.Buttons {
 					if pa.Button != nil && pa.Button.Behavior == "execute_action" {
-						if pa.Button.ActionType != "transition_status" {
-							return fmt.Sprintf("expected action_type %q, got %q", "transition_status", pa.Button.ActionType)
+						if pa.Button.ActionType != "release_to_picking" {
+							return fmt.Sprintf("expected action_type %q, got %q", "release_to_picking", pa.Button.ActionType)
 						}
 						if len(pa.Button.ActionConfig) == 0 {
 							return "expected non-empty action_config"

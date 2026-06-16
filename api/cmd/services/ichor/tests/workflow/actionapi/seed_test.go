@@ -17,8 +17,18 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/geography/regionbus"
 	"github.com/timmaaaz/ichor/business/domain/geography/streetbus"
 	"github.com/timmaaaz/ichor/business/domain/geography/timezonebus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryitembus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/transferorderbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/warehousebus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/zonebus"
+	"github.com/timmaaaz/ichor/business/domain/products/brandbus"
+	"github.com/timmaaaz/ichor/business/domain/products/productbus"
+	"github.com/timmaaaz/ichor/business/domain/products/productcategorybus"
 	"github.com/timmaaaz/ichor/business/domain/sales/customersbus"
+	"github.com/timmaaaz/ichor/business/domain/sales/lineitemfulfillmentstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/orderfulfillmentstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/sales/orderlineitemsbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
 	orderstypes "github.com/timmaaaz/ichor/business/domain/sales/ordersbus/types"
 	"github.com/timmaaaz/ichor/business/domain/workflow/actionpermissionsbus"
@@ -31,11 +41,12 @@ type ActionSeedData struct {
 	apitest.SeedData
 
 	// Users with different permission levels
-	AdminUser             apitest.User
-	UserWithAlertPerm     apitest.User // Has create_alert permission
-	UserWithInventoryPerm apitest.User // Has allocate_inventory permission
-	UserNoPermissions     apitest.User // Has no action permissions
+	AdminUser              apitest.User
+	UserWithAlertPerm      apitest.User // Has create_alert permission
+	UserWithInventoryPerm  apitest.User // Has allocate_inventory permission
+	UserNoPermissions      apitest.User // Has no action permissions
 	UserWithTransitionPerm apitest.User // Has transition_status permission
+	UserWithButtonPerm     apitest.User // Has release_to_picking + claim/execute_transfer_order permission
 
 	// Roles
 	AlertRole      rolebus.Role
@@ -58,6 +69,11 @@ type ActionSeedData struct {
 	// Orders for transition tests
 	PendingOrderID           uuid.UUID // Order at PENDING status (valid source for transition)
 	NonTransitionableOrderID uuid.UUID // Order at PICKING status (NOT in valid_from)
+
+	// Entities for the configurable-action-button verbs (release/claim/execute)
+	ReleaseOrderID           uuid.UUID // PENDING order WITH a line item + stock — releasable to picking
+	ApprovedTransferOrderID  uuid.UUID // transfer order at APPROVED status — claimable
+	InTransitTransferOrderID uuid.UUID // transfer order at IN_TRANSIT status — executable
 }
 
 func insertSeedData(db *dbtest.Database, ath *auth.Auth) (ActionSeedData, error) {
@@ -316,27 +332,137 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (ActionSeedData, error)
 		return ActionSeedData{}, fmt.Errorf("creating picking order: %w", err)
 	}
 
+	// 11. A role + user holding ONLY the configurable-action-button verbs, so the 200
+	//     cases prove the P4 grant gates the real endpoint (not an admin bypass).
+	buttonRole, err := busDomain.Role.Create(ctx, rolebus.NewRole{Name: "button_action_manager", Description: "Can execute release_to_picking + transfer verbs"})
+	if err != nil {
+		return ActionSeedData{}, fmt.Errorf("creating button role: %w", err)
+	}
+	buttonUsers, err := userbus.TestSeedUsersWithNoFKs(ctx, 1, userbus.Roles.User, busDomain.User)
+	if err != nil {
+		return ActionSeedData{}, fmt.Errorf("seeding button users: %w", err)
+	}
+	userWithButtonPerm := apitest.User{
+		User:  buttonUsers[0],
+		Token: apitest.Token(db.BusDomain.User, ath, buttonUsers[0].Email.Address),
+	}
+	if _, err = busDomain.UserRole.Create(ctx, userrolebus.NewUserRole{UserID: buttonUsers[0].ID, RoleID: buttonRole.ID}); err != nil {
+		return ActionSeedData{}, fmt.Errorf("assigning button role: %w", err)
+	}
+	if _, err = actionpermissionsbus.TestSeedActionPermissions(ctx, busDomain.ActionPermissions, buttonRole.ID,
+		[]string{"release_to_picking", "claim_transfer_order", "execute_transfer_order"}); err != nil {
+		return ActionSeedData{}, fmt.Errorf("creating button permissions: %w", err)
+	}
+
+	// 12. PROCESSING status — release_to_picking resolves PENDING/PROCESSING/PICKING by name
+	//     and errors if any is missing (PENDING/PICKING already created above).
+	if _, err = busDomain.OrderFulfillmentStatus.Create(ctx, orderfulfillmentstatusbus.NewOrderFulfillmentStatus{
+		Name: "PROCESSING", Description: "Order is processing",
+	}); err != nil {
+		return ActionSeedData{}, fmt.Errorf("creating PROCESSING status: %w", err)
+	}
+
+	// 13. Product + warehouse/zone/locations + stock so release_to_picking can fan a line
+	//     item into a pick_task, and the transfer orders have a product + from/to locations.
+	brands, err := brandbus.TestSeedBrands(ctx, 1, contactInfoIDs, busDomain.Brand)
+	if err != nil {
+		return ActionSeedData{}, fmt.Errorf("seeding brands: %w", err)
+	}
+	categories, err := productcategorybus.TestSeedProductCategories(ctx, 1, busDomain.ProductCategory)
+	if err != nil {
+		return ActionSeedData{}, fmt.Errorf("seeding product categories: %w", err)
+	}
+	products, err := productbus.TestSeedProducts(ctx, 1, uuid.UUIDs{brands[0].BrandID}, uuid.UUIDs{categories[0].ProductCategoryID}, busDomain.Product)
+	if err != nil {
+		return ActionSeedData{}, fmt.Errorf("seeding products: %w", err)
+	}
+	productID := products[0].ProductID
+
+	warehouses, err := warehousebus.TestSeedWarehouses(ctx, 1, admins[0].ID, streetIDs, busDomain.Warehouse)
+	if err != nil {
+		return ActionSeedData{}, fmt.Errorf("seeding warehouses: %w", err)
+	}
+	zones, err := zonebus.TestSeedZone(ctx, 1, []uuid.UUID{warehouses[0].ID}, busDomain.Zones)
+	if err != nil {
+		return ActionSeedData{}, fmt.Errorf("seeding zones: %w", err)
+	}
+	locations, err := inventorylocationbus.TestSeedInventoryLocations(ctx, 2, []uuid.UUID{warehouses[0].ID}, zones, busDomain.InventoryLocation)
+	if err != nil || len(locations) < 2 {
+		return ActionSeedData{}, fmt.Errorf("seeding inventory locations: %w", err)
+	}
+	if _, err = inventoryitembus.TestSeedInventoryItems(ctx, 1, []uuid.UUID{locations[0].LocationID}, []uuid.UUID{productID}, busDomain.InventoryItem); err != nil {
+		return ActionSeedData{}, fmt.Errorf("seeding inventory items: %w", err)
+	}
+
+	// 14. Dedicated PENDING order with one line item for productID (separate from the
+	//     transition-test orders so the release does not mutate shared state).
+	releaseOrder, err := busDomain.Order.Create(ctx, ordersbus.NewOrder{
+		Number:              "TST-RELEASE-001",
+		CustomerID:          customerIDs[0],
+		DueDate:             now.AddDate(0, 0, 14),
+		FulfillmentStatusID: pendingStatus.ID,
+		OrderDate:           now,
+		Subtotal:            orderstypes.MustParseMoney("100.00"),
+		TaxRate:             orderstypes.MustParsePercentage("8.00"),
+		TaxAmount:           orderstypes.MustParseMoney("8.00"),
+		ShippingCost:        orderstypes.MustParseMoney("10.00"),
+		TotalAmount:         orderstypes.MustParseMoney("118.00"),
+		CurrencyID:          currencyID,
+		Notes:               "Release test — pending order with a line item",
+		CreatedBy:           admins[0].ID,
+	})
+	if err != nil {
+		return ActionSeedData{}, fmt.Errorf("creating release order: %w", err)
+	}
+	lifs, err := lineitemfulfillmentstatusbus.TestSeedLineItemFulfillmentStatuses(ctx, busDomain.LineItemFulfillmentStatus)
+	if err != nil || len(lifs) == 0 {
+		return ActionSeedData{}, fmt.Errorf("seeding line item fulfillment statuses: %w", err)
+	}
+	if _, err = orderlineitemsbus.TestSeedOrderLineItems(ctx, 1, []uuid.UUID{releaseOrder.ID}, []uuid.UUID{productID}, []uuid.UUID{lifs[0].ID}, []uuid.UUID{admins[0].ID}, busDomain.OrderLineItem); err != nil {
+		return ActionSeedData{}, fmt.Errorf("seeding release order line item: %w", err)
+	}
+
+	// 15. Transfer orders: one APPROVED (claimable), one IN_TRANSIT (executable).
+	approvedTO, err := busDomain.TransferOrder.Create(ctx, transferorderbus.NewTransferOrder{
+		ProductID: productID, FromLocationID: locations[0].LocationID, ToLocationID: locations[1].LocationID,
+		RequestedByID: admins[0].ID, Quantity: 5, Status: transferorderbus.StatusApproved, TransferDate: now,
+	})
+	if err != nil {
+		return ActionSeedData{}, fmt.Errorf("creating approved transfer order: %w", err)
+	}
+	inTransitTO, err := busDomain.TransferOrder.Create(ctx, transferorderbus.NewTransferOrder{
+		ProductID: productID, FromLocationID: locations[0].LocationID, ToLocationID: locations[1].LocationID,
+		RequestedByID: admins[0].ID, Quantity: 3, Status: transferorderbus.StatusInTransit, TransferDate: now,
+	})
+	if err != nil {
+		return ActionSeedData{}, fmt.Errorf("creating in-transit transfer order: %w", err)
+	}
+
 	return ActionSeedData{
 		SeedData: apitest.SeedData{
 			Admins: []apitest.User{adminUser},
-			Users:  []apitest.User{userWithAlertPerm, userWithInventoryPerm, userNoPermissions, userWithTransitionPerm},
+			Users:  []apitest.User{userWithAlertPerm, userWithInventoryPerm, userNoPermissions, userWithTransitionPerm, userWithButtonPerm},
 		},
-		AdminUser:              adminUser,
-		UserWithAlertPerm:      userWithAlertPerm,
-		UserWithInventoryPerm:  userWithInventoryPerm,
-		UserNoPermissions:      userNoPermissions,
-		UserWithTransitionPerm: userWithTransitionPerm,
-		AlertRole:              alertRole,
-		InventoryRole:          inventoryRole,
-		BasicRole:              basicRole,
-		TransitionRole:         transitionRole,
-		AlertPermissions:       alertPerms,
-		InventoryPermissions:   invPerms,
-		TransitionPermissions:  transitionPerms,
-		CompletedExecutionID:   completedExecID,
-		PendingStatusID:        pendingStatus.ID,
-		PickingStatusID:        pickingStatus.ID,
-		PendingOrderID:         pendingOrder.ID,
+		AdminUser:                adminUser,
+		UserWithAlertPerm:        userWithAlertPerm,
+		UserWithInventoryPerm:    userWithInventoryPerm,
+		UserNoPermissions:        userNoPermissions,
+		UserWithTransitionPerm:   userWithTransitionPerm,
+		UserWithButtonPerm:       userWithButtonPerm,
+		AlertRole:                alertRole,
+		InventoryRole:            inventoryRole,
+		BasicRole:                basicRole,
+		TransitionRole:           transitionRole,
+		AlertPermissions:         alertPerms,
+		InventoryPermissions:     invPerms,
+		TransitionPermissions:    transitionPerms,
+		CompletedExecutionID:     completedExecID,
+		PendingStatusID:          pendingStatus.ID,
+		PickingStatusID:          pickingStatus.ID,
+		PendingOrderID:           pendingOrder.ID,
 		NonTransitionableOrderID: pickingOrder.ID,
+		ReleaseOrderID:           releaseOrder.ID,
+		ApprovedTransferOrderID:  approvedTO.TransferID,
+		InTransitTransferOrderID: inTransitTO.TransferID,
 	}, nil
 }

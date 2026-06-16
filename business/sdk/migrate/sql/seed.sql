@@ -581,7 +581,10 @@ VALUES
     ('54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'create_entity', true),
     ('54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'lookup_entity', true),
     ('54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'transition_status', true),
-    ('54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'log_audit_entry', true)
+    ('54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'log_audit_entry', true),
+    ('54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'release_to_picking', true),
+    ('54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'claim_transfer_order', true),
+    ('54bb2165-71e1-41a6-af3e-7da4a0e1e2c1', 'execute_transfer_order', true)
 ON CONFLICT DO NOTHING;
 
 -- ============================================================================

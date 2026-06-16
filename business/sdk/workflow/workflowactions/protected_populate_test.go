@@ -27,10 +27,13 @@ func TestPopulateProtected(t *testing.T) {
 	log := newLog()
 
 	reg := workflow.NewActionRegistry()
-	reg.Register(inventory.NewReserveInventoryHandler(log, nil, nil, nil))  // on_update inventory_items.reserved_quantity
-	reg.Register(procurement.NewApprovePurchaseOrderHandler(log, nil))      // on_update purchase_orders.approved_by/...
-	reg.Register(inventory.NewCreatePutAwayTaskHandler(log, nil, nil, nil)) // on_create put_away_tasks (must be EXCLUDED)
-	reg.Register(data.NewUpdateFieldHandler(log, nil))                      // generic (must be skipped)
+	reg.Register(inventory.NewReserveInventoryHandler(log, nil, nil, nil))                // on_update inventory_items.reserved_quantity
+	reg.Register(procurement.NewApprovePurchaseOrderHandler(log, nil))                    // on_update purchase_orders.approved_by/...
+	reg.Register(inventory.NewCreatePutAwayTaskHandler(log, nil, nil, nil))               // on_create put_away_tasks (must be EXCLUDED)
+	reg.Register(data.NewUpdateFieldHandler(log, nil))                                    // generic (must be skipped)
+	reg.Register(inventory.NewReleaseToPickingHandler(log, nil, nil, nil, nil, nil, nil)) // on_update sales.orders.order_fulfillment_status_id
+	reg.Register(inventory.NewClaimTransferOrderHandler(log, nil))                        // on_update transfer_orders.claimed_by/...
+	reg.Register(inventory.NewExecuteTransferOrderHandler(log, nil, nil, nil, nil))       // on_update transfer_orders.completed_by/...
 
 	preg := protected.New()
 	workflowactions.PopulateProtected(preg, reg)
@@ -64,10 +67,13 @@ func TestPopulateProtected(t *testing.T) {
 
 	// --- domain-declared db-tag source (per-store RegisterProtected) ---
 	mustBlock("procurement.purchase_orders", "purchase_order_status_id", "approve_purchase_order / reject_purchase_order")
-	mustBlock("sales.orders", "order_fulfillment_status_id", "")
+	// order_fulfillment_status_id / claimed_by / completed_by are db-tag protected (route "")
+	// but a typed on_update action now claims each, so the auto-source route wins (the empty
+	// db-tag route does not clobber it — ProtectField keeps the first non-empty route).
+	mustBlock("sales.orders", "order_fulfillment_status_id", "release_to_picking")
 	mustBlock("sales.order_line_items", "picked_quantity", "")
-	mustBlock("inventory.transfer_orders", "claimed_by", "")
-	mustBlock("inventory.transfer_orders", "completed_by", "")
+	mustBlock("inventory.transfer_orders", "claimed_by", "claim_transfer_order")
+	mustBlock("inventory.transfer_orders", "completed_by", "execute_transfer_order")
 	mustBlock("procurement.purchase_order_line_items", "quantity_received", "")
 	mustBlock("core.users", "user_approval_status_id", "")
 
@@ -155,8 +161,8 @@ func Test_PopulateProtected_WholeTableInvariants(t *testing.T) {
 	// a pure pass-through to Check, so a registry assertion is the whole story (no handler needed).
 	// Whole-table-protecting core.users (onboarding workflows write it) or products.brands trips here.
 	writable := []struct{ table, field string }{
-		{"core.users", "first_name"},    // sensitive cols are FIELD-protected via userdb; the table is not
-		{"products.brands", "name"},     // taxonomy: investigated 2026-06-12, no code tie-ins → left open
+		{"core.users", "first_name"}, // sensitive cols are FIELD-protected via userdb; the table is not
+		{"products.brands", "name"},  // taxonomy: investigated 2026-06-12, no code tie-ins → left open
 	}
 	for _, w := range writable {
 		if _, blocked := preg.Check(w.table, w.field); blocked {

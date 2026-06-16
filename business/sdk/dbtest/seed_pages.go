@@ -6,14 +6,12 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/domain/config/pageactionbus"
 	"github.com/timmaaaz/ichor/business/domain/config/pageconfigbus"
 	"github.com/timmaaaz/ichor/business/domain/config/pagecontentbus"
-	"github.com/timmaaaz/ichor/business/domain/config/pageactionbus"
-	"github.com/timmaaaz/ichor/business/domain/core/rolepagebus"
 	"github.com/timmaaaz/ichor/business/domain/core/rolebus"
-	"github.com/timmaaaz/ichor/business/domain/sales/orderfulfillmentstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/core/rolepagebus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest/seedmodels"
-	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
@@ -186,6 +184,17 @@ func seedPages(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	})
 	if err != nil {
 		return fmt.Errorf("creating orders_detail_page config: %w", err)
+	}
+
+	// Create Transfer Orders Detail Page (single-transfer view; hosts the
+	// claim_transfer_order / execute_transfer_order execute_action buttons).
+	transferOrdersDetailPage, err := busDomain.PageConfig.Create(ctx, pageconfigbus.NewPageConfig{
+		Name:      "transfer_orders_detail_page",
+		UserID:    uuid.Nil,
+		IsDefault: true,
+	})
+	if err != nil {
+		return fmt.Errorf("creating transfer_orders_detail_page config: %w", err)
 	}
 
 	ordersPageOrderIndex := 1
@@ -1429,14 +1438,16 @@ func seedPages(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 		return fmt.Errorf("seeding page action buttons: %w", err)
 	}
 
-	// Seed the execute_action "Release to Picking" button on the orders detail page.
-	// This button is seeded separately (not via seedPageActionButtons) because
-	// execute_action buttons have no target_path, which the generic nav-button loop
-	// rejects. Order fulfillment statuses are already present (seedSales runs first).
-	// On the platform-config path (no sales data) seedReleaseToPickingButton logs
-	// an informational message and returns nil — it does not abort the seed.
+	// Seed the execute_action buttons on the detail pages. These are seeded separately
+	// (not via seedPageActionButtons) because execute_action buttons have no target_path,
+	// which the generic nav-button loop rejects. Each button carries only "{{entity_id}}"
+	// (the page entity) — the workflow action resolves everything else at runtime — so they
+	// seed on every path, including the platform-config path with no sales/inventory data.
 	if err := seedReleaseToPickingButton(ctx, log, busDomain, ordersDetailPage.ID); err != nil {
 		return fmt.Errorf("seeding release-to-picking button: %w", err)
+	}
+	if err := seedTransferOrderButtons(ctx, log, busDomain, transferOrdersDetailPage.ID); err != nil {
+		return fmt.Errorf("seeding transfer-order buttons: %w", err)
 	}
 
 	// PAGES
@@ -1471,56 +1482,15 @@ func seedPages(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	return nil
 }
 
-// seedReleaseToPickingButton seeds the data-driven "Release to Picking" execute_action
-// button on the orders detail page. It resolves status UUIDs by name because the
-// transition_status handler compares the raw order_fulfillment_status_id value.
-//
-// On the platform-config path (InsertPlatformConfig — no sales data) the fulfillment
-// statuses will not exist. In that case the function logs an informational message and
-// returns nil so the platform seed is not aborted. A real query failure still propagates.
+// seedReleaseToPickingButton seeds the "Release to Picking" execute_action button on the
+// orders detail page. The button is wired to the release_to_picking workflow action, which
+// is self-contained: it resolves the PENDING/PROCESSING/PICKING fulfillment statuses by name
+// at runtime, flips the order to PICKING, and fans its line items into inventory.pick_tasks.
+// The button therefore carries only the order id ("{{entity_id}}" — the page entity), with no
+// embedded status UUIDs, so it seeds on every path (including the platform-config path that
+// has no sales data).
 func seedReleaseToPickingButton(ctx context.Context, log *logger.Logger, busDomain BusDomain, pageConfigID uuid.UUID) error {
-	// Resolve status UUIDs by name using the same pattern as seed_scenarios_refs.go.
-	// Returns (id, found, error). Query errors are fatal; missing rows are a soft skip.
-	lookup := func(name string) (uuid.UUID, bool, error) {
-		filter := orderfulfillmentstatusbus.QueryFilter{Name: &name}
-		orderBy := orderfulfillmentstatusbus.DefaultOrderBy
-		pg := page.MustParse("1", "1")
-		rows, err := busDomain.OrderFulfillmentStatus.Query(ctx, filter, orderBy, pg)
-		if err != nil {
-			return uuid.Nil, false, fmt.Errorf("querying fulfillment status %q: %w", name, err)
-		}
-		if len(rows) == 0 {
-			return uuid.Nil, false, nil
-		}
-		return rows[0].ID, true, nil
-	}
-
-	pending, ok1, err := lookup("PENDING")
-	if err != nil {
-		return err
-	}
-	processing, ok2, err := lookup("PROCESSING")
-	if err != nil {
-		return err
-	}
-	picking, ok3, err := lookup("PICKING")
-	if err != nil {
-		return err
-	}
-
-	if !ok1 || !ok2 || !ok3 {
-		log.Info(ctx, "seedReleaseToPickingButton: fulfillment statuses not present (platform-config path) — skipping Release to Picking button")
-		return nil
-	}
-
-	cfg := map[string]any{
-		"target_entity":       "sales.orders",
-		"target_id":           "{{entity_id}}",
-		"status_field":        "order_fulfillment_status_id",
-		"to_status":           picking.String(),
-		"valid_from_statuses": []string{pending.String(), processing.String()},
-	}
-	cfgBytes, err := json.Marshal(cfg)
+	cfgBytes, err := json.Marshal(map[string]any{"order_id": "{{entity_id}}"})
 	if err != nil {
 		return fmt.Errorf("marshal release button config: %w", err)
 	}
@@ -1532,7 +1502,7 @@ func seedReleaseToPickingButton(ctx context.Context, log *logger.Logger, busDoma
 		Label:              "Release to Picking",
 		Icon:               "material-symbols:local-shipping-outline",
 		Behavior:           "execute_action",
-		ActionType:         "transition_status",
+		ActionType:         "release_to_picking",
 		ActionConfig:       cfgBytes,
 		Variant:            "default",
 		Alignment:          "right",
@@ -1540,6 +1510,67 @@ func seedReleaseToPickingButton(ctx context.Context, log *logger.Logger, busDoma
 	})
 	if err != nil {
 		return fmt.Errorf("creating release-to-picking button: %w", err)
+	}
+	return nil
+}
+
+// seedTransferOrderButtons seeds the "Claim Transfer" and "Execute Transfer" execute_action
+// buttons on the transfer orders detail page. Both are wired to their respective workflow
+// actions (claim_transfer_order / execute_transfer_order), which resolve the transfer order
+// from "{{entity_id}}" (the page entity) and record the acting user. Like the release button
+// they carry no domain UUIDs, so they seed on every path.
+func seedTransferOrderButtons(ctx context.Context, log *logger.Logger, busDomain BusDomain, pageConfigID uuid.UUID) error {
+	// Claim is valid only when the transfer is APPROVED; Execute only when IN_TRANSIT.
+	// valid_from_statuses gates button visibility in the frontend (string match against the
+	// transfer's lowercase enum status); the handlers also guard server-side and no-op safely.
+	claimCfg, err := json.Marshal(map[string]any{
+		"transfer_order_id":   "{{entity_id}}",
+		"valid_from_statuses": []string{"approved"},
+	})
+	if err != nil {
+		return fmt.Errorf("marshal claim transfer button config: %w", err)
+	}
+	executeCfg, err := json.Marshal(map[string]any{
+		"transfer_order_id":   "{{entity_id}}",
+		"valid_from_statuses": []string{"in_transit"},
+	})
+	if err != nil {
+		return fmt.Errorf("marshal execute transfer button config: %w", err)
+	}
+
+	buttons := []pageactionbus.NewButtonAction{
+		{
+			PageConfigID:       pageConfigID,
+			ActionOrder:        1,
+			IsActive:           true,
+			Label:              "Claim Transfer",
+			Icon:               "material-symbols:local-shipping-outline",
+			Behavior:           "execute_action",
+			ActionType:         "claim_transfer_order",
+			ActionConfig:       claimCfg,
+			Variant:            "default",
+			Alignment:          "right",
+			ConfirmationPrompt: "Claim this transfer order?",
+		},
+		{
+			PageConfigID:       pageConfigID,
+			ActionOrder:        2,
+			IsActive:           true,
+			Label:              "Execute Transfer",
+			Icon:               "material-symbols:check-circle-outline",
+			Behavior:           "execute_action",
+			ActionType:         "execute_transfer_order",
+			ActionConfig:       executeCfg,
+			Variant:            "default",
+			Alignment:          "right",
+			ConfirmationPrompt: "Complete this transfer order?",
+		},
+	}
+
+	for _, b := range buttons {
+		if _, err := busDomain.PageAction.CreateButton(ctx, b); err != nil {
+			return fmt.Errorf("creating %q button: %w", b.Label, err)
+		}
 	}
 	return nil
 }

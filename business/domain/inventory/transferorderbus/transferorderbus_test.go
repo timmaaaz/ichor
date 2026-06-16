@@ -602,6 +602,83 @@ func TestTransferOrder_TransferNumberFilter(t *testing.T) {
 	}
 }
 
+// Test_TransferOrder_ConcurrentClaimExecuteGuard pins the TOCTOU fix for Claim/Execute.
+// Two actors that each read a transfer order while it was still claimable hold a stale
+// in-memory snapshot. The Go-level status pre-check passes for both, so without a DB-level
+// status guard the second (losing) write silently overwrites claimed_by/completed_by. The
+// fix makes Claim/Execute conditional on the current DB status, so the loser is rejected
+// with ErrInvalidTransferStatus and the winner's identity survives.
+func Test_TransferOrder_ConcurrentClaimExecuteGuard(t *testing.T) {
+	t.Parallel()
+
+	db := dbtest.NewDatabase(t, "Test_TransferOrder_ConcurrentClaimExecuteGuard")
+
+	sd, err := insertSeedData(db.BusDomain)
+	if err != nil {
+		t.Fatalf("seeding: %s", err)
+	}
+
+	ctx := context.Background()
+
+	// A second real user (FK-safe) acts as the losing concurrent actor so the pre-fix
+	// code path actually succeeds + overwrites, rather than failing on a bogus FK.
+	others, err := userbus.TestSeedUsersWithNoFKs(ctx, 1, userbus.Roles.User, db.BusDomain.User)
+	if err != nil {
+		t.Fatalf("seeding loser user: %s", err)
+	}
+	winner := sd.Admins[0].ID
+	loser := others[0].ID
+
+	toID := findTransferOrderIDByStatus(t, sd.TransferOrders, transferorderbus.StatusPending)
+
+	// --- Claim race -------------------------------------------------------------------
+	pending, err := db.BusDomain.TransferOrder.QueryByID(ctx, toID)
+	if err != nil {
+		t.Fatalf("query pending: %s", err)
+	}
+	// approvedSnap is the status='approved' snapshot BOTH concurrent claimers hold.
+	approvedSnap, err := db.BusDomain.TransferOrder.Approve(ctx, pending, winner, "race approve")
+	if err != nil {
+		t.Fatalf("approve: %s", err)
+	}
+
+	if _, err := db.BusDomain.TransferOrder.Claim(ctx, approvedSnap, winner); err != nil {
+		t.Fatalf("winning claim: %s", err)
+	}
+
+	// Loser replays the SAME stale approved snapshot; the row is already in_transit.
+	if _, err := db.BusDomain.TransferOrder.Claim(ctx, approvedSnap, loser); !errors.Is(err, transferorderbus.ErrInvalidTransferStatus) {
+		t.Fatalf("stale double-claim: want ErrInvalidTransferStatus, got %v", err)
+	}
+
+	claimed, err := db.BusDomain.TransferOrder.QueryByID(ctx, toID)
+	if err != nil {
+		t.Fatalf("query after claim race: %s", err)
+	}
+	if claimed.ClaimedByID == nil || *claimed.ClaimedByID != winner {
+		t.Fatalf("claimed_by overwritten by losing claim: want %v, got %v", winner, claimed.ClaimedByID)
+	}
+
+	// --- Execute race -----------------------------------------------------------------
+	// inTransitSnap is the status='in_transit' snapshot BOTH concurrent executors hold.
+	inTransitSnap := claimed
+	if _, err := db.BusDomain.TransferOrder.Execute(ctx, inTransitSnap, winner); err != nil {
+		t.Fatalf("winning execute: %s", err)
+	}
+
+	if _, err := db.BusDomain.TransferOrder.Execute(ctx, inTransitSnap, loser); !errors.Is(err, transferorderbus.ErrInvalidTransferStatus) {
+		t.Fatalf("stale double-execute: want ErrInvalidTransferStatus, got %v", err)
+	}
+
+	final, err := db.BusDomain.TransferOrder.QueryByID(ctx, toID)
+	if err != nil {
+		t.Fatalf("query after execute race: %s", err)
+	}
+	if final.CompletedByID == nil || *final.CompletedByID != winner {
+		t.Fatalf("completed_by overwritten by losing execute: want %v, got %v", winner, final.CompletedByID)
+	}
+}
+
 func delete(busDomain dbtest.BusDomain, sd unitest.SeedData) []unitest.Table {
 	return []unitest.Table{{
 		Name: "delete",

@@ -1,0 +1,73 @@
+# PROGRESS — Configurable Action Buttons Phase 2
+# Branch: feature/action-buttons-phase2 (worktree: ichor-action-buttons-phase2)
+# Created 2026-06-15. Realizes the action=capability / button+workflow=triggers model.
+# Status: not_started | in_progress | done
+
+meta:
+  decided:
+    - "Single button: re-point the existing 'Release to Picking' button at the new release_to_picking action (NOT a second button)."
+    - "release_to_picking is self-contained: flips orders.fulfillment_status_id PENDING/PROCESSING->PICKING AND fans line items into inventory.pick_tasks (directed-work model). Becomes sanctioned writer of fulfillment_status_id."
+    - "FEFO is read-only suggestion at release (no double-allocation; pickingapp/picktaskapp still own the stock move at pick time)."
+    - "Idempotency = status guard (only runs PENDING/PROCESSING) + per-line skip of open tasks."
+    - "Approval gate DEFERRED -> CASCADE_DELEGATE_EVENTS/FOLLOW_UP.md §12."
+    - "Action name = release_to_picking (matches button label); transfer actions = claim_transfer_order + execute_transfer_order."
+
+phases:
+  P1_release_handler:
+    status: done
+    title: "release_to_picking action handler + bus wiring"
+    tasks:
+      - "CREATE inventory/release_to_picking.go (8 ActionHandler methods + config) — DONE (compiles, unit tests pass)"
+      - "register.go: add Orders/OrderLineItems/PickTask/OrderFulfillmentStatus to BusDependencies + guarded Register — DONE"
+      - "all.go: wire the 4 buses into inventoryAndProcurementConfig.Buses — DONE (was the missing gap)"
+    verified: "go build workflowactions + build/all EXIT=0; go vet EXIT=0; TestReleaseToPicking_Validate + _Metadata PASS"
+    note: "gopls diagnostics unreliable in worktree (not in go.work) — phantom undefined/unknown-field errors; go build is authoritative."
+
+  P2_transfer_handlers:
+    status: done
+    title: "claim_transfer_order + execute_transfer_order handlers"
+    tasks:
+      - "CREATE inventory/claim_transfer_order.go (wrap transferorderbus.Claim) — DONE"
+      - "CREATE inventory/execute_transfer_order.go (wrap transferorderbus.Execute) — DONE"
+      - "register both inside the TransferOrder!=nil block in register.go — DONE (TransferOrder bus already wired in all.go)"
+      - "unit tests (Validate + Metadata) for both — DONE"
+    verified: "go build + vet EXIT=0; Claim/Execute Validate+Metadata tests PASS"
+
+  P3_seeds:
+    status: done
+    title: "button + page seeds (+ 2 P1/P2 wiring gap-fixes uncovered here)"
+    tasks:
+      - "seed_pages.go: re-pointed 'Release to Picking' button -> release_to_picking (action_config {order_id:{{entity_id}}}); dropped the status-lookup soft-skip (no longer needed — handler resolves statuses by name at runtime) — DONE"
+      - "seed_pages.go: new transfer_orders_detail_page + 'Claim Transfer'/'Execute Transfer' buttons (seedTransferOrderButtons, config {transfer_order_id:{{entity_id}}}) — DONE"
+      - "GAP-FIX (P1 wiring): register.go RegisterGranularInventoryActions never registered release_to_picking — P1 added the buses but no Register() call, so the button would 404 (ErrActionNotFound). Added unconditional registration — DONE"
+      - "GAP-FIX (P2 usability): claim/execute handlers strict-uuid.Parse'd transfer_order_id, but actionservice.Execute passes the RAW config (no server-side template substitution) to Validate+Execute. Gave both the same {{}}-tolerance + EntityID fallback release_to_picking has, else the transfer buttons 400 on Validate — DONE (+ templated-id unit-test cases)"
+    verify: "go build ./business/sdk/dbtest/... + ./... ; inventory handler unit tests PASS"
+
+  P4_permissions:
+    status: done
+    title: "action_permissions grants (admin-only)"
+    tasks:
+      - "migrate.sql: appended Version 2.41 — admin-role grants for release_to_picking, claim_transfer_order, execute_transfer_order (mirrors transition_status 1.994) — DONE"
+      - "seed.sql: ZZZADMIN block += 3 rows — DONE"
+    verify: "last migrate version == 2.41 (confirmed); go build ./business/sdk/migrate/... EXIT=0"
+
+  P5_tests:
+    status: done
+    title: "tests"
+    tasks:
+      - "handler unit tests: release/claim/execute *_test.go cover validate/ports/manifest; added templated-id Validate cases to claim+execute (release already had one) — DONE"
+      - "protected_populate_test.go: registered the 3 handlers in the local registry; routes now fulfillment_status_id->release_to_picking, claimed_by->claim_transfer_order, completed_by->execute_transfer_order (auto-source beats the empty db-tag route via first-non-empty-wins) — DONE"
+      - "structural manifest auto-covers release (registered unconditionally in RegisterAll); integration manifest: +order/picktask delegate domains, +entityDomain entries, +3 declared==fired subtests; parameterized seedOrderWithLineItem by product to avoid the unique (product,location) inventory collision — DONE"
+      - "pageactionapi/seed_test.go + query_test.go + pageactionbus_test.go (JSONB-compare): re-pointed button now action_type release_to_picking, config {order_id:{{entity_id}}} — DONE"
+      - "END-TO-END (actionapi Test_ActionAPI): real POST /workflow/actions/{type}/execute through auth + action_permissions gate + production registry. +release_to_picking 200 (literal {{entity_id}} → asserts output=released, tasks_created>=1) + 403-no-grant + claim/execute 200 (literal {{entity_id}} → proves the {{}}-tolerance gap-fix live). Seed extended: button-perm role/user, PROCESSING status, product+wh/zone/locations+stock, release order w/ line item, approved+in-transit transfer orders — DONE"
+    verify: |
+      go test ./business/sdk/workflow/workflowactions/...               # PASS (structural + inventory)
+      go test ./api/cmd/services/ichor/tests/workflow/actionhandlers/... # PASS (incl. 3 new subtests + cascade_m2)
+      go test ./api/cmd/services/ichor/tests/workflow/actionapi/...      # PASS (Test_ActionAPI: 4 new e2e cases)
+      go test ./api/cmd/services/ichor/tests/config/pageactionapi/... ./business/domain/config/pageactionbus/...  # PASS
+
+risks:
+  - "protected_populate_test.go uses a hand-picked registry — must Register new handlers there or routes stay ''."
+  - "integration manifest 'declared==fired' needs seeded inventory so release creates >=1 pick_task (else picktask.created never fires)."
+  - "two fulfillment models (pickingapp per-line vs pick_tasks directed-work) — this feeds directed-work; pickingapp path untouched."
+  - "auth closed-by-default: missing grant -> silent 403 at the execute endpoint."

@@ -312,6 +312,215 @@ func executeUpdateFieldNotManuallyExecutable(sd ActionSeedData) []apitest.Table 
 	}
 }
 
+// executeReleaseToPicking200 is the end-to-end happy path for the re-pointed "Release to
+// Picking" button: a user holding the release_to_picking grant POSTs the real execute
+// endpoint with a LITERAL "{{entity_id}}" config + EntityID = the order. This exercises the
+// full button path — registration (no 404), the P4 permission grant, the template-tolerance +
+// EntityID resolution gap-fix, and the actual status flip + pick_task fan-out — and asserts
+// the handler reports the order released.
+func executeReleaseToPicking200(sd ActionSeedData) []apitest.Table {
+	entityID := sd.ReleaseOrderID.String()
+	return []apitest.Table{
+		{
+			Name:       "release-to-picking-200",
+			URL:        "/v1/workflow/actions/release_to_picking/execute",
+			Token:      sd.UserWithButtonPerm.Token,
+			StatusCode: http.StatusOK,
+			Method:     http.MethodPost,
+			Input: &actionapp.ExecuteRequest{
+				Config:     json.RawMessage(`{"order_id":"{{entity_id}}"}`),
+				EntityID:   &entityID,
+				EntityName: "sales.orders",
+			},
+			GotResp: &actionapp.ExecuteResponse{},
+			ExpResp: &actionapp.ExecuteResponse{},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, ok := got.(*actionapp.ExecuteResponse)
+				if !ok {
+					return fmt.Sprintf("unexpected response type: %T", got)
+				}
+				if gotResp.Status != "completed" {
+					return fmt.Sprintf("expected status completed, got %q", gotResp.Status)
+				}
+				result, ok := gotResp.Result.(map[string]any)
+				if !ok {
+					return fmt.Sprintf("expected result map, got %T (%v)", gotResp.Result, gotResp.Result)
+				}
+				if result["output"] != "released" {
+					return fmt.Sprintf("expected output 'released', got %v (result=%v)", result["output"], result)
+				}
+				if tc, _ := result["tasks_created"].(float64); tc < 1 {
+					return fmt.Sprintf("expected >=1 pick task created, got %v", result["tasks_created"])
+				}
+				return ""
+			},
+		},
+	}
+}
+
+// executeReleaseToPicking403 verifies the closed-by-default permission gate (P4): a user
+// without the release_to_picking grant is rejected with 403 before the handler runs.
+func executeReleaseToPicking403(sd ActionSeedData) []apitest.Table {
+	entityID := sd.ReleaseOrderID.String()
+	return []apitest.Table{
+		{
+			Name:       "release-to-picking-403-no-permission",
+			URL:        "/v1/workflow/actions/release_to_picking/execute",
+			Token:      sd.UserNoPermissions.Token,
+			StatusCode: http.StatusForbidden,
+			Method:     http.MethodPost,
+			Input: &actionapp.ExecuteRequest{
+				Config:   json.RawMessage(`{"order_id":"{{entity_id}}"}`),
+				EntityID: &entityID,
+			},
+			GotResp: &errs.Error{},
+			ExpResp: &errs.Error{},
+			CmpFunc: func(got any, exp any) string {
+				gotErr := got.(*errs.Error)
+				if gotErr.Code.Value() != errs.PermissionDenied.Value() {
+					return cmp.Diff(gotErr.Code.Value(), errs.PermissionDenied.Value())
+				}
+				return ""
+			},
+		},
+	}
+}
+
+// executeClaimTransferOrder403 verifies the closed-by-default permission gate: a user without
+// the claim_transfer_order grant is rejected with 403 before the handler runs.
+func executeClaimTransferOrder403(sd ActionSeedData) []apitest.Table {
+	entityID := sd.ApprovedTransferOrderID.String()
+	return []apitest.Table{
+		{
+			Name:       "claim-transfer-order-403-no-permission",
+			URL:        "/v1/workflow/actions/claim_transfer_order/execute",
+			Token:      sd.UserNoPermissions.Token,
+			StatusCode: http.StatusForbidden,
+			Method:     http.MethodPost,
+			Input: &actionapp.ExecuteRequest{
+				Config:   json.RawMessage(`{"transfer_order_id":"{{entity_id}}"}`),
+				EntityID: &entityID,
+			},
+			GotResp: &errs.Error{},
+			ExpResp: &errs.Error{},
+			CmpFunc: func(got any, exp any) string {
+				gotErr := got.(*errs.Error)
+				if gotErr.Code.Value() != errs.PermissionDenied.Value() {
+					return cmp.Diff(gotErr.Code.Value(), errs.PermissionDenied.Value())
+				}
+				return ""
+			},
+		},
+	}
+}
+
+// executeExecuteTransferOrder403 verifies the closed-by-default permission gate: a user without
+// the execute_transfer_order grant is rejected with 403 before the handler runs.
+func executeExecuteTransferOrder403(sd ActionSeedData) []apitest.Table {
+	entityID := sd.InTransitTransferOrderID.String()
+	return []apitest.Table{
+		{
+			Name:       "execute-transfer-order-403-no-permission",
+			URL:        "/v1/workflow/actions/execute_transfer_order/execute",
+			Token:      sd.UserNoPermissions.Token,
+			StatusCode: http.StatusForbidden,
+			Method:     http.MethodPost,
+			Input: &actionapp.ExecuteRequest{
+				Config:   json.RawMessage(`{"transfer_order_id":"{{entity_id}}"}`),
+				EntityID: &entityID,
+			},
+			GotResp: &errs.Error{},
+			ExpResp: &errs.Error{},
+			CmpFunc: func(got any, exp any) string {
+				gotErr := got.(*errs.Error)
+				if gotErr.Code.Value() != errs.PermissionDenied.Value() {
+					return cmp.Diff(gotErr.Code.Value(), errs.PermissionDenied.Value())
+				}
+				return ""
+			},
+		},
+	}
+}
+
+// executeClaimTransferOrder200 drives the "Claim Transfer" button end-to-end against an
+// APPROVED transfer order. The literal "{{entity_id}}" config proves the {{}}-tolerance fix:
+// without it, claim's Validate would 400 on uuid.Parse("{{entity_id}}") before the handler ran.
+func executeClaimTransferOrder200(sd ActionSeedData) []apitest.Table {
+	entityID := sd.ApprovedTransferOrderID.String()
+	return []apitest.Table{
+		{
+			Name:       "claim-transfer-order-200",
+			URL:        "/v1/workflow/actions/claim_transfer_order/execute",
+			Token:      sd.UserWithButtonPerm.Token,
+			StatusCode: http.StatusOK,
+			Method:     http.MethodPost,
+			Input: &actionapp.ExecuteRequest{
+				Config:     json.RawMessage(`{"transfer_order_id":"{{entity_id}}"}`),
+				EntityID:   &entityID,
+				EntityName: "inventory.transfer_orders",
+			},
+			GotResp: &actionapp.ExecuteResponse{},
+			ExpResp: &actionapp.ExecuteResponse{},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, ok := got.(*actionapp.ExecuteResponse)
+				if !ok {
+					return fmt.Sprintf("unexpected response type: %T", got)
+				}
+				if gotResp.Status != "completed" {
+					return fmt.Sprintf("expected status completed, got %q", gotResp.Status)
+				}
+				result, ok := gotResp.Result.(map[string]any)
+				if !ok {
+					return fmt.Sprintf("expected result map, got %T (%v)", gotResp.Result, gotResp.Result)
+				}
+				if result["output"] != "claimed" {
+					return fmt.Sprintf("expected output 'claimed', got %v (result=%v)", result["output"], result)
+				}
+				return ""
+			},
+		},
+	}
+}
+
+// executeExecuteTransferOrder200 drives the "Execute Transfer" button end-to-end against an
+// IN_TRANSIT transfer order, again with a literal "{{entity_id}}" config.
+func executeExecuteTransferOrder200(sd ActionSeedData) []apitest.Table {
+	entityID := sd.InTransitTransferOrderID.String()
+	return []apitest.Table{
+		{
+			Name:       "execute-transfer-order-200",
+			URL:        "/v1/workflow/actions/execute_transfer_order/execute",
+			Token:      sd.UserWithButtonPerm.Token,
+			StatusCode: http.StatusOK,
+			Method:     http.MethodPost,
+			Input: &actionapp.ExecuteRequest{
+				Config:     json.RawMessage(`{"transfer_order_id":"{{entity_id}}"}`),
+				EntityID:   &entityID,
+				EntityName: "inventory.transfer_orders",
+			},
+			GotResp: &actionapp.ExecuteResponse{},
+			ExpResp: &actionapp.ExecuteResponse{},
+			CmpFunc: func(got any, exp any) string {
+				gotResp, ok := got.(*actionapp.ExecuteResponse)
+				if !ok {
+					return fmt.Sprintf("unexpected response type: %T", got)
+				}
+				if gotResp.Status != "completed" {
+					return fmt.Sprintf("expected status completed, got %q", gotResp.Status)
+				}
+				result, ok := gotResp.Result.(map[string]any)
+				if !ok {
+					return fmt.Sprintf("expected result map, got %T (%v)", gotResp.Result, gotResp.Result)
+				}
+				if result["output"] != "executed" {
+					return fmt.Sprintf("expected output 'executed', got %v (result=%v)", result["output"], result)
+				}
+				return ""
+			},
+		},
+	}
+}
+
 func execute404UnknownAction(sd ActionSeedData) []apitest.Table {
 	// Note: Permission check happens before action type validation in the current
 	// implementation. Since the admin user doesn't have explicit permission for

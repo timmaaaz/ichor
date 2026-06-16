@@ -21,7 +21,7 @@ var (
 	ErrAuthenticationFailure = errors.New("authentication failed")
 	ErrUniqueEntry           = errors.New("transferOrder entry is not unique")
 	ErrForeignKeyViolation   = errors.New("foreign key violation")
-	ErrInvalidTransferStatus = errors.New("transfer order is not in a state that allows approval/rejection")
+	ErrInvalidTransferStatus = errors.New("transfer order is not in a state that allows this transition")
 )
 
 // Transfer order status values.
@@ -39,6 +39,10 @@ type Storer interface {
 	NewWithTx(tx sqldb.CommitRollbacker) (Storer, error)
 	Create(ctx context.Context, transferOrder TransferOrder) error
 	Update(ctx context.Context, transferOrder TransferOrder) error
+	// UpdateWithStatusGuard performs the same column update as Update, but only when
+	// the row's current status equals expectedStatus. It returns the number of rows
+	// affected (0 means the guard did not match — e.g. a concurrent transition won).
+	UpdateWithStatusGuard(ctx context.Context, transferOrder TransferOrder, expectedStatus string) (int64, error)
 	Delete(ctx context.Context, transferOrder TransferOrder) error
 	Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]TransferOrder, error)
 	Count(ctx context.Context, filter QueryFilter) (int, error)
@@ -272,8 +276,15 @@ func (b *Business) Claim(ctx context.Context, to TransferOrder, claimedBy uuid.U
 	to.Status = StatusInTransit
 	to.UpdatedDate = now
 
-	if err := b.storer.Update(ctx, to); err != nil {
+	// Guard on the still-approved DB state to close the read-check-write race: if a
+	// concurrent claim already moved the row to in_transit, 0 rows match and we reject
+	// rather than silently overwriting the winner's claimed_by.
+	rows, err := b.storer.UpdateWithStatusGuard(ctx, to, StatusApproved)
+	if err != nil {
 		return TransferOrder{}, fmt.Errorf("claim: %w", err)
+	}
+	if rows == 0 {
+		return TransferOrder{}, fmt.Errorf("claim: %w: status changed concurrently", ErrInvalidTransferStatus)
 	}
 
 	if err := b.delegate.Call(ctx, ActionUpdatedData(before, to)); err != nil {
@@ -301,8 +312,15 @@ func (b *Business) Execute(ctx context.Context, to TransferOrder, completedBy uu
 	to.Status = StatusCompleted
 	to.UpdatedDate = now
 
-	if err := b.storer.Update(ctx, to); err != nil {
+	// Guard on the still-in_transit DB state to close the read-check-write race: if a
+	// concurrent execute already completed the row, 0 rows match and we reject rather
+	// than silently overwriting the winner's completed_by.
+	rows, err := b.storer.UpdateWithStatusGuard(ctx, to, StatusInTransit)
+	if err != nil {
 		return TransferOrder{}, fmt.Errorf("execute: %w", err)
+	}
+	if rows == 0 {
+		return TransferOrder{}, fmt.Errorf("execute: %w: status changed concurrently", ErrInvalidTransferStatus)
 	}
 
 	if err := b.delegate.Call(ctx, ActionUpdatedData(before, to)); err != nil {
