@@ -178,12 +178,60 @@ fan_out:
 cutover:
   F5:
     title: "CUTOVER GATE — atomic flip (one commit)  [hard_rule]"
-    status: not_started
+    status: not_started   # NEXT — F0-F4 all DONE/committed/inert (tips: d826a062). Best done fresh.
     gate: "after F4 — everything built & inert"
-    note: "The single point where cascade delivery moves from delegate to outbox+relay. No armed-but-undrained window."
+    note: >
+      The single point where cascade delivery moves from delegate to outbox+relay. No
+      armed-but-undrained window. SCOPED CONCRETE PLAN (verified file:line):
+
+      STEP 0 — add a tiny exported temporal helper:
+        temporal.MarshalLineageFromContext(ctx) []byte  -> json.Marshal(lineageFromContext(ctx)),
+        returning nil when the lineage is empty (so the outbox lineage column stays NULL for
+        human/non-workflow writes). This is the lineage extractor the Writer needs (F1 §3).
+
+      STEP 1 — all.go (api/cmd/services/ichor/build/all/all.go): construct the Writer ONCE, just
+      before the bus block (~before line 385, after `delegate := delegate.New(...)`):
+        entityForDomain := map[string]string{} ; for _, r := range workflowdomains.Registrations() { entityForDomain[r.Domain] = r.Entity }
+        outboxWriter := outbox.NewWriter(cfg.Log, cfg.DB, entityForDomain, temporalpkg.MarshalLineageFromContext)
+      Then inject into EVERY cascade bus (the 67 with a WithOutbox method — NOT countrybus/regionbus
+      [read-only, no events], NOT productuombus/settingsbus [not in Registrations]): append
+      `.WithOutbox(outboxWriter)` to each `xBus := xpkg.NewBusiness(cfg.Log, delegate, ...)`. ~67 sites,
+      single-line mostly; userBus(386)/homeBus(410) are multi-line / different arg order — handle by hand.
+      WARNING do NOT script-append blindly: a few NewBusiness calls are commented out (407) or
+      read-only. Safest: drive off the F4.1 bus list (grep "b.outbox.Emit" business/domain -> 67 pkgs)
+      and inject only those bus vars. scenarioBus (line 624) is constructed later — inject there too.
+        - workflowBus: `workflowBus = workflowBus.WithOutboxEmitter(outboxWriter.Emit)` (M2 path).
+        - Path C handlers (lines 569-571): add `data.WithOutbox(outboxWriter)` to all three.
+
+      STEP 2 — all.go: start the relay (inside the `if cfg.TemporalClient != nil` block, after
+      workflowTrigger is built ~line 589): `relay := temporalpkg.NewRelay(cfg.Log, cfg.DB, workflowTrigger, temporalpkg.RelayConfig{})`
+      then `go relay.Run(context.Background())` (or wire ICHOR_* config). Log it.
+
+      STEP 3 — all.go: REMOVE the cascade subscriber loop (lines 601-603, the
+      `for _, r := range workflowdomains.Registrations() { delegateHandler.RegisterDomain(...) }`).
+      KEEP triggerProcessor.RegisterCacheInvalidation(delegate) (line 592 — rule-reload, not cascade).
+      The NewDelegateHandler line (595) becomes dead -> remove it too (and its var). KEEP the
+      permissions/alertws delegate subscribers (registered elsewhere, untouched).
+
+      STEP 4 — worker/main.go (api/cmd/services/workflow-worker/main.go): same shape but only ~5 buses
+      constructed (inventoryItem/Location/Transaction, product @169-174) + workflowBus(177). Decision:
+      the relay is SERVER-ONLY v1 (DESIGN §2 sub-decision), so the WORKER does NOT start a relay and
+      its buses do NOT need the Writer (the worker's bus writes happen inside Temporal activities whose
+      cascades the SERVER relay drains... BUT the worker's activity bus writes Emit rows only if the
+      worker's buses have the Writer). RE-CHECK: if workflow ACTIVITIES (run in the worker) do cascade
+      bus writes (Path B handlers run as activities!), the WORKER's buses MUST have the Writer so those
+      writes Emit. So inject the Writer into the worker's buses + workflowBus too, but the worker still
+      does NOT run the relay (server drains). Remove the worker's RegisterDomain loop (line 240) as well
+      — its DelegateHandler dispatch is the same cascade path being retired. VERIFY this carefully: the
+      worker is where Path-B/Path-C/M2 cascades actually ORIGINATE (activities), so its Writer injection
+      is the load-bearing one for workflow-originated cascades.
+
+      HARD RULE: steps 1-4 are ONE commit. Never merge with the subscriber still registered AND the
+      Writer injected (double-dispatch). Build both binaries (go build ./api/cmd/services/ichor/...
+      and ./api/cmd/services/workflow-worker/...).
     tasks:
       - id: F5.1
-        title: "all.go + worker/main.go: inject the real outbox.Writer (Emit goes live) + start the relay goroutine + REMOVE the cascade subscriber RegisterDomain loop; delete dead DelegateHandler dispatch (goroutine, WorkflowTrigger field)"
+        title: "all.go + worker/main.go: inject the real outbox.Writer (Emit goes live) + start the relay goroutine (server only) + REMOVE the cascade subscriber RegisterDomain loop (both binaries); add temporal.MarshalLineageFromContext"
         status: not_started
         done_when: "both binaries build; server boots relay; manual smoke: a write lands a row, relay drains it, cascade runs; delegate no longer dispatches cascade"
 
