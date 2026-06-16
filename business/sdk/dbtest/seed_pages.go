@@ -1520,9 +1520,22 @@ func seedReleaseToPickingButton(ctx context.Context, log *logger.Logger, busDoma
 // from "{{entity_id}}" (the page entity) and record the acting user. Like the release button
 // they carry no domain UUIDs, so they seed on every path.
 func seedTransferOrderButtons(ctx context.Context, log *logger.Logger, busDomain BusDomain, pageConfigID uuid.UUID) error {
-	cfgBytes, err := json.Marshal(map[string]any{"transfer_order_id": "{{entity_id}}"})
+	// Claim is valid only when the transfer is APPROVED; Execute only when IN_TRANSIT.
+	// valid_from_statuses gates button visibility in the frontend (string match against the
+	// transfer's lowercase enum status); the handlers also guard server-side and no-op safely.
+	claimCfg, err := json.Marshal(map[string]any{
+		"transfer_order_id":   "{{entity_id}}",
+		"valid_from_statuses": []string{"approved"},
+	})
 	if err != nil {
-		return fmt.Errorf("marshal transfer button config: %w", err)
+		return fmt.Errorf("marshal claim transfer button config: %w", err)
+	}
+	executeCfg, err := json.Marshal(map[string]any{
+		"transfer_order_id":   "{{entity_id}}",
+		"valid_from_statuses": []string{"in_transit"},
+	})
+	if err != nil {
+		return fmt.Errorf("marshal execute transfer button config: %w", err)
 	}
 
 	buttons := []pageactionbus.NewButtonAction{
@@ -1534,7 +1547,7 @@ func seedTransferOrderButtons(ctx context.Context, log *logger.Logger, busDomain
 			Icon:               "material-symbols:local-shipping-outline",
 			Behavior:           "execute_action",
 			ActionType:         "claim_transfer_order",
-			ActionConfig:       cfgBytes,
+			ActionConfig:       claimCfg,
 			Variant:            "default",
 			Alignment:          "right",
 			ConfirmationPrompt: "Claim this transfer order?",
@@ -1547,7 +1560,7 @@ func seedTransferOrderButtons(ctx context.Context, log *logger.Logger, busDomain
 			Icon:               "material-symbols:check-circle-outline",
 			Behavior:           "execute_action",
 			ActionType:         "execute_transfer_order",
-			ActionConfig:       cfgBytes,
+			ActionConfig:       executeCfg,
 			Variant:            "default",
 			Alignment:          "right",
 			ConfirmationPrompt: "Complete this transfer order?",
