@@ -347,6 +347,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/llm/claude"
 	"github.com/timmaaaz/ichor/business/sdk/llm/gemini"
 	"github.com/timmaaaz/ichor/business/sdk/llm/ollama"
+	"github.com/timmaaaz/ichor/business/sdk/outbox"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
 	"github.com/timmaaaz/ichor/business/sdk/toolindex"
@@ -398,101 +399,122 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	// Construct the business domain packages we need here so we are using the
 	// sames instances for the different set of domain apis.
 	delegate := delegate.New(cfg.Log)
-	userApprovalStatusBus := approvalbus.NewBusiness(cfg.Log, delegate, approvaldb.NewStore(cfg.Log, cfg.DB))
+
+	// F2 cutover (DESIGN §6): build the transactional-outbox Writer once and inject it
+	// into every cascade-relevant bus below (the workflowdomains.Registrations() set,
+	// via .WithOutbox / .WithOutboxEmitter). Each cascade bus then persists one cascade
+	// event per domain write in the SAME tx; the relay (started below, server only)
+	// drains those rows into WorkflowTrigger.OnEntityEvent at-least-once. entityForDomain
+	// resolves the workflow entity name from the delegate domain; MarshalLineageFromContext
+	// carries the loop-guard lineage into the row (outbox cannot import temporal — the
+	// relay→outbox edge would cycle — so both are injected here by the composition root).
+	entityForDomain := make(map[string]string)
+	for _, r := range workflowdomains.Registrations() {
+		entityForDomain[r.Domain] = r.Entity
+	}
+	outboxWriter := outbox.NewWriter(cfg.Log, cfg.DB, entityForDomain, temporalpkg.MarshalLineageFromContext)
+
+	userApprovalStatusBus := approvalbus.NewBusiness(cfg.Log, delegate, approvaldb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
 
 	if a.UserBus == nil {
 		a.InitializeDependencies(cfg)
 	}
 
-	// userBus := userbus.NewBusiness(cfg.Log, delegate, userApprovalStatusBus, usercache.NewStore(cfg.Log, userdb.NewStore(cfg.Log, cfg.DB), time.Minute))
-	userApprovalCommentBus := commentbus.NewBusiness(cfg.Log, delegate, a.UserBus, commentdb.NewStore(cfg.Log, cfg.DB))
+	// The shared userBus is constructed in InitializeDependencies (before the Writer
+	// exists), so inject the outbox Writer into it here. WithOutbox returns a copy;
+	// reassigning a.UserBus makes the userBus routes — and the comment/home buses that
+	// take it as a dependency below — use the outbox-enabled instance.
+	a.UserBus = a.UserBus.WithOutbox(outboxWriter)
 
-	homeBus := homebus.NewBusiness(cfg.Log, a.UserBus, delegate, homedb.NewStore(cfg.Log, cfg.DB))
+	// userBus := userbus.NewBusiness(cfg.Log, delegate, userApprovalStatusBus, usercache.NewStore(cfg.Log, userdb.NewStore(cfg.Log, cfg.DB), time.Minute))
+	userApprovalCommentBus := commentbus.NewBusiness(cfg.Log, delegate, a.UserBus, commentdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+
+	homeBus := homebus.NewBusiness(cfg.Log, a.UserBus, delegate, homedb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
 	countryBus := countrybus.NewBusiness(cfg.Log, delegate, countrydb.NewStore(cfg.Log, cfg.DB))
 	regionBus := regionbus.NewBusiness(cfg.Log, delegate, regiondb.NewStore(cfg.Log, cfg.DB))
-	cityBus := citybus.NewBusiness(cfg.Log, delegate, citydb.NewStore(cfg.Log, cfg.DB))
-	streetBus := streetbus.NewBusiness(cfg.Log, delegate, streetdb.NewStore(cfg.Log, cfg.DB))
-	timezoneBus := timezonebus.NewBusiness(cfg.Log, delegate, timezonedb.NewStore(cfg.Log, cfg.DB))
-	approvalStatusBus := approvalstatusbus.NewBusiness(cfg.Log, delegate, approvalstatusdb.NewStore(cfg.Log, cfg.DB))
-	fulfillmentStatusBus := fulfillmentstatusbus.NewBusiness(cfg.Log, delegate, fulfillmentstatusdb.NewStore(cfg.Log, cfg.DB))
-	assetConditionBus := assetconditionbus.NewBusiness(cfg.Log, delegate, assetconditiondb.NewStore(cfg.Log, cfg.DB))
-	assetTypeBus := assettypebus.NewBusiness(cfg.Log, delegate, assettypedb.NewStore(cfg.Log, cfg.DB))
-	validAssetBus := validassetbus.NewBusiness(cfg.Log, delegate, validassetdb.NewStore(cfg.Log, cfg.DB))
-	tagBus := tagbus.NewBusiness(cfg.Log, delegate, tagdb.NewStore(cfg.Log, cfg.DB))
-	assetTagBus := assettagbus.NewBusiness(cfg.Log, delegate, assettagdb.NewStore(cfg.Log, cfg.DB))
-	titleBus := titlebus.NewBusiness(cfg.Log, delegate, titledb.NewStore(cfg.Log, cfg.DB))
-	reportsToBus := reportstobus.NewBusiness(cfg.Log, delegate, reportstodb.NewStore(cfg.Log, cfg.DB))
-	officeBus := officebus.NewBusiness(cfg.Log, delegate, officedb.NewStore(cfg.Log, cfg.DB))
-	userAssetBus := userassetbus.NewBusiness(cfg.Log, delegate, userassetdb.NewStore(cfg.Log, cfg.DB))
-	assetBus := assetbus.NewBusiness(cfg.Log, delegate, assetdb.NewStore(cfg.Log, cfg.DB))
+	cityBus := citybus.NewBusiness(cfg.Log, delegate, citydb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	streetBus := streetbus.NewBusiness(cfg.Log, delegate, streetdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	timezoneBus := timezonebus.NewBusiness(cfg.Log, delegate, timezonedb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	approvalStatusBus := approvalstatusbus.NewBusiness(cfg.Log, delegate, approvalstatusdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	fulfillmentStatusBus := fulfillmentstatusbus.NewBusiness(cfg.Log, delegate, fulfillmentstatusdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	assetConditionBus := assetconditionbus.NewBusiness(cfg.Log, delegate, assetconditiondb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	assetTypeBus := assettypebus.NewBusiness(cfg.Log, delegate, assettypedb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	validAssetBus := validassetbus.NewBusiness(cfg.Log, delegate, validassetdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	tagBus := tagbus.NewBusiness(cfg.Log, delegate, tagdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	assetTagBus := assettagbus.NewBusiness(cfg.Log, delegate, assettagdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	titleBus := titlebus.NewBusiness(cfg.Log, delegate, titledb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	reportsToBus := reportstobus.NewBusiness(cfg.Log, delegate, reportstodb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	officeBus := officebus.NewBusiness(cfg.Log, delegate, officedb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	userAssetBus := userassetbus.NewBusiness(cfg.Log, delegate, userassetdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	assetBus := assetbus.NewBusiness(cfg.Log, delegate, assetdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
 
-	contactInfosBus := contactinfosbus.NewBusiness(cfg.Log, delegate, contactinfosdb.NewStore(cfg.Log, cfg.DB))
-	customersBus := customersbus.NewBusiness(cfg.Log, delegate, customersdb.NewStore(cfg.Log, cfg.DB))
+	contactInfosBus := contactinfosbus.NewBusiness(cfg.Log, delegate, contactinfosdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	customersBus := customersbus.NewBusiness(cfg.Log, delegate, customersdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
 
-	brandBus := brandbus.NewBusiness(cfg.Log, delegate, branddb.NewStore(cfg.Log, cfg.DB))
-	productCategoryBus := productcategorybus.NewBusiness(cfg.Log, delegate, productcategorydb.NewStore(cfg.Log, cfg.DB))
-	productBus := productbus.NewBusiness(cfg.Log, delegate, inventoryproductdb.NewStore(cfg.Log, cfg.DB))
+	brandBus := brandbus.NewBusiness(cfg.Log, delegate, branddb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	productCategoryBus := productcategorybus.NewBusiness(cfg.Log, delegate, productcategorydb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	productBus := productbus.NewBusiness(cfg.Log, delegate, inventoryproductdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
 	productUOMBus := productuombus.NewBusiness(cfg.Log, delegate, productuomdb.NewStore(cfg.Log, cfg.DB))
-	physicalAttributeBus := physicalattributebus.NewBusiness(cfg.Log, delegate, physicalattributedb.NewStore(cfg.Log, cfg.DB))
+	physicalAttributeBus := physicalattributebus.NewBusiness(cfg.Log, delegate, physicalattributedb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
 
-	productCostBus := productcostbus.NewBusiness(cfg.Log, delegate, productcostdb.NewStore(cfg.Log, cfg.DB))
-	costHistoryBus := costhistorybus.NewBusiness(cfg.Log, delegate, costhistorydb.NewStore(cfg.Log, cfg.DB))
+	productCostBus := productcostbus.NewBusiness(cfg.Log, delegate, productcostdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	costHistoryBus := costhistorybus.NewBusiness(cfg.Log, delegate, costhistorydb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
 
-	warehouseBus := warehousebus.NewBusiness(cfg.Log, delegate, warehousedb.NewStore(cfg.Log, cfg.DB))
-	zoneBus := zonebus.NewBusiness(cfg.Log, delegate, zonedb.NewStore(cfg.Log, cfg.DB))
-	inventoryLocationBus := inventorylocationbus.NewBusiness(cfg.Log, delegate, inventorylocationdb.NewStore(cfg.Log, cfg.DB))
-	inventoryItemBus := inventoryitembus.NewBusiness(cfg.Log, delegate, inventoryitemdb.NewStore(cfg.Log, cfg.DB))
+	warehouseBus := warehousebus.NewBusiness(cfg.Log, delegate, warehousedb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	zoneBus := zonebus.NewBusiness(cfg.Log, delegate, zonedb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	inventoryLocationBus := inventorylocationbus.NewBusiness(cfg.Log, delegate, inventorylocationdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	inventoryItemBus := inventoryitembus.NewBusiness(cfg.Log, delegate, inventoryitemdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
 
-	purchaseOrderLineItemStatusBus := purchaseorderlineitemstatusbus.NewBusiness(cfg.Log, delegate, purchaseorderlineitemstatusdb.NewStore(cfg.Log, cfg.DB))
-	purchaseOrderStatusBus := purchaseorderstatusbus.NewBusiness(cfg.Log, delegate, purchaseorderstatusdb.NewStore(cfg.Log, cfg.DB))
-	supplierBus := supplierbus.NewBusiness(cfg.Log, delegate, supplierdb.NewStore(cfg.Log, cfg.DB))
-	supplierProductBus := supplierproductbus.NewBusiness(cfg.Log, delegate, supplierproductdb.NewStore(cfg.Log, cfg.DB))
-	purchaseOrderBus := purchaseorderbus.NewBusiness(cfg.Log, delegate, purchaseorderdb.NewStore(cfg.Log, cfg.DB))
-	purchaseOrderLineItemBus := purchaseorderlineitembus.NewBusiness(cfg.Log, delegate, purchaseorderlineitemdb.NewStore(cfg.Log, cfg.DB))
+	purchaseOrderLineItemStatusBus := purchaseorderlineitemstatusbus.NewBusiness(cfg.Log, delegate, purchaseorderlineitemstatusdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	purchaseOrderStatusBus := purchaseorderstatusbus.NewBusiness(cfg.Log, delegate, purchaseorderstatusdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	supplierBus := supplierbus.NewBusiness(cfg.Log, delegate, supplierdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	supplierProductBus := supplierproductbus.NewBusiness(cfg.Log, delegate, supplierproductdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	purchaseOrderBus := purchaseorderbus.NewBusiness(cfg.Log, delegate, purchaseorderdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	purchaseOrderLineItemBus := purchaseorderlineitembus.NewBusiness(cfg.Log, delegate, purchaseorderlineitemdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
 
-	metricsBus := metricsbus.NewBusiness(cfg.Log, delegate, metricsdb.NewStore(cfg.Log, cfg.DB))
-	inspectionBus := inspectionbus.NewBusiness(cfg.Log, delegate, inspectiondb.NewStore(cfg.Log, cfg.DB))
+	metricsBus := metricsbus.NewBusiness(cfg.Log, delegate, metricsdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	inspectionBus := inspectionbus.NewBusiness(cfg.Log, delegate, inspectiondb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
 
-	lotTrackingsBus := lottrackingsbus.NewBusiness(cfg.Log, delegate, lottrackingsdb.NewStore(cfg.Log, cfg.DB))
-	serialNumberBus := serialnumberbus.NewBusiness(cfg.Log, delegate, serialnumberdb.NewStore(cfg.Log, cfg.DB))
-	lotLocationBus := lotlocationbus.NewBusiness(cfg.Log, delegate, lotlocationdb.NewStore(cfg.Log, cfg.DB))
+	lotTrackingsBus := lottrackingsbus.NewBusiness(cfg.Log, delegate, lottrackingsdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	serialNumberBus := serialnumberbus.NewBusiness(cfg.Log, delegate, serialnumberdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	lotLocationBus := lotlocationbus.NewBusiness(cfg.Log, delegate, lotlocationdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
 
-	roleBus := rolebus.NewBusiness(cfg.Log, delegate, rolecache.NewStore(cfg.Log, roledb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
-	pageBus := pagebus.NewBusiness(cfg.Log, delegate, pagedb.NewStore(cfg.Log, cfg.DB))
-	paymentTermBus := paymenttermbus.NewBusiness(cfg.Log, delegate, paymenttermdb.NewStore(cfg.Log, cfg.DB))
-	currencyBus := currencybus.NewBusiness(cfg.Log, delegate, currencycache.NewStore(cfg.Log, currencydb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
-	rolePageBus := rolepagebus.NewBusiness(cfg.Log, delegate, rolepagedb.NewStore(cfg.Log, cfg.DB))
-	userRoleBus := userrolebus.NewBusiness(cfg.Log, delegate, userrolecache.NewStore(cfg.Log, userroledb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
-	tableAccessBus := tableaccessbus.NewBusiness(cfg.Log, delegate, tableaccesscache.NewStore(cfg.Log, tableaccessdb.NewStore(cfg.Log, cfg.DB), 60*time.Minute))
+	roleBus := rolebus.NewBusiness(cfg.Log, delegate, rolecache.NewStore(cfg.Log, roledb.NewStore(cfg.Log, cfg.DB), 60*time.Minute)).WithOutbox(outboxWriter)
+	pageBus := pagebus.NewBusiness(cfg.Log, delegate, pagedb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	paymentTermBus := paymenttermbus.NewBusiness(cfg.Log, delegate, paymenttermdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	currencyBus := currencybus.NewBusiness(cfg.Log, delegate, currencycache.NewStore(cfg.Log, currencydb.NewStore(cfg.Log, cfg.DB), 60*time.Minute)).WithOutbox(outboxWriter)
+	rolePageBus := rolepagebus.NewBusiness(cfg.Log, delegate, rolepagedb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	userRoleBus := userrolebus.NewBusiness(cfg.Log, delegate, userrolecache.NewStore(cfg.Log, userroledb.NewStore(cfg.Log, cfg.DB), 60*time.Minute)).WithOutbox(outboxWriter)
+	tableAccessBus := tableaccessbus.NewBusiness(cfg.Log, delegate, tableaccesscache.NewStore(cfg.Log, tableaccessdb.NewStore(cfg.Log, cfg.DB), 60*time.Minute)).WithOutbox(outboxWriter)
 
 	permissionsBus := permissionsbus.NewBusiness(cfg.Log, delegate, permissionscache.NewStore(cfg.Log, permissionsdb.NewStore(cfg.Log, cfg.DB), 60*time.Minute), userRoleBus, tableAccessBus, roleBus)
 
 	introspectionBus := introspectionbus.NewBusiness(cfg.Log, cfg.DB)
 
-	inventoryTransactionBus := inventorytransactionbus.NewBusiness(cfg.Log, delegate, inventorytransactiondb.NewStore(cfg.Log, cfg.DB))
-	inventoryAdjustmentBus := inventoryadjustmentbus.NewBusiness(cfg.Log, delegate, inventoryadjustmentdb.NewStore(cfg.Log, cfg.DB))
-	putAwayTaskBus := putawaytaskbus.NewBusiness(cfg.Log, delegate, putawaytaskdb.NewStore(cfg.Log, cfg.DB))
-	pickTaskBus := picktaskbus.NewBusiness(cfg.Log, delegate, picktaskdb.NewStore(cfg.Log, cfg.DB))
-	cycleCountSessionBus := cyclecountsessionbus.NewBusiness(cfg.Log, delegate, cyclecountsessiondb.NewStore(cfg.Log, cfg.DB))
-	cycleCountItemBus := cyclecountitembus.NewBusiness(cfg.Log, delegate, cyclecountitemdb.NewStore(cfg.Log, cfg.DB))
+	inventoryTransactionBus := inventorytransactionbus.NewBusiness(cfg.Log, delegate, inventorytransactiondb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	inventoryAdjustmentBus := inventoryadjustmentbus.NewBusiness(cfg.Log, delegate, inventoryadjustmentdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	putAwayTaskBus := putawaytaskbus.NewBusiness(cfg.Log, delegate, putawaytaskdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	pickTaskBus := picktaskbus.NewBusiness(cfg.Log, delegate, picktaskdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	cycleCountSessionBus := cyclecountsessionbus.NewBusiness(cfg.Log, delegate, cyclecountsessiondb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	cycleCountItemBus := cyclecountitembus.NewBusiness(cfg.Log, delegate, cyclecountitemdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
 
-	transferOrderBus := transferorderbus.NewBusiness(cfg.Log, delegate, transferorderdb.NewStore(cfg.Log, cfg.DB))
+	transferOrderBus := transferorderbus.NewBusiness(cfg.Log, delegate, transferorderdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
 
-	orderFulfillmentStatusBus := orderfulfillmentstatusbus.NewBusiness(cfg.Log, delegate, orderfulfillmentstatusdb.NewStore(cfg.Log, cfg.DB))
-	lineItemFulfillmentStatusBus := lineitemfulfillmentstatusbus.NewBusiness(cfg.Log, delegate, lineitemfulfillmentstatusdb.NewStore(cfg.Log, cfg.DB))
-	ordersBus := ordersbus.NewBusiness(cfg.Log, delegate, ordersdb.NewStore(cfg.Log, cfg.DB))
-	orderLineItemsBus := orderlineitemsbus.NewBusiness(cfg.Log, delegate, orderlineitemsdb.NewStore(cfg.Log, cfg.DB))
+	orderFulfillmentStatusBus := orderfulfillmentstatusbus.NewBusiness(cfg.Log, delegate, orderfulfillmentstatusdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	lineItemFulfillmentStatusBus := lineitemfulfillmentstatusbus.NewBusiness(cfg.Log, delegate, lineitemfulfillmentstatusdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	ordersBus := ordersbus.NewBusiness(cfg.Log, delegate, ordersdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	orderLineItemsBus := orderlineitemsbus.NewBusiness(cfg.Log, delegate, orderlineitemsdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
 
 	pickingApp := pickingapp.NewApp(cfg.Log, cfg.DB, ordersBus, orderLineItemsBus, inventoryItemBus, inventoryTransactionBus, orderFulfillmentStatusBus, lineItemFulfillmentStatusBus)
 
 	configStore := tablebuilder.NewConfigStore(cfg.Log, cfg.DB)
 	tableStore := tablebuilder.NewStore(cfg.Log, cfg.DB)
 
-	formFieldBus := formfieldbus.NewBusiness(cfg.Log, delegate, formfielddb.NewStore(cfg.Log, cfg.DB))
-	formBus := formbus.NewBusiness(cfg.Log, delegate, formdb.NewStore(cfg.Log, cfg.DB), formFieldBus)
-	pageContentBus := pagecontentbus.NewBusiness(cfg.Log, delegate, pagecontentdb.NewStore(cfg.Log, cfg.DB))
-	pageActionBus := pageactionbus.NewBusiness(cfg.Log, delegate, pageactiondb.NewStore(cfg.Log, cfg.DB))
-	pageConfigBus := pageconfigbus.NewBusiness(cfg.Log, delegate, pageconfigdb.NewStore(cfg.Log, cfg.DB), pageContentBus, pageActionBus)
+	formFieldBus := formfieldbus.NewBusiness(cfg.Log, delegate, formfielddb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	formBus := formbus.NewBusiness(cfg.Log, delegate, formdb.NewStore(cfg.Log, cfg.DB), formFieldBus).WithOutbox(outboxWriter)
+	pageContentBus := pagecontentbus.NewBusiness(cfg.Log, delegate, pagecontentdb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	pageActionBus := pageactionbus.NewBusiness(cfg.Log, delegate, pageactiondb.NewStore(cfg.Log, cfg.DB)).WithOutbox(outboxWriter)
+	pageConfigBus := pageconfigbus.NewBusiness(cfg.Log, delegate, pageconfigdb.NewStore(cfg.Log, cfg.DB), pageContentBus, pageActionBus).WithOutbox(outboxWriter)
 	settingsBus := settingsbus.NewBusiness(cfg.Log, delegate, settingscache.NewStore(cfg.Log, settingsdb.NewStore(cfg.Log, cfg.DB), 30*time.Second))
 	userPreferencesBus := userpreferencesbus.NewBusiness(cfg.Log, userpreferencesdb.NewStore(cfg.Log, cfg.DB))
 
@@ -504,7 +526,10 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 
 	// Create workflowBus outside the RabbitMQ block so it's available for reference API
 	workflowStore := workflowdb.NewStore(cfg.Log, cfg.DB)
-	workflowBus := workflow.NewBusiness(cfg.Log, delegate, workflowStore)
+	// M2 cascade (DESIGN §3): the allocation_results cascade event is emitted from
+	// workflow.Business, which cannot hold an *outbox.Writer (outbox imports workflow →
+	// cycle), so it takes the Writer's bound Emit method via WithOutboxEmitter.
+	workflowBus := workflow.NewBusiness(cfg.Log, delegate, workflowStore).WithOutboxEmitter(outboxWriter.Emit)
 
 	// Create a standalone ActionRegistry that works with or without RabbitMQ
 	// This enables the actionapi routes to be registered even in test environments
@@ -570,9 +595,9 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	// handler is registered (on_update manifest claims + domain-declared db-model tags).
 	protectedReg := protected.New()
 	entityRegistry := workflowdomains.ReverseMap()
-	actionRegistry.Register(data.NewUpdateFieldHandler(cfg.Log, cfg.DB, data.WithProtectedRegistry(protectedReg), data.WithDelegate(delegate), data.WithEntityRegistry(entityRegistry)))
-	actionRegistry.Register(data.NewCreateEntityHandler(cfg.Log, cfg.DB, data.WithProtectedRegistry(protectedReg), data.WithDelegate(delegate), data.WithEntityRegistry(entityRegistry)))
-	actionRegistry.Register(data.NewTransitionStatusHandler(cfg.Log, cfg.DB, data.WithProtectedRegistry(protectedReg), data.WithDelegate(delegate), data.WithEntityRegistry(entityRegistry)))
+	actionRegistry.Register(data.NewUpdateFieldHandler(cfg.Log, cfg.DB, data.WithProtectedRegistry(protectedReg), data.WithDelegate(delegate), data.WithEntityRegistry(entityRegistry), data.WithOutbox(outboxWriter)))
+	actionRegistry.Register(data.NewCreateEntityHandler(cfg.Log, cfg.DB, data.WithProtectedRegistry(protectedReg), data.WithDelegate(delegate), data.WithEntityRegistry(entityRegistry), data.WithOutbox(outboxWriter)))
+	actionRegistry.Register(data.NewTransitionStatusHandler(cfg.Log, cfg.DB, data.WithProtectedRegistry(protectedReg), data.WithDelegate(delegate), data.WithEntityRegistry(entityRegistry), data.WithOutbox(outboxWriter)))
 	workflowactions.PopulateProtected(protectedReg, actionRegistry)
 
 	// =========================================================================
@@ -592,21 +617,27 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 				cfg.Log, cfg.TemporalClient, triggerProcessor, edgeStore, workflowStore,
 			)
 
-			// Register cache invalidation for rule lifecycle events.
+			// Register cache invalidation for rule lifecycle events. This is a
+			// best-effort delegate subscriber (rule-cache reload), NOT cascade dispatch —
+			// it correctly stays on the delegate (DESIGN §1 subscriber table).
 			triggerProcessor.RegisterCacheInvalidation(delegate)
 
-			// Create Temporal delegate handler and register all domains.
-			delegateHandler := temporalpkg.NewDelegateHandler(cfg.Log, workflowTrigger)
+			// F2 cutover (DESIGN §6): the transactional outbox + relay is now the SOLE
+			// cascade dispatcher. Start the polling relay (server only — DESIGN §2; the
+			// worker's activity writes Emit rows that THIS server relay drains) to read
+			// workflow.cascade_outbox and dispatch each row through
+			// workflowTrigger.OnEntityEvent. The old delegate cascade subscriber (the
+			// DelegateHandler + its workflowdomains.Registrations() RegisterDomain loop)
+			// is removed in this same commit, so the delegate path and the relay path are
+			// never live at once — no double-dispatch window (hard_rule).
+			relay := temporalpkg.NewRelay(cfg.Log, cfg.DB, workflowTrigger, temporalpkg.RelayConfig{})
+			go func() {
+				if err := relay.Run(context.Background()); err != nil && err != context.Canceled {
+					cfg.Log.Error(context.Background(), "cascade relay exited", "error", err)
+				}
+			}()
 
-			// Register every domain the workflow subscriber listens on. Single source:
-			// workflowdomains.Registrations() — shared verbatim with the standalone
-			// Temporal worker (api/cmd/services/workflow-worker/main.go) so both register
-			// the identical set (DESIGN §6 — no drift between server and worker).
-			for _, r := range workflowdomains.Registrations() {
-				delegateHandler.RegisterDomain(delegate, r.Domain, r.Entity)
-			}
-
-			cfg.Log.Info(context.Background(), "temporal workflow infrastructure initialized")
+			cfg.Log.Info(context.Background(), "temporal workflow infrastructure initialized (cascade relay started)")
 		}
 	} else {
 		cfg.Log.Info(context.Background(),
@@ -625,7 +656,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		cfg.Log.Error(context.Background(), "find scenarios root: worker-zone application disabled", "error", scenariosRootErr)
 		scenariosRoot = ""
 	}
-	scenarioBus := scenariobus.NewBusiness(cfg.Log, delegate, scenariodb.NewStore(cfg.Log, cfg.DB), sqldb.NewBeginner(cfg.DB), scenariosRoot)
+	scenarioBus := scenariobus.NewBusiness(cfg.Log, delegate, scenariodb.NewStore(cfg.Log, cfg.DB), sqldb.NewBeginner(cfg.DB), scenariosRoot).WithOutbox(outboxWriter)
 	if cfg.ScenariosEnabled {
 		app.Use(mid.ActiveScenario(scenarioBus))
 	}
@@ -801,7 +832,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	} else {
 		labelPrinter = tcpprint.New(cfg.PrinterHostPort, 5*time.Second)
 	}
-	labelBus := labelbus.NewBusiness(cfg.Log, delegate, labelStorer, labelPrinter)
+	labelBus := labelbus.NewBusiness(cfg.Log, delegate, labelStorer, labelPrinter).WithOutbox(outboxWriter)
 	labelapi.Routes(app, labelapi.Config{
 		Log:            cfg.Log,
 		LabelBus:       labelBus,

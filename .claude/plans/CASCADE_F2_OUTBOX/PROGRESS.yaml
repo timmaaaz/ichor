@@ -178,7 +178,7 @@ fan_out:
 cutover:
   F5:
     title: "CUTOVER GATE — atomic flip (one commit)  [hard_rule]"
-    status: not_started   # NEXT — F0-F4 all DONE/committed/inert (tips: d826a062). Best done fresh.
+    status: done   # cutover applied 2026-06-16 in ONE commit; both binaries + full `go build ./...` + `go vet` clean. Behavioral verification = F6.
     gate: "after F4 — everything built & inert"
     note: >
       The single point where cascade delivery moves from delegate to outbox+relay. No
@@ -232,8 +232,30 @@ cutover:
     tasks:
       - id: F5.1
         title: "all.go + worker/main.go: inject the real outbox.Writer (Emit goes live) + start the relay goroutine (server only) + REMOVE the cascade subscriber RegisterDomain loop (both binaries); add temporal.MarshalLineageFromContext"
-        status: not_started
+        status: done
         done_when: "both binaries build; server boots relay; manual smoke: a write lands a row, relay drains it, cascade runs; delegate no longer dispatches cascade"
+        note: >
+          DONE. STEP 0: temporal.MarshalLineageFromContext (lineage.go) = json.Marshal(lineageFromContext),
+          nil when Visited empty && OriginatingExecutionID==Nil (human writes -> NULL lineage column).
+          STEP 1 (all.go): outboxWriter built once after the Add-scope `delegate := delegate.New` (entityForDomain
+          from workflowdomains.Registrations()). Injected into all 67 emit-buses by appending `.WithOutbox(outboxWriter)`.
+          KEY: drove injection off the DEFINITIVE marker `func (b *Business) WithOutbox(` (67 pkgs) — set-equal to the
+          b.outbox.Emit write side by construction (F4 added both together). 66 single-line appends via a deterministic
+          main-context transform (insertion-only -> any slip is build-caught); the 2 exclusions: L385 InitializeDependencies
+          approvalbus (userbus only QUERIES it — read-only, no cascade writes) and L386 userBus (multiline) -> handled via
+          `a.UserBus = a.UserBus.WithOutbox(outboxWriter)` after the nil-check. homeBus "different arg order" was a non-issue:
+          the fluent `.WithOutbox()` append is arg-order-agnostic. workflowBus -> `.WithOutboxEmitter(outboxWriter.Emit)` (M2).
+          Path-C (569-571): added `data.WithOutbox(outboxWriter)` to all three. STEP 2: relay started in a goroutine inside
+          the `if cfg.TemporalClient != nil` block (RelayConfig{} defaults), server only. STEP 3: removed delegateHandler +
+          the Registrations() RegisterDomain loop; KEPT RegisterCacheInvalidation. STEP 4 (worker): outboxWriter built the
+          same way; injected into the 4 emit-buses (inventoryItem/Location/Transaction, product) + workflowBus emitter;
+          NEW seam ActionConfig.Outbox threaded into RegisterAll's dataOpts as `data.WithOutbox(config.Outbox)` (nil-safe -> the
+          manifest_consistency_test caller unaffected) so the worker's Path-C data handlers Emit (load-bearing: Path-C ORIGINATES
+          in worker activities). Removed the worker's ENTIRE "Workflow Delegate Subscriber (P4)" section — go forced it: deleting
+          the loop+delegateHandler orphaned workflowTrigger -> edgeStore/workflowStore (the whole edgeStore->workflowStore->
+          triggerProcessor->workflowTrigger->delegateHandler chain existed SOLELY for worker-side dispatch; RegisterActivity uses
+          neither). Worker runs NO relay (server drains). Dropped the now-orphaned edgedb import. VERIFIED: `go build ./...`
+          clean, `go vet` clean on both composition roots, no residual dead refs.
 
 verify:
   F6:
