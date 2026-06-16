@@ -30,11 +30,11 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/workflow/approvalrequestbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/approvalrequestbus/stores/approvalrequestdb"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
+	"github.com/timmaaaz/ichor/business/sdk/outbox"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/stores/workflowdb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/temporal"
-	"github.com/timmaaaz/ichor/business/sdk/workflow/temporal/stores/edgedb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/approval"
 	"github.com/timmaaaz/ichor/foundation/logger"
@@ -165,16 +165,30 @@ func run(log *logger.Logger) error {
 	// synthesized/bus delegate.Call inside this worker's activities flows through it.
 	del := delegate.New(log)
 
+	// F2 cutover (DESIGN §6): build the transactional-outbox Writer and inject it into
+	// this worker's cascade buses. The worker is where Path-B/Path-C/M2 cascades
+	// ORIGINATE — they run inside Temporal activities here — so this is the load-bearing
+	// injection for workflow-originated cascades: each activity bus write persists an
+	// outbox row in its transaction, and the SERVER-side relay (DESIGN §2 — the worker
+	// runs no relay) drains it. entityForDomain resolves the workflow entity name from
+	// the delegate domain; MarshalLineageFromContext carries the loop-guard lineage so an
+	// A→B→A chain still stops across the worker→outbox→server hop.
+	entityForDomain := make(map[string]string)
+	for _, r := range workflowdomains.Registrations() {
+		entityForDomain[r.Domain] = r.Entity
+	}
+	outboxWriter := outbox.NewWriter(log, db, entityForDomain, temporal.MarshalLineageFromContext)
+
 	// Inventory domain buses - required for allocate_inventory action.
-	inventoryItemBus := inventoryitembus.NewBusiness(log, del, inventoryitemdb.NewStore(log, db))
-	inventoryLocationBus := inventorylocationbus.NewBusiness(log, del, inventorylocationdb.NewStore(log, db))
-	inventoryTransactionBus := inventorytransactionbus.NewBusiness(log, del, inventorytransactiondb.NewStore(log, db))
+	inventoryItemBus := inventoryitembus.NewBusiness(log, del, inventoryitemdb.NewStore(log, db)).WithOutbox(outboxWriter)
+	inventoryLocationBus := inventorylocationbus.NewBusiness(log, del, inventorylocationdb.NewStore(log, db)).WithOutbox(outboxWriter)
+	inventoryTransactionBus := inventorytransactionbus.NewBusiness(log, del, inventorytransactiondb.NewStore(log, db)).WithOutbox(outboxWriter)
 
 	// Product bus - required for allocation validation.
-	productBus := productbus.NewBusiness(log, del, productdb.NewStore(log, db))
+	productBus := productbus.NewBusiness(log, del, productdb.NewStore(log, db)).WithOutbox(outboxWriter)
 
-	// Workflow bus - for idempotency tracking.
-	workflowBus := workflow.NewBusiness(log, del, workflowdb.NewStore(log, db))
+	// Workflow bus - for idempotency tracking + the M2 allocation_results cascade emit.
+	workflowBus := workflow.NewBusiness(log, del, workflowdb.NewStore(log, db)).WithOutboxEmitter(outboxWriter.Emit)
 
 	// Alert bus - required for create_alert action.
 	alertBus := alertbus.NewBusiness(log, alertdb.NewStore(log, db))
@@ -199,6 +213,9 @@ func run(log *logger.Logger) error {
 		// map resolves the target table → delegate (domain, entity).
 		Delegate:       del,
 		EntityRegistry: workflowdomains.ReverseMap(),
+		// F2: Path-C generic-data-handler writes Emit to the outbox in-transaction; the
+		// server-side relay dispatches them. See ActionConfig.Outbox (load-bearing here).
+		Outbox: outboxWriter,
 		Buses: workflowactions.BusDependencies{
 			InventoryItem:        inventoryItemBus,
 			InventoryLocation:    inventoryLocationBus,
@@ -215,33 +232,19 @@ func run(log *logger.Logger) error {
 	asyncRegistry.Register("seek_approval", approval.NewSeekApprovalHandler(log, db, approvalRequestBus, alertBus, workflowQueue))
 
 	// =========================================================================
-	// Workflow Delegate Subscriber (P4)
+	// Cascade delivery (F2 cutover — DESIGN §6)
 	// =========================================================================
 	//
-	// Cascaded writes happen inside THIS worker's activities, so the worker needs its
-	// own delegate subscriber: without it a synthesized/bus delegate.Call here reaches
-	// zero subscribers and the cascade dies at hop 1. Mirrors the in-process wiring in
-	// api/cmd/services/ichor/build/all/all.go, registering the identical domain set via
-	// the shared workflowdomains.Registrations() source.
-	edgeStore := edgedb.NewStore(log, db)
-	workflowStore := workflowdb.NewStore(log, db)
-
-	triggerProcessor := workflow.NewTriggerProcessor(log, db, workflowBus)
-	if err := triggerProcessor.Initialize(context.Background()); err != nil {
-		// The worker's job includes cascading the writes its activities make; a worker
-		// that can't dispatch triggers is broken. Fail fast so the pod restarts and
-		// retries rather than silently running without a subscriber.
-		return fmt.Errorf("initializing workflow trigger processor: %w", err)
-	}
-	workflowTrigger := temporal.NewWorkflowTrigger(log, tc, triggerProcessor, edgeStore, workflowStore)
-	triggerProcessor.RegisterCacheInvalidation(del)
-
-	delegateHandler := temporal.NewDelegateHandler(log, workflowTrigger)
-	for _, r := range workflowdomains.Registrations() {
-		delegateHandler.RegisterDomain(del, r.Domain, r.Entity)
-	}
-	log.Info(context.Background(), "workflow delegate subscriber registered",
-		"domains", len(workflowdomains.Registrations()))
+	// Pre-F2 the worker ran its OWN delegate cascade subscriber (a DelegateHandler +
+	// WorkflowTrigger + a workflowdomains.Registrations() RegisterDomain loop) because
+	// cascaded writes originate inside this worker's activities. That entire path is
+	// retired: those activity bus writes now persist an outbox row in-transaction (the
+	// buses + workflowBus + RegisterAll were given the Writer above), and the SERVER-side
+	// relay is the SOLE dispatcher (DESIGN §2). Removing the subscriber here, in the same
+	// commit that injects the Writer, is what keeps the delegate cascade path and the
+	// relay path from ever being live at once — no double-dispatch (hard_rule). The
+	// worker runs no relay (server-only v1); rule-cache invalidation likewise belonged to
+	// the now-removed worker-side dispatch and lives on the server's trigger processor.
 
 	// =========================================================================
 	// Temporal Worker

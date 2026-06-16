@@ -20,6 +20,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/approvalrequestbus"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
+	"github.com/timmaaaz/ichor/business/sdk/outbox"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/protected"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/approval"
@@ -54,6 +55,14 @@ type ActionConfig struct {
 	// Delegate must be set (and non-empty) for cascades to fire. Build via
 	// workflowdomains.ReverseMap().
 	EntityRegistry map[string]data.EntityRef
+
+	// Outbox persists each generic-data-handler (Path-C) cascade event to the
+	// transactional outbox (F2) in the same transaction as the raw-SQL write, so the
+	// server-side relay dispatches it at-least-once. This is the worker's load-bearing
+	// injection: Path-C cascades ORIGINATE in worker activities, so without it those
+	// writes would emit no row and silently never cascade. Nil = inert (the nil-safe
+	// Writer no-ops), keeping non-cutover callers (tests) unchanged.
+	Outbox *outbox.Writer
 
 	// Business layer dependencies
 	Buses BusDependencies
@@ -107,6 +116,7 @@ func RegisterAll(registry *workflow.ActionRegistry, config ActionConfig) {
 		data.WithProtectedRegistry(reg),
 		data.WithDelegate(config.Delegate),
 		data.WithEntityRegistry(config.EntityRegistry),
+		data.WithOutbox(config.Outbox),
 	}
 	registry.Register(data.NewUpdateFieldHandler(config.Log, config.DB, dataOpts...))
 	registry.Register(data.NewLookupEntityHandler(config.Log, config.DB))

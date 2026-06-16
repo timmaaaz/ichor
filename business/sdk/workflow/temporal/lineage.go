@@ -109,6 +109,27 @@ func lineageFromContext(ctx context.Context) WorkflowLineage {
 	return WorkflowLineage{}
 }
 
+// MarshalLineageFromContext serializes the cascade loop-guard lineage riding ctx
+// into the JSON the outbox row's lineage column stores, returning nil when no
+// lineage is present so a human/non-workflow write's row keeps a NULL lineage and
+// the relay correctly rehydrates it as a fresh chain (decodeLineage).
+//
+// It is the lineage extractor the outbox Writer needs (outbox.NewWriter's lineage
+// arg). The outbox package cannot import temporal — the relay lives in temporal and
+// imports outbox, so the reverse import would cycle — so the composition root
+// (all.go / the worker) injects this exported helper as a func(context.Context)[]byte.
+func MarshalLineageFromContext(ctx context.Context) []byte {
+	l := lineageFromContext(ctx)
+	if len(l.Visited) == 0 && l.OriginatingExecutionID == uuid.Nil {
+		return nil
+	}
+	b, err := json.Marshal(l)
+	if err != nil {
+		return nil
+	}
+	return b
+}
+
 // lineageFromContextMap extracts the cascade lineage from an action activity
 // Context map (WorkflowInput.TriggerData -> MergedContext.Flattened ->
 // ActionActivityInput.Context). The stored value may be a WorkflowLineage
