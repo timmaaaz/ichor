@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	enumspb "go.temporal.io/api/enums/v1"
 	"go.temporal.io/sdk/client"
 
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
@@ -244,16 +245,64 @@ func TestBuildTriggerData_BasicEvent(t *testing.T) {
 		t.Errorf("expected task queue %q, got %q", temporal.TaskQueue, call.options.TaskQueue)
 	}
 
-	// Verify workflow ID format: workflow-{ruleID}-{entityID}-{executionID}
+	// Verify workflow ID format: workflow-{ruleID}-{dedupKey}. A direct OnEntityEvent
+	// caller carries a zero EventID, so dedupKey is the random executionID (F3.2).
 	wfID := call.options.ID
 	if len(wfID) == 0 {
 		t.Error("workflow ID should not be empty")
 	}
 
-	// Should start with "workflow-{ruleID}-{entityID}-"
-	prefix := "workflow-" + ruleID.String() + "-" + event.EntityID.String() + "-"
+	// Should start with "workflow-{ruleID}-".
+	prefix := "workflow-" + ruleID.String() + "-"
 	if len(wfID) < len(prefix) || wfID[:len(prefix)] != prefix {
 		t.Errorf("workflow ID should start with %q, got %q", prefix, wfID)
+	}
+}
+
+// TestOnEntityEvent_DedupWorkflowID pins F3.2: an event drained from the outbox
+// relay carries a durable EventID, from which the trigger derives a DETERMINISTIC
+// workflow id (workflow-{ruleID}-{eventID}) and sets REJECT_DUPLICATE — so an
+// at-least-once re-publish of the same row resolves to the same id and Temporal
+// collapses it to exactly one execution.
+func TestOnEntityEvent_DedupWorkflowID(t *testing.T) {
+	edgeStore := newMockEdgeStore()
+	ruleID := testRuleID()
+	actions, edges := testGraph(ruleID)
+	edgeStore.actions[ruleID] = actions
+	edgeStore.edges[ruleID] = edges
+
+	starter := newMockWorkflowStarter()
+	matcher := &mockRuleMatcher{result: matchedResult(ruleID, "test-rule")}
+	trigger := temporal.NewWorkflowTrigger(testLogger(), starter, matcher, edgeStore, &mockExecutionStore{})
+
+	eventID := uuid.New()
+	event := testEvent()
+	event.EventID = eventID
+
+	if err := trigger.OnEntityEvent(context.Background(), event); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(starter.calls) != 1 {
+		t.Fatalf("expected 1 workflow start, got %d", len(starter.calls))
+	}
+
+	opts := starter.calls[0].options
+
+	wantID := "workflow-" + ruleID.String() + "-" + eventID.String()
+	if opts.ID != wantID {
+		t.Errorf("dedup workflow ID: want %q (keyed on eventID, not the random executionID), got %q", wantID, opts.ID)
+	}
+
+	if opts.WorkflowIDReusePolicy != enumspb.WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE {
+		t.Errorf("want REJECT_DUPLICATE reuse policy, got %v", opts.WorkflowIDReusePolicy)
+	}
+
+	// Re-dispatching the same event yields the SAME id (idempotent at the server).
+	if err := trigger.OnEntityEvent(context.Background(), event); err != nil {
+		t.Fatalf("unexpected error on re-dispatch: %v", err)
+	}
+	if got := starter.calls[1].options.ID; got != wantID {
+		t.Errorf("re-dispatch must reuse the deterministic id %q, got %q", wantID, got)
 	}
 }
 
@@ -725,9 +774,9 @@ func TestWorkflowIDFormat(t *testing.T) {
 
 	wfID := starter.calls[0].options.ID
 
-	// Format: workflow-{ruleID}-{entityID}-{executionID}
-	// Verify prefix.
-	expectedPrefix := "workflow-" + ruleID.String() + "-" + event.EntityID.String() + "-"
+	// Format: workflow-{ruleID}-{dedupKey}. A direct caller carries a zero EventID,
+	// so dedupKey is the random executionID (F3.2). Verify prefix.
+	expectedPrefix := "workflow-" + ruleID.String() + "-"
 	if len(wfID) <= len(expectedPrefix) {
 		t.Fatalf("workflow ID too short: %s", wfID)
 	}
@@ -735,7 +784,7 @@ func TestWorkflowIDFormat(t *testing.T) {
 		t.Errorf("workflow ID prefix mismatch: expected %q, got %q", expectedPrefix, wfID[:len(expectedPrefix)])
 	}
 
-	// Verify the suffix is a valid UUID (executionID).
+	// Verify the suffix is a valid UUID (the dedup key — here the executionID).
 	suffix := wfID[len(expectedPrefix):]
 	if _, err := uuid.Parse(suffix); err != nil {
 		t.Errorf("workflow ID suffix should be a valid UUID, got %q: %v", suffix, err)

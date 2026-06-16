@@ -48,7 +48,9 @@ const (
 	userKey
 	productKey
 	homeKey
-	trKey
+	// trKey removed (F2 / DESIGN §7.3): the request transaction is now carried on the
+	// business-layer sqldb tx-on-ctx key via setTran/GetTran, a single source of truth
+	// shared with outbox.Emit. No separate mid key.
 	tableInfoKey
 	restrictedColumnKey
 	scenarioKey
@@ -109,18 +111,22 @@ func GetHome(ctx context.Context) (homebus.Home, error) {
 	return v, nil
 }
 
+// setTran stores the request transaction on the context. It is backed by the
+// business-layer sqldb tx-on-ctx carrier (one source of truth) so the same tx is
+// visible to ctx-tx readers in the business layer — notably outbox.Emit, which must
+// persist a cascade event in the request's unit of work (F2 / DESIGN §7.3).
 func setTran(ctx context.Context, tx sqldb.CommitRollbacker) context.Context {
-	return context.WithValue(ctx, trKey, tx)
+	return sqldb.WithCommitRollbacker(ctx, tx)
 }
 
 // GetTran retrieves the value that can manage a transaction.
 func GetTran(ctx context.Context) (sqldb.CommitRollbacker, error) {
-	v, ok := ctx.Value(trKey).(sqldb.CommitRollbacker)
+	tx, ok := sqldb.GetTx(ctx)
 	if !ok {
 		return nil, errors.New("transaction not found in context")
 	}
 
-	return v, nil
+	return tx, nil
 }
 
 func setTableInfo(ctx context.Context, tableInfo *TableInfo) context.Context {

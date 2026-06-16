@@ -2692,3 +2692,27 @@ CROSS JOIN (VALUES
 ) AS actions(action_type)
 WHERE r.name = 'ZZZADMIN'
 ON CONFLICT (role_id, action_type) DO NOTHING;
+
+-- Version: 2.42
+-- Description: F2 transactional outbox for cascade delegate events. One row per cascade-relevant
+--   domain event, written in the SAME tx as the entity write; a polling relay drains it into
+--   WorkflowTrigger.OnEntityEvent at-least-once. id doubles as the Temporal workflow-id dedup key;
+--   seq gives total order; lineage carries the loop-guard visited-set (and is F8's traceparent slot).
+CREATE TABLE workflow.cascade_outbox (
+    id            UUID        PRIMARY KEY,        -- durable event id = Temporal dedup key
+    seq           BIGSERIAL   NOT NULL UNIQUE,    -- total order for the relay
+    domain        TEXT        NOT NULL,           -- delegate.Data.Domain
+    action        TEXT        NOT NULL,           -- delegate.Data.Action (e.g. orders.updated)
+    event_type    TEXT        NOT NULL,           -- on_create | on_update | on_delete
+    entity_name   TEXT        NOT NULL,
+    payload       JSONB       NOT NULL,           -- delegate.Data (Domain/Action/RawParams) for relay enrichment
+    lineage       JSONB,                          -- serialized WorkflowLineage (loop guard; F8 traceparent)
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    attempts      INT         NOT NULL DEFAULT 0,
+    last_error    TEXT,
+    published_at  TIMESTAMPTZ,                    -- NULL = pending
+    dead          BOOLEAN     NOT NULL DEFAULT false
+);
+CREATE INDEX idx_cascade_outbox_pending
+    ON workflow.cascade_outbox (seq)
+    WHERE published_at IS NULL AND dead = false;
