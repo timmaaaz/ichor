@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
+	"github.com/timmaaaz/ichor/business/sdk/outbox"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/foundation/logger"
@@ -41,6 +42,7 @@ type Business struct {
 	log    *logger.Logger
 	storer Storer
 	del    *delegate.Delegate
+	outbox *outbox.Writer
 }
 
 // NewBusiness constructs a currency business API for use.
@@ -54,6 +56,14 @@ func NewBusiness(log *logger.Logger, del *delegate.Delegate, storer Storer) *Bus
 
 // NewWithTx constructs a new business value that will use the
 // specified transaction in any store related calls.
+// WithOutbox returns a copy of the Business wired to the cascade outbox Writer.
+// Inert until the Writer is injected at the F2 cutover (nil Writer -> Emit no-ops).
+func (b *Business) WithOutbox(w *outbox.Writer) *Business {
+	nb := *b
+	nb.outbox = w
+	return &nb
+}
+
 func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 	storer, err := b.storer.NewWithTx(tx)
 	if err != nil {
@@ -63,6 +73,7 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 	bus := Business{
 		log:    b.log,
 		storer: storer,
+		outbox: b.outbox,
 	}
 
 	return &bus, nil
@@ -95,6 +106,10 @@ func (b *Business) Create(ctx context.Context, nc NewCurrency) (Currency, error)
 	}
 
 	// Fire delegate event for workflow automation
+	evtData := ActionCreatedData(currency)
+	if err := b.outbox.Emit(ctx, evtData); err != nil {
+		return Currency{}, fmt.Errorf("emit cascade event: %w", err)
+	}
 	if err := b.del.Call(ctx, ActionCreatedData(currency)); err != nil {
 		b.log.Error(ctx, "currencybus: delegate call failed", "action", ActionCreated, "err", err)
 	}
@@ -139,6 +154,10 @@ func (b *Business) Update(ctx context.Context, currency Currency, uc UpdateCurre
 	}
 
 	// Fire delegate event for workflow automation
+	evtData := ActionUpdatedData(before, currency)
+	if err := b.outbox.Emit(ctx, evtData); err != nil {
+		return Currency{}, fmt.Errorf("emit cascade event: %w", err)
+	}
 	if err := b.del.Call(ctx, ActionUpdatedData(before, currency)); err != nil {
 		b.log.Error(ctx, "currencybus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
@@ -156,6 +175,10 @@ func (b *Business) Delete(ctx context.Context, currency Currency) error {
 	}
 
 	// Fire delegate event for workflow automation
+	evtData := ActionDeletedData(currency)
+	if err := b.outbox.Emit(ctx, evtData); err != nil {
+		return fmt.Errorf("emit cascade event: %w", err)
+	}
 	if err := b.del.Call(ctx, ActionDeletedData(currency)); err != nil {
 		b.log.Error(ctx, "currencybus: delegate call failed", "action", ActionDeleted, "err", err)
 	}

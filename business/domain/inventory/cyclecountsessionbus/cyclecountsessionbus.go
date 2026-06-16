@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/order"
+	"github.com/timmaaaz/ichor/business/sdk/outbox"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/foundation/logger"
@@ -40,6 +41,7 @@ type Business struct {
 	log      *logger.Logger
 	storer   Storer
 	delegate *delegate.Delegate
+	outbox   *outbox.Writer
 }
 
 // NewBusiness constructs a cycle count session business API for use.
@@ -53,6 +55,14 @@ func NewBusiness(log *logger.Logger, delegate *delegate.Delegate, storer Storer)
 
 // NewWithTx constructs a new Business value replacing the Storer
 // value with a Storer value that is currently inside a transaction.
+// WithOutbox returns a copy of the Business wired to the cascade outbox Writer.
+// Inert until the Writer is injected at the F2 cutover (nil Writer -> Emit no-ops).
+func (b *Business) WithOutbox(w *outbox.Writer) *Business {
+	nb := *b
+	nb.outbox = w
+	return &nb
+}
+
 func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 	storer, err := b.storer.NewWithTx(tx)
 	if err != nil {
@@ -63,6 +73,7 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		log:      b.log,
 		storer:   storer,
 		delegate: b.delegate,
+		outbox:   b.outbox,
 	}, nil
 }
 
@@ -90,6 +101,10 @@ func (b *Business) Create(ctx context.Context, nccs NewCycleCountSession) (Cycle
 		return CycleCountSession{}, fmt.Errorf("create: %w", err)
 	}
 
+	evtData := ActionCreatedData(session)
+	if err := b.outbox.Emit(ctx, evtData); err != nil {
+		return CycleCountSession{}, fmt.Errorf("emit cascade event: %w", err)
+	}
 	if err := b.delegate.Call(ctx, ActionCreatedData(session)); err != nil {
 		b.log.Error(ctx, "cyclecountsessionbus: delegate call failed", "action", ActionCreated, "err", err)
 	}
@@ -120,6 +135,10 @@ func (b *Business) Update(ctx context.Context, session CycleCountSession, uccs U
 		return CycleCountSession{}, fmt.Errorf("update: %w", err)
 	}
 
+	evtData := ActionUpdatedData(before, session)
+	if err := b.outbox.Emit(ctx, evtData); err != nil {
+		return CycleCountSession{}, fmt.Errorf("emit cascade event: %w", err)
+	}
 	if err := b.delegate.Call(ctx, ActionUpdatedData(before, session)); err != nil {
 		b.log.Error(ctx, "cyclecountsessionbus: delegate call failed", "action", ActionUpdated, "err", err)
 	}
@@ -136,6 +155,10 @@ func (b *Business) Delete(ctx context.Context, session CycleCountSession) error 
 		return fmt.Errorf("delete: %w", err)
 	}
 
+	evtData := ActionDeletedData(session)
+	if err := b.outbox.Emit(ctx, evtData); err != nil {
+		return fmt.Errorf("emit cascade event: %w", err)
+	}
 	if err := b.delegate.Call(ctx, ActionDeletedData(session)); err != nil {
 		b.log.Error(ctx, "cyclecountsessionbus: delegate call failed", "action", ActionDeleted, "err", err)
 	}
