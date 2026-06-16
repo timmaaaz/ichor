@@ -38,6 +38,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryadjustmentbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryitembus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/picktaskbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/putawaytaskbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/transferorderbus"
@@ -738,10 +739,97 @@ func Test_ManifestConsistency_DeclaredEqualsFired(t *testing.T) {
 		if err != nil {
 			t.Fatalf("seeding in-transit transfer order: %v", err)
 		}
-		h := inventory.NewExecuteTransferOrderHandler(db.Log, db.BusDomain.TransferOrder)
+		// Execute now performs the atomic stock move, so it needs the DB + inventory buses and
+		// stock at the source. Subtest #8 (allocate) already seeded (loc0, productIDs[0]) at qty
+		// 100 and only set allocated_quantity, so the physical quantity covers this qty-5 decrement.
+		h := inventory.NewExecuteTransferOrderHandler(db.Log, db.DB, db.BusDomain.TransferOrder, db.BusDomain.InventoryTransaction, db.BusDomain.InventoryItem)
 		cfg := mustJSON(t, map[string]any{"transfer_order_id": to.TransferID.String()})
 		run(t, "execute_transfer_order", h, cfg, workflow.ActionExecutionContext{UserID: uid})
 	})
+}
+
+// Test_ExecuteTransferOrder_MovesStock proves the execute_transfer_order BUTTON path performs
+// the same atomic inventory move as the REST transferorderapp.Execute: a TRANSFER_OUT/IN ledger
+// pair plus a source decrement and destination increment, not just the status flip. Before the
+// fix the handler called the status-only transferorderbus.Execute and left inventory untouched.
+func Test_ExecuteTransferOrder_MovesStock(t *testing.T) {
+	t.Parallel()
+
+	db := dbtest.NewDatabase(t, "Test_ExecuteTransferOrder_MovesStock")
+	ctx := context.Background()
+
+	base := seedConsistencyBase(t, ctx, db)
+	uid := base.userID
+
+	const qty = 6
+	// Source stock at (loc0, productIDs[0]); TestSeedInventoryItems seeds quantity 100.
+	if _, err := inventoryitembus.TestSeedInventoryItems(ctx, 1, []uuid.UUID{base.loc0}, []uuid.UUID{base.productIDs[0]}, db.BusDomain.InventoryItem); err != nil {
+		t.Fatalf("seeding source inventory: %v", err)
+	}
+
+	to, err := db.BusDomain.TransferOrder.Create(ctx, transferorderbus.NewTransferOrder{
+		ProductID: base.productIDs[0], FromLocationID: base.loc0, ToLocationID: base.loc1,
+		RequestedByID: uid, Quantity: qty, Status: transferorderbus.StatusInTransit, TransferDate: time.Now(),
+	})
+	if err != nil {
+		t.Fatalf("seeding in-transit transfer: %v", err)
+	}
+
+	srcBefore := qtyAt(t, ctx, db, base.productIDs[0], base.loc0)
+	dstBefore := qtyAt(t, ctx, db, base.productIDs[0], base.loc1) // 0 — no item at dest yet
+
+	h := inventory.NewExecuteTransferOrderHandler(db.Log, db.DB, db.BusDomain.TransferOrder, db.BusDomain.InventoryTransaction, db.BusDomain.InventoryItem)
+	out, err := h.Execute(ctx, mustJSON(t, map[string]any{"transfer_order_id": to.TransferID.String()}), workflow.ActionExecutionContext{UserID: uid})
+	if err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+	if m, _ := out.(map[string]any); m["output"] != "executed" {
+		t.Fatalf("expected output 'executed', got %v", out)
+	}
+
+	srcAfter := qtyAt(t, ctx, db, base.productIDs[0], base.loc0)
+	dstAfter := qtyAt(t, ctx, db, base.productIDs[0], base.loc1)
+
+	if got := srcBefore - srcAfter; got != qty {
+		t.Errorf("source not decremented by %d: before=%d after=%d", qty, srcBefore, srcAfter)
+	}
+	if got := dstAfter - dstBefore; got != qty {
+		t.Errorf("destination not incremented by %d: before=%d after=%d", qty, dstBefore, dstAfter)
+	}
+
+	ref := to.TransferID.String()
+	if n := txnCount(t, ctx, db, "TRANSFER_OUT", ref); n != 1 {
+		t.Errorf("expected 1 TRANSFER_OUT ledger row, got %d", n)
+	}
+	if n := txnCount(t, ctx, db, "TRANSFER_IN", ref); n != 1 {
+		t.Errorf("expected 1 TRANSFER_IN ledger row, got %d", n)
+	}
+}
+
+func qtyAt(t *testing.T, ctx context.Context, db *dbtest.Database, productID, locationID uuid.UUID) int {
+	t.Helper()
+	items, err := db.BusDomain.InventoryItem.Query(ctx,
+		inventoryitembus.QueryFilter{ProductID: &productID, LocationID: &locationID},
+		inventoryitembus.DefaultOrderBy, page.MustParse("1", "10"))
+	if err != nil {
+		t.Fatalf("query inventory at (%s,%s): %v", productID, locationID, err)
+	}
+	total := 0
+	for _, it := range items {
+		total += it.Quantity
+	}
+	return total
+}
+
+func txnCount(t *testing.T, ctx context.Context, db *dbtest.Database, txType, ref string) int {
+	t.Helper()
+	txns, err := db.BusDomain.InventoryTransaction.Query(ctx,
+		inventorytransactionbus.QueryFilter{TransactionType: &txType, ReferenceNumber: &ref},
+		inventorytransactionbus.DefaultOrderBy, page.MustParse("1", "50"))
+	if err != nil {
+		t.Fatalf("query %s transactions: %v", txType, err)
+	}
+	return len(txns)
 }
 
 // newPendingPO builds an unapproved/unrejected PO (the approve/reject precondition).

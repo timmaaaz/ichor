@@ -12,7 +12,7 @@ import (
 )
 
 func TestExecuteTransferOrder_Validate(t *testing.T) {
-	handler := inventory.NewExecuteTransferOrderHandler(nil, nil)
+	handler := inventory.NewExecuteTransferOrderHandler(nil, nil, nil, nil, nil)
 
 	tests := []struct {
 		name      string
@@ -50,7 +50,7 @@ func TestExecuteTransferOrder_Validate(t *testing.T) {
 }
 
 func TestExecuteTransferOrder_Metadata(t *testing.T) {
-	handler := inventory.NewExecuteTransferOrderHandler(nil, nil)
+	handler := inventory.NewExecuteTransferOrderHandler(nil, nil, nil, nil, nil)
 
 	if got := handler.GetType(); got != "execute_transfer_order" {
 		t.Fatalf("expected execute_transfer_order, got %s", got)

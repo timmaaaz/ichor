@@ -195,7 +195,16 @@ func RegisterGranularInventoryActions(registry *workflow.ActionRegistry, config 
 		registry.Register(inventory.NewApproveTransferOrderHandler(config.Log, config.Buses.TransferOrder))
 		registry.Register(inventory.NewRejectTransferOrderHandler(config.Log, config.Buses.TransferOrder))
 		registry.Register(inventory.NewClaimTransferOrderHandler(config.Log, config.Buses.TransferOrder))
-		registry.Register(inventory.NewExecuteTransferOrderHandler(config.Log, config.Buses.TransferOrder))
+		// execute_transfer_order performs the atomic stock move (TRANSFER_OUT/IN + source
+		// decrement + destination increment), so it needs the DB + inventory buses — the same
+		// dependencies the REST transferorderapp.Execute path uses.
+		registry.Register(inventory.NewExecuteTransferOrderHandler(
+			config.Log,
+			config.DB,
+			config.Buses.TransferOrder,
+			config.Buses.InventoryTransaction,
+			config.Buses.InventoryItem,
+		))
 	}
 
 	if config.Buses.PutAwayTask != nil {
