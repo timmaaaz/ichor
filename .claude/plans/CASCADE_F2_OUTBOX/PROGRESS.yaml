@@ -1,0 +1,230 @@
+# PROGRESS — F2: Transactional outbox for cascade delegate events
+# Mirrors DESIGN.md. Status: not_started | in_progress | done
+# Created 2026-06-16. Source of truth for design = DESIGN.md.
+
+meta:
+  branch: feature/cascade-f2-outbox
+  base: master f98c1b6b
+  worktree: /Users/jaketimmer/src/work/superior/ichor/ichor-cascade-f2-outbox
+  design: .claude/plans/CASCADE_F2_OUTBOX/DESIGN.md
+  parent: .claude/plans/CASCADE_DELEGATE_EVENTS/  (F2 pays down FOLLOW_UP §3 / DESIGN §211)
+  principle: >
+    The delegate is Ardan's CYCLE-BREAKER (best-effort indirect cross-package call), NOT an event
+    bus. It stays UNTOUCHED except removing its cascade subscriber. The outbox write is EXPLICIT
+    persistence in the unit of work — bus returns the Emit error, mid.BeginCommitRollback rolls
+    back. Postgres tx-poison is a backstop, not the mechanism.
+  hard_rule: >
+    NO double-dispatch window. The old delegate-cascade path and the new outbox+relay path must
+    never be live at once (different event ids => dedup won't collapse them => double cascade).
+    outbox.Emit is INERT (Writer not injected) until the F5 cutover, which atomically (one commit)
+    injects the Writer + starts the relay + removes the cascade subscriber. Mirrors the parent
+    plan's P4 gate.
+  invariant: >
+    Cascade SEMANTICS unchanged (same events fire, same rules match, same loop guard). F2 changes
+    DELIVERY only (best-effort -> durable at-least-once + dedup) and PLACEMENT (delegate -> outbox).
+  execution_model: >
+    Serial SPINE (F0-F3, main context) then PARALLEL FAN-OUT (F4, /spawn-agents, opus, one package
+    group per agent) then CUTOVER (F5, main context). Do NOT serialize the ~58-bus edits.
+  testing_doctrine: >
+    TDD-first / prove-RED (DESIGN §8). Changed packages ONLY; NEVER `go test ./...`. Unique Temporal
+    task queue per test; scoped queries; trust `go build -C <worktree>` over gopls squiggles.
+  migration_version: "2.42 (master=2.40; buttons branch=2.41, not in this worktree; append-only)"
+  do_not_execute_in_this_window: true   # plan authored 2026-06-16; execution begins in a fresh prompt
+
+spine:
+  F0:
+    title: "Foundations + RED reliability tests"
+    status: in_progress
+    gate: "—"
+    note: "No production behavior change. Establishes table, tx-from-ctx helper, outbox skeleton, and the FAILING reliability tests that pin the guarantees."
+    tasks:
+      - id: F0.1
+        title: "Migration 2.42 — workflow.cascade_outbox (DESIGN §5) + partial pending index"
+        status: done
+        done_when: "migrate builds + applies clean in dbtest; darwin parses 2.42; table+index present"
+        note: "DONE — appended 2.42 verbatim from DESIGN §5; migrate pkg builds; applies clean (dbtest NewDatabase migrates to 2.42 and outbox tests hit the table GREEN)."
+      - id: F0.2
+        title: "sqldb.GetTxExecutor(ctx) (sqlx.ExtContext, bool) over the existing (dead) WithTx/GetTx"
+        status: done
+        done_when: "unit: tx-backed ExtContext when WithTx set; (nil,false) otherwise"
+        note: "DONE — GetTxExecutor added to context.go; no-tx branch unit-tested (context_test.go GREEN); tx-backed branch covered by TestEmit/writes_on_the_ctx_transaction (real tx)."
+      - id: F0.3
+        title: "RED reliability integration tests on the cascade_lineage_test.go manual-worker rig"
+        status: not_started
+        note: >
+          atomicity (both directions), read-your-writes (Path-B allocate), lineage A->B->A survival,
+          at-least-once+dedup, ordering, e2e Path-A, reaper, no-double-dispatch, Registrations coverage.
+          ORDERING ADJUSTMENT (technically forced, not a design change): these integration tests
+          reference the outbox/relay API, so they cannot compile before F1-F3 exist. Written against
+          the real spine API AFTER F3, run to capture RED BEFORE the F5 cutover (Emit not yet wired
+          into buses -> no rows -> guarantee assertions fail), turned GREEN in F6. TDD arc preserved.
+          NOTE: store/emit-level atomicity (rolled-back tx -> 0 rows) + RYW-shaped on-tx invisibility
+          already proven GREEN at unit level in TestEmit (outbox_test.go).
+        done_when: "tests compile; atomicity/RYW guarantee assertions demonstrably FAIL pre-cutover (RED baseline captured)"
+
+  F1:
+    title: "Outbox store + Emit + model (unit-tested)"
+    status: done
+    gate: "after F0"
+    note: >
+      DONE. Pure additions; Emit is nil-receiver-safe (NO-OP until a real *Writer is injected at
+      cutover). Zero behavior change. KEY DESIGN RESOLUTIONS (forced by layer purity; outbox must
+      not import temporal[cycle via relay] nor api/cmd/build/workflowdomains): (1) event_type =
+      pure fn of action; (2) entity_name resolved at write time from an INJECTED domain->entity map
+      (all.go builds it from workflowdomains.Registrations()); (3) lineage read via an INJECTED
+      func(ctx)[]byte adapter (all.go wraps a small exported temporal helper) so the row carries the
+      serialized visited-set with no temporal import; (4) injection = nil-safe SETTER on the bus
+      (b.outbox *outbox.Writer), NOT a 58-constructor signature change -> cutover stays atomic +
+      localized to all.go/worker, tests untouched.
+    tasks:
+      - id: F1.1
+        title: "business/sdk/outbox: model.go (Outbox row + delegate.Data/lineage (de)serialize)"
+        status: done
+        done_when: "round-trip unit test (require.JSONEq)"
+        note: "DONE — model.go (Outbox, eventTypeForAction, entityIDFromData); TestPayloadRoundTrip GREEN (require.JSONEq)."
+      - id: F1.2
+        title: "store.go (or stores/outboxdb): insert / fetch-pending(ORDER BY seq) / delete-on-publish / mark-dead / reap"
+        status: done
+        done_when: "DB-backed unit tests incl. FOR UPDATE SKIP LOCKED non-double-processing"
+        note: "DONE — store.go (Insert/FetchPending/DeletePublished/MarkAttempt/Reap, executor passed per-call). TestStore GREEN incl. SKIP LOCKED non-double-processing, seq order, reap window. GOTCHA fixed: '::jsonb' mangled by sqldb named-query parser -> use CAST('null' AS jsonb)."
+      - id: F1.3
+        title: "emit.go: Writer.Emit(ctx, data) -> INSERT on sqldb.GetTxExecutor(ctx); pool fallback + loud warn; returns real error. nil/disabled Writer = no-op. Leave a `// bouncer:` marker (DESIGN §2 follow-up)."
+        status: done
+        done_when: "unit: writes on ctx tx; fallback warns; returns error; nil Writer no-ops"
+        note: "DONE — emit.go (nil-safe Writer.Emit, // bouncer: marker, GetTxExecutor + pool fallback warn). TestEmit GREEN: on-tx (invisible to pool pre-commit), rollback->0 rows, pool fallback, error propagation; TestNilWriterNoop GREEN."
+
+  F2:
+    title: "Relay (built, NOT started)"
+    status: done
+    gate: "after F1"
+    note: >
+      DONE. relay.go reuses temporal's extractEntityData/computeFieldChanges (relocation finalized at
+      F5 cleanup when DelegateHandler dispatch is deleted; funcs stay shared in-package). NOT wired
+      into all.go (starts only at cutover). Extracted a narrow EventDispatcher interface
+      (OnEntityEvent) — *WorkflowTrigger satisfies it (compile-time assert) — so the relay's
+      drain/retry/dead/reap/enrichment is testable with a fake, no Temporal stack. ProcessBatch/Reap
+      exported for deterministic test draining (the manual-worker rig + F6). Poll tx holds FOR UPDATE
+      locks across dispatch (single server relay; SKIP LOCKED keeps a 2nd process safe).
+    tasks:
+      - id: F2.1
+        title: "temporal/relay.go: poll (ORDER BY seq, FOR UPDATE SKIP LOCKED) -> rebuild TriggerEvent (extractEntityData/computeFieldChanges relocated) -> contextWithLineage -> OnEntityEvent; delete-on-publish; attempts/dead; reaper"
+        status: done
+        done_when: "unit/integration: drains in order; retries on error; dead after N; reaper deletes aged dead rows; enrichment golden-matches the old DelegateHandler output"
+        note: "DONE — relay_test.go GREEN: DrainsInSeqOrderThenDeletes, RetriesThenMarksDeadAfterMaxAttempts, ReapsAgedDeadRowsOnly, BuildEventEnrichment (on_create id+rawdata+eventid / on_update field-changes / corrupt->dead), DecodeLineage round-trip."
+
+  F3:
+    title: "Dedup + Path-A carrier"
+    status: done
+    gate: "after F2"
+    tasks:
+      - id: F3.1
+        title: "Add EventID to workflow.TriggerEvent; relay sets it = row.id"
+        status: done
+        done_when: "go build; relay populates EventID"
+        note: "DONE — EventID uuid.UUID added (json:event_id,omitempty); relay.buildEvent sets it = row.ID (relay_test asserts)."
+      - id: F3.2
+        title: "trigger.go: deterministic workflow id workflow-{ruleID}-{eventID} + WorkflowIDReusePolicy=REJECT_DUPLICATE; zero EventID -> uuid.New() fallback"
+        status: done
+        done_when: "verify nothing else parses the random executionID; unit + integration: re-dispatch same id -> exactly one workflow"
+        note: "DONE — grep confirmed NOTHING parses the workflow-id string (opaque); id now workflow-{ruleID}-{dedupKey}, dedupKey=EventID or executionID fallback; REJECT_DUPLICATE set. Updated 2 stale trigger_test assertions (intentional format change) + added TestOnEntityEvent_DedupWorkflowID (deterministic id + reuse policy + idempotent re-dispatch) GREEN."
+      - id: F3.3
+        title: "Path A: mid/transaction.go assert CommitRollbacker->*sqlx.Tx + sqldb.WithTx(ctx,tx); back mid.GetTran with sqldb.GetTx (verify callers) [cleanup DESIGN §7.3]"
+        status: done
+        done_when: "go build+vet; mid behavior unchanged; app handlers feeding NewWithTx still work"
+        note: >
+          DONE — VERIFIED mid.GetTran has ZERO real callers (dead); app tx handlers (pickingapp etc.)
+          begin their OWN tx + NewWithTx, not mid.GetTran. Unified on ONE key: setTran->
+          sqldb.WithCommitRollbacker (new sqldb bridge, mid stays sqlx-free), GetTran->sqldb.GetTx,
+          removed dead trKey. So the request tx now lands on the sqldb key outbox.Emit reads (DESIGN
+          §7.3 reduces duplication). Full `go build ./...` clean. FINDING (follow_up): app tx handlers
+          (pickingapp/picktaskapp/cyclecountsessionapp/...) write cascade buses on their own tx but
+          don't set sqldb.WithTx(ctx,tx) -> their Emit will hit the pool fallback (same RYW behavior as
+          today, NOT a regression). Same class as F2.followup.nontx_buses; on-a-tx trip-wire surfaces them.
+
+fan_out:
+  F4:
+    title: "PARALLEL — outbox.Emit across cascade buses + Path-B/C carrier  (/spawn-agents, opus)"
+    status: not_started
+    gate: "after F3 (spine green). INERT until F5 — Writer not injected, so no behavior change."
+    note: >
+      Embarrassingly parallel; partition by package group, one agent per group, each runs its own
+      `go build`. DO NOT serialize. Coverage trip-wire (F0.3) backstops a forgotten Emit.
+    tasks:
+      - id: F4.1
+        title: "~58 cascade buses (the workflowdomains.Registrations() set): add b.outbox.Emit(ctx,data) + `return err` in Create/Update/Delete; keep delegate.Call ONLY where a best-effort subscriber exists (role/tableaccess/userrole), else drop the now-dead call"
+        status: not_started
+        done_when: "every Registrations() domain emits; per-package go build green; coverage consistency test green"
+      - id: F4.2
+        title: "Path B: 6 BeginTxx handlers set ctx=sqldb.WithTx(ctx,tx), thread into bus calls"
+        status: not_started
+        done_when: "go build per package; handler tests green"
+      - id: F4.3
+        title: "Path C: create/updatefield/transition wrap write+emit in a tx, set WithTx, commit"
+        status: not_started
+        done_when: "go build; generic-write handler tests green"
+
+cutover:
+  F5:
+    title: "CUTOVER GATE — atomic flip (one commit)  [hard_rule]"
+    status: not_started
+    gate: "after F4 — everything built & inert"
+    note: "The single point where cascade delivery moves from delegate to outbox+relay. No armed-but-undrained window."
+    tasks:
+      - id: F5.1
+        title: "all.go + worker/main.go: inject the real outbox.Writer (Emit goes live) + start the relay goroutine + REMOVE the cascade subscriber RegisterDomain loop; delete dead DelegateHandler dispatch (goroutine, WorkflowTrigger field)"
+        status: not_started
+        done_when: "both binaries build; server boots relay; manual smoke: a write lands a row, relay drains it, cascade runs; delegate no longer dispatches cascade"
+
+verify:
+  F6:
+    title: "Reliability verification (live) — turn the RED tests GREEN"
+    status: not_started
+    gate: "after F5"
+    note: "Mirrors the parent plan's PL."
+    tasks:
+      - id: F6.1
+        title: "Atomicity both directions GREEN (rolled-back write -> 0 rows + no cascade; Emit error -> bus returns err -> entity rolls back; poison backstop asserted)"
+        status: not_started
+      - id: F6.2
+        title: "Read-your-writes GREEN (Path-B allocate reads committed entity); lineage A->B->A still STOPS across serialize+rehydrate"
+        status: not_started
+      - id: F6.3
+        title: "At-least-once+dedup, ordering, e2e Path-A, reaper, no-double-dispatch trip-wire, Registrations coverage — all GREEN"
+        status: not_started
+        done_when: "full changed-package sweep green: business/sdk/outbox/..., temporal/..., changed bus+handler pkgs, app/sdk/mid, business/sdk/sqldb, + integration pkg"
+
+ship:
+  F7:
+    title: "Cleanup sweep + docs + ship"
+    status: not_started
+    gate: "after F6"
+    tasks:
+      - id: F7.1
+        title: "Dead-code sweep: grep confirms no old goroutine / handler-side OnEntityEvent / dropped WorkflowTrigger field / dead delegate.Call remains; no orphaned imports"
+        status: not_started
+      - id: F7.2
+        title: "Docs: docs/arch/delegate.md (delegate = cycle-break-only again) + workflow-engine.md (outbox seam, relay, dedup); note F8 lineage/traceparent hook"
+        status: not_started
+      - id: F7.3
+        title: "go build ./... clean; PROGRESS -> done; conventional commit; (push only when user asks)"
+        status: not_started
+
+follow_up:
+  - id: F2.followup.bouncer
+    title: "Volume-guard pre-filter ('bouncer'): skip Emit when no active rule listens for (domain,event_type)"
+    trigger: "observed outbox churn from no-match writes; the `// bouncer:` marker marks the seam"
+  - id: F2.followup.notify
+    title: "LISTEN/NOTIFY fast-path atop the poll (latency; table/carrier/seam unchanged)"
+    trigger: "a concrete sub-second cascade-latency requirement"
+  - id: F2.followup.worker_relay
+    title: "Run the relay in the worker too (HA), relying on SKIP LOCKED"
+    trigger: "cascades must keep draining while the server is down"
+  - id: F2.followup.nontx_buses
+    title: "Make non-tx bus write paths (e.g. create_put_away_task) transactional so Emit is atomic there too"
+    trigger: "the on-a-tx trip-wire flags a non-tx cascade path that matters"
+  - id: F2.followup.apptx_withtx
+    title: "App tx handlers (pickingapp/picktaskapp/cyclecountsessionapp/pageactionapp/...) call sqldb.WithTx(ctx,tx) after their own Begin so cascade-bus Emits there are atomic (read-your-writes) instead of hitting the pool fallback"
+    trigger: "discovered during F3.3: these begin their own tx + NewWithTx but don't carry it on ctx. Pool fallback = same RYW race as today (not a regression). On-a-tx trip-wire surfaces them. Out of DESIGN's 3-path scope; contained per-handler fix."
+  - id: F8
+    title: "Cascade OTel observability — traceparent in WorkflowLineage; span per hop at the relay; dropped/dead-row metric"
+    trigger: "FOLLOW_UP §10 — alongside/just after F2; lineage column + relay seam already in place"

@@ -7,6 +7,7 @@ import (
 	"maps"
 
 	"github.com/google/uuid"
+	enumspb "go.temporal.io/api/enums/v1"
 	"go.temporal.io/sdk/client"
 
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
@@ -196,13 +197,21 @@ func (t *WorkflowTrigger) startWorkflowForRule(
 		lineage.OriginatingExecutionID = executionID
 	}
 
-	// Deterministic workflow ID for deduplication and traceability.
-	// Format: workflow-{ruleID}-{entityID}-{executionID}
-	workflowID := fmt.Sprintf("workflow-%s-%s-%s",
-		rm.Rule.ID,
-		event.EntityID,
-		executionID,
-	)
+	// Deterministic, dedup-keyed workflow ID. Format: workflow-{ruleID}-{dedupKey}.
+	//
+	// When the event was drained from the outbox relay (F2), event.EventID is the
+	// durable outbox row id, so the id is stable across an at-least-once re-publish of
+	// that row; the REJECT_DUPLICATE reuse policy below then collapses the retry into
+	// a single execution (at-least-once emission -> effectively-once execution).
+	//
+	// Direct OnEntityEvent callers (human writes pre-cutover, tests) carry a zero
+	// EventID and fall back to the per-dispatch random executionID, preserving the
+	// pre-F2 behavior of a unique id per dispatch.
+	dedupKey := event.EventID
+	if dedupKey == uuid.Nil {
+		dedupKey = executionID
+	}
+	workflowID := fmt.Sprintf("workflow-%s-%s", rm.Rule.ID, dedupKey)
 
 	// Build trigger data map (reused for both the execution record and workflow input).
 	triggerData := buildTriggerData(event)
@@ -247,10 +256,13 @@ func (t *WorkflowTrigger) startWorkflowForRule(
 		TriggerData: triggerData,
 	}
 
-	// Start Temporal workflow.
+	// Start Temporal workflow. REJECT_DUPLICATE makes a re-dispatch of the same
+	// outbox event (same workflow id) a no-op at the server, giving effectively-once
+	// execution atop the relay's at-least-once delivery (DESIGN §5).
 	workflowOptions := client.StartWorkflowOptions{
-		ID:        workflowID,
-		TaskQueue: t.taskQueue,
+		ID:                    workflowID,
+		TaskQueue:             t.taskQueue,
+		WorkflowIDReusePolicy: enumspb.WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE,
 	}
 
 	we, err := t.starter.ExecuteWorkflow(ctx, workflowOptions,

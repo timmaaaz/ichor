@@ -19,6 +19,14 @@ type TriggerEvent struct {
 	Timestamp    time.Time              `json:"timestamp"`
 	RawData      map[string]any         `json:"raw_data,omitempty"`
 	UserID       uuid.UUID              `json:"user_id,omitempty"`
+
+	// EventID is the durable outbox row id when this event was drained by the relay
+	// (F2). The trigger derives the deterministic, dedup-keyed Temporal workflow id
+	// from it (workflow-{ruleID}-{eventID}); a re-published row yields the same id so
+	// Temporal's REJECT_DUPLICATE policy collapses the retry to exactly one execution.
+	// Zero for direct OnEntityEvent callers (human writes pre-cutover, tests), which
+	// fall back to a random id — see startWorkflowForRule.
+	EventID uuid.UUID `json:"event_id,omitempty"`
 }
 
 // FieldChange represents a change in a field value
