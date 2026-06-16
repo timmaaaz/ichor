@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
+	"github.com/timmaaaz/ichor/business/sdk/outbox"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/protected"
@@ -45,6 +46,7 @@ type UpdateFieldHandler struct {
 	protected    *protected.Registry
 	delegate     *delegate.Delegate
 	entityMap    map[string]EntityRef
+	outbox       *outbox.Writer
 }
 
 // NewUpdateFieldHandler creates a new update field handler
@@ -57,6 +59,7 @@ func NewUpdateFieldHandler(log *logger.Logger, db *sqlx.DB, opts ...Option) *Upd
 		protected:    o.protected,
 		delegate:     o.delegate,
 		entityMap:    o.entityMap,
+		outbox:       o.outbox,
 	}
 }
 
@@ -202,8 +205,20 @@ func (h *UpdateFieldHandler) Execute(ctx context.Context, config json.RawMessage
 		}
 	}
 
-	// Execute update - use h.db directly, no transaction support for now
-	recordsAffected, err := h.executeUpdate(ctx, h.db, cfg, resolvedValue, templateContext)
+	// Wrap the update and the cascade-event emit in one transaction so the outbox row
+	// commits or rolls back atomically with the UPDATE (F2 Path C). ctx carries the tx
+	// so fireSynthesizedEvent's Emit lands on it (read-your-writes correct).
+	tx, err := h.db.Beginx()
+	if err != nil {
+		result["error_message"] = err.Error()
+		result["completed_at"] = time.Now()
+		result["execution_time_ms"] = time.Since(startTime).Milliseconds()
+		return result, fmt.Errorf("update_field: begin tx: %w", err)
+	}
+	defer tx.Rollback()
+	ctx = sqldb.WithTx(ctx, tx)
+
+	recordsAffected, err := h.executeUpdate(ctx, tx, cfg, resolvedValue, templateContext)
 	if err != nil {
 		result["error_message"] = err.Error()
 		result["completed_at"] = time.Now()
@@ -261,12 +276,20 @@ func (h *UpdateFieldHandler) Execute(ctx context.Context, config json.RawMessage
 		if entityID != uuid.Nil {
 			entity["id"] = entityID
 		}
-		fireSynthesizedEvent(ctx, h.log, h.delegate, h.entityMap, cfg.TargetEntity, workflow.ActionUpdated,
+		if err := fireSynthesizedEvent(ctx, h.log, h.delegate, h.outbox, h.entityMap, cfg.TargetEntity, workflow.ActionUpdated,
 			workflow.DelegateEventParams{
 				EntityID: entityID,
 				UserID:   execContext.UserID,
 				Entity:   entity,
-			})
+			}); err != nil {
+			result["error_message"] = err.Error()
+			return result, err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		result["error_message"] = err.Error()
+		return result, fmt.Errorf("update_field: commit: %w", err)
 	}
 
 	return result, nil

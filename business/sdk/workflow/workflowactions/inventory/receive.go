@@ -14,19 +14,20 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/procurement/supplierproductbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
 // ReceiveInventoryConfig represents the configuration for receiving inventory.
 type ReceiveInventoryConfig struct {
-	ProductID      string `json:"product_id"`
-	Quantity       int    `json:"quantity"`
-	LocationID     string `json:"location_id"`
-	SourceFromPO   bool   `json:"source_from_po,omitempty"`
-	POLineItemID   string `json:"po_line_item_id,omitempty"`
+	ProductID       string `json:"product_id"`
+	Quantity        int    `json:"quantity"`
+	LocationID      string `json:"location_id"`
+	SourceFromPO    bool   `json:"source_from_po,omitempty"`
+	POLineItemID    string `json:"po_line_item_id,omitempty"`
 	ReferenceNumber string `json:"reference_number,omitempty"`
-	Notes          string `json:"notes,omitempty"`
+	Notes           string `json:"notes,omitempty"`
 }
 
 // ReceiveInventoryHandler handles receive_inventory actions.
@@ -176,6 +177,11 @@ func (h *ReceiveInventoryHandler) Execute(ctx context.Context, config json.RawMe
 	}
 	defer tx.Rollback()
 
+	// Carry the tx on ctx so cascade-bus Emits in this handler persist their outbox
+	// rows in THIS transaction — atomic with the writes and read-your-writes correct
+	// (the relay dispatches only after commit). F4.2 / DESIGN §4 Path B.
+	ctx = sqldb.WithTx(ctx, tx)
+
 	txItemBus, err := h.inventoryItemBus.NewWithTx(tx)
 	if err != nil {
 		return nil, fmt.Errorf("create transactional item bus: %w", err)
@@ -257,11 +263,11 @@ func (h *ReceiveInventoryHandler) Execute(ctx context.Context, config json.RawMe
 		"output":            "received",
 		"inventory_item_id": item.ID.String(),
 		"transaction_id":    txRecord.InventoryTransactionID.String(),
-		"quantity_received":  cfg.Quantity,
-		"previous_quantity":  item.Quantity,
-		"new_quantity":       updatedItem.Quantity,
-		"product_id":         productID.String(),
-		"location_id":        locationID.String(),
+		"quantity_received": cfg.Quantity,
+		"previous_quantity": item.Quantity,
+		"new_quantity":      updatedItem.Quantity,
+		"product_id":        productID.String(),
+		"location_id":       locationID.String(),
 	}, nil
 }
 

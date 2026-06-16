@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
+	"github.com/timmaaaz/ichor/business/sdk/outbox"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/protected"
@@ -31,6 +32,7 @@ type CreateEntityHandler struct {
 	protected    *protected.Registry
 	delegate     *delegate.Delegate
 	entityMap    map[string]EntityRef
+	outbox       *outbox.Writer
 }
 
 // NewCreateEntityHandler creates a new create entity handler.
@@ -43,6 +45,7 @@ func NewCreateEntityHandler(log *logger.Logger, db *sqlx.DB, opts ...Option) *Cr
 		protected:    o.protected,
 		delegate:     o.delegate,
 		entityMap:    o.entityMap,
+		outbox:       o.outbox,
 	}
 }
 
@@ -135,7 +138,17 @@ func (h *CreateEntityHandler) Execute(ctx context.Context, config json.RawMessag
 		strings.Join(columns, ", "),
 		strings.Join(placeholders, ", "))
 
-	if _, err := sqldb.NamedExecContextWithCount(ctx, h.log, h.db, query, processedFields); err != nil {
+	// Wrap the write and the cascade-event emit in one transaction so the outbox row
+	// commits or rolls back atomically with the INSERT (F2 Path C). ctx carries the tx
+	// so fireSynthesizedEvent's Emit lands on it (read-your-writes correct).
+	tx, err := h.db.Beginx()
+	if err != nil {
+		return nil, fmt.Errorf("entity creation: begin tx: %w", err)
+	}
+	defer tx.Rollback()
+	ctx = sqldb.WithTx(ctx, tx)
+
+	if _, err := sqldb.NamedExecContextWithCount(ctx, h.log, tx, query, processedFields); err != nil {
 		return nil, fmt.Errorf("entity creation failed: %w", err)
 	}
 
@@ -146,10 +159,6 @@ func (h *CreateEntityHandler) Execute(ctx context.Context, config json.RawMessag
 		"target_entity": cfg.TargetEntity,
 		"status":        "success",
 	}
-
-	h.log.Info(ctx, "create_entity completed",
-		"entity", cfg.TargetEntity,
-		"created_id", createdID)
 
 	// Cascade (P4 M1): announce the new record (on_create) so it triggers any downstream
 	// rule whose trigger matches. INSERT always wrote one row, so this always fires. The
@@ -163,12 +172,22 @@ func (h *CreateEntityHandler) Execute(ctx context.Context, config json.RawMessag
 			entityID = parsed
 		}
 	}
-	fireSynthesizedEvent(ctx, h.log, h.delegate, h.entityMap, cfg.TargetEntity, workflow.ActionCreated,
+	if err := fireSynthesizedEvent(ctx, h.log, h.delegate, h.outbox, h.entityMap, cfg.TargetEntity, workflow.ActionCreated,
 		workflow.DelegateEventParams{
 			EntityID: entityID,
 			UserID:   execContext.UserID,
 			Entity:   processedFields,
-		})
+		}); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("entity creation: commit: %w", err)
+	}
+
+	h.log.Info(ctx, "create_entity completed",
+		"entity", cfg.TargetEntity,
+		"created_id", createdID)
 
 	return result, nil
 }

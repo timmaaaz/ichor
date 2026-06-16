@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryitembus"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
@@ -256,6 +257,11 @@ func (h *ReserveInventoryHandler) processReservation(
 		return nil, fmt.Errorf("begin transaction: %w", err)
 	}
 	defer tx.Rollback()
+
+	// Carry the tx on ctx so cascade-bus Emits in this handler persist their outbox
+	// rows in THIS transaction — atomic with the writes and read-your-writes correct
+	// (the relay dispatches only after commit). F4.2 / DESIGN §4 Path B.
+	ctx = sqldb.WithTx(ctx, tx)
 
 	txItemBus, err := h.inventoryItemBus.NewWithTx(tx)
 	if err != nil {

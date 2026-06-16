@@ -14,6 +14,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus"
 	"github.com/timmaaaz/ichor/business/domain/products/productbus"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
@@ -423,6 +424,11 @@ func (h *AllocateInventoryHandler) ProcessAllocation(ctx context.Context, reques
 		return nil, fmt.Errorf("begin transaction: %w", err)
 	}
 	defer tx.Rollback()
+
+	// Carry the tx on ctx so cascade-bus Emits in this handler persist their outbox
+	// rows in THIS transaction — atomic with the writes and read-your-writes correct
+	// (the relay dispatches only after commit). F4.2 / DESIGN §4 Path B.
+	ctx = sqldb.WithTx(ctx, tx)
 
 	result := &InventoryAllocationResult{
 		AllocationID:   request.ID,

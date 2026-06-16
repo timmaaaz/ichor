@@ -12,6 +12,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryitembus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
@@ -25,11 +26,11 @@ type ReleaseReservationConfig struct {
 
 // ReleaseReservationResult holds the result of a reservation release.
 type ReleaseReservationResult struct {
-	ProductID            string `json:"product_id"`
-	LocationID           string `json:"location_id"`
-	PreviousReserved     int    `json:"previous_reserved"`
-	NewReserved          int    `json:"new_reserved"`
-	QuantityReleased     int    `json:"quantity_released"`
+	ProductID        string `json:"product_id"`
+	LocationID       string `json:"location_id"`
+	PreviousReserved int    `json:"previous_reserved"`
+	NewReserved      int    `json:"new_reserved"`
+	QuantityReleased int    `json:"quantity_released"`
 }
 
 // ReleaseReservationHandler handles release_reservation actions.
@@ -125,6 +126,11 @@ func (h *ReleaseReservationHandler) Execute(ctx context.Context, config json.Raw
 		return ReleaseReservationResult{}, fmt.Errorf("begin transaction: %w", err)
 	}
 	defer tx.Rollback()
+
+	// Carry the tx on ctx so cascade-bus Emits in this handler persist their outbox
+	// rows in THIS transaction — atomic with the writes and read-your-writes correct
+	// (the relay dispatches only after commit). F4.2 / DESIGN §4 Path B.
+	ctx = sqldb.WithTx(ctx, tx)
 
 	txItemBus, err := h.inventoryItemBus.NewWithTx(tx)
 	if err != nil {

@@ -15,23 +15,24 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/procurement/supplierproductbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
 // CreatePurchaseOrderConfig represents the configuration for creating a purchase order.
 type CreatePurchaseOrderConfig struct {
-	SupplierID              string                  `json:"supplier_id,omitempty"`
-	PurchaseOrderStatusID   string                  `json:"purchase_order_status_id"`
-	DeliveryWarehouseID     string                  `json:"delivery_warehouse_id"`
-	DeliveryLocationID      string                  `json:"delivery_location_id"`
-	DeliveryStreetID        string                  `json:"delivery_street_id,omitempty"`
-	CurrencyID              string                  `json:"currency_id"`
-	OrderNumber             string                  `json:"order_number,omitempty"`
-	ExpectedDeliveryDays    int                     `json:"expected_delivery_days,omitempty"`
-	Notes                   string                  `json:"notes,omitempty"`
-	SourceFromEvent         bool                    `json:"source_from_event,omitempty"`
-	DefaultLineItemStatusID string                  `json:"default_line_item_status_id,omitempty"`
+	SupplierID              string                   `json:"supplier_id,omitempty"`
+	PurchaseOrderStatusID   string                   `json:"purchase_order_status_id"`
+	DeliveryWarehouseID     string                   `json:"delivery_warehouse_id"`
+	DeliveryLocationID      string                   `json:"delivery_location_id"`
+	DeliveryStreetID        string                   `json:"delivery_street_id,omitempty"`
+	CurrencyID              string                   `json:"currency_id"`
+	OrderNumber             string                   `json:"order_number,omitempty"`
+	ExpectedDeliveryDays    int                      `json:"expected_delivery_days,omitempty"`
+	Notes                   string                   `json:"notes,omitempty"`
+	SourceFromEvent         bool                     `json:"source_from_event,omitempty"`
+	DefaultLineItemStatusID string                   `json:"default_line_item_status_id,omitempty"`
 	LineItems               []CreatePOLineItemConfig `json:"line_items"`
 }
 
@@ -389,6 +390,11 @@ func (h *CreatePurchaseOrderHandler) Execute(ctx context.Context, config json.Ra
 		return nil, fmt.Errorf("begin transaction: %w", err)
 	}
 	defer tx.Rollback()
+
+	// Carry the tx on ctx so cascade-bus Emits in this handler persist their outbox
+	// rows in THIS transaction — atomic with the writes and read-your-writes correct
+	// (the relay dispatches only after commit). F4.2 / DESIGN §4 Path B.
+	ctx = sqldb.WithTx(ctx, tx)
 
 	txPOBus, err := h.purchaseOrderBus.NewWithTx(tx)
 	if err != nil {
