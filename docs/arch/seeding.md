@@ -186,7 +186,7 @@ type Database struct {
 ```
 
 key facts:
-  - DB name: random 4 lowercase letters (`abcdefghijklmnopqrstuvwxyz`)
+  - DB name: creating-PID + 12 random chars (NO LONGER 4 letters — see testing.md for why; the old 26^4 space let orphans collide)
   - TimeZone: `SET TIME ZONE 'America/New_York'`
   - Runs migrations + seeds before returning
   - Each test gets its own isolated database instance
@@ -203,7 +203,7 @@ key facts:
   - Passed into all seed functions
 
 ```
-Delegate
+Delegate, OutboxWriter   // OutboxWriter = cascade outbox Writer, injected via .WithOutbox into every cascade bus
 
 // Geography
 Country, Region, City, Street, Timezone, Home
@@ -738,6 +738,8 @@ decides a table will remain non-deterministic.
 ## ⚠ Adding a new domain to seeding
 
   business/sdk/dbtest/dbtest.go          (add bus field(s) to BusDomain struct + instantiate in newBusDomains)
+  business/sdk/dbtest/dbtest.go          (if the bus CASCADES: chain `.WithOutbox(outboxWriter)` onto its NewBusiness, mirroring the ~67 cascade buses — else cascades won't fire in integration tests)
+  business/sdk/workflowdomains/workflowdomains.go   (if it cascades: add the Registrations() entry so entityForDomain resolves the domain → entity name)
   business/sdk/dbtest/seed_<domain>.go   (create new seed file with seed<Domain>() function + result struct)
   business/sdk/dbtest/seedFrontend.go    (add call in dependency chain at correct position)
   business/sdk/dbtest/seedmodels/tables_<domain>.go  (add static table configs if needed)

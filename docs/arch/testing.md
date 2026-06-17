@@ -81,6 +81,7 @@ key facts:
   - each test gets its own database — fully isolated even within parallel runs
   - cleanup drops only the test's own DB; the `servicetest` container is never stopped by test code
   - `BusDomain` is fully wired: every bus package is instantiated against the test DB
+  - `BusDomain.OutboxWriter` (*outbox.Writer) is built once in `newBusDomains` and injected via `.WithOutbox(...)` into the ~67 cascade buses (+ `.WithOutboxEmitter` on workflowBus), so the suite exercises the PRODUCTION outbox+relay cascade path (F8 parity), not the retired delegate path
 
 ---
 
@@ -119,13 +120,14 @@ InitWorkflowInfra → GetTestContainer(t)        → shared Temporal container (
                   → w.Start()
                   → TriggerProcessor.Initialize
                   → NewWorkflowTrigger.WithTaskQueue(taskQueue)
-                  → t.Cleanup: w.Stop() + tc.Close()
+                  → temporal.NewRelay(db.DB, workflowTrigger, RelayConfig{}) + go relay.Run(relayCtx)  ← cascade dispatcher (mirrors all.go)
+                  → t.Cleanup: cancelRelay() + w.Stop() + tc.Close()
 ```
 
 key facts:
   - task queue is unique per test (`t.Name()` includes subtest path) — prevents cross-test activity routing
   - `alertBus` and `approvalRequestBus` are constructed fresh per `InitWorkflowInfra` call, NOT from `db.BusDomain` — avoids accumulated state across tests that share a DB
-  - `DelegateHandler` is wired but NOT registered into `db.BusDomain.Delegate` automatically — test must call `db.BusDomain.Delegate.Register(...)` explicitly if event-driven triggering is needed
+  - NO `DelegateHandler` is wired — that type is DELETED (F2 / F7.1). The relay is the SOLE cascade dispatcher: a test just writes through `db.BusDomain` buses (which persist outbox rows in-tx) and the relay drains them into `WorkflowTrigger.OnEntityEvent`. Tests that previously called `wf.DelegateHandler.RegisterDomain(...)` no longer need any manual `Delegate.Register` for cascade triggering
 
 ---
 
