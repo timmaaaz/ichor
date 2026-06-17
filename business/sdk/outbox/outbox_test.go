@@ -1,6 +1,7 @@
 package outbox_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"testing"
@@ -14,6 +15,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/outbox"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
+	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
 // makeData builds a delegate.Data carrying DelegateEventParams, mirroring what a
@@ -301,5 +303,31 @@ func TestEmit(t *testing.T) {
 		// pre-committed poison row survives. Entity row and (new) outbox row both absent.
 		require.Equal(t, 1, countRows(t, db),
 			"poison backstop: a failed outbox INSERT must abort the tx and roll back the co-tx write")
+	})
+
+	// DESIGN §8 unit #2: the pool-fallback warn is the on-a-tx trip-wire's loud signal. It must
+	// fire when a covered path Emits with no tx on ctx, and must NOT fire on the tx path. (Until
+	// F9 nothing asserted this warn string.)
+	t.Run("loud warn fires on the pool fallback, not on the tx path", func(t *testing.T) {
+		truncate(t, db)
+		const warnMsg = "outbox: no transaction on context — emitting on base pool (NOT atomic with entity write)"
+
+		bufWriter := func(buf *bytes.Buffer) *outbox.Writer {
+			log := logger.New(buf, logger.LevelWarn, "TEST", func(context.Context) string { return "" })
+			return outbox.NewWriter(log, db.DB, map[string]string{"order": "orders"}, nil)
+		}
+
+		// On the tx path the Emit rides the transaction — no fallback, so no warn.
+		var onTx bytes.Buffer
+		tx, err := db.DB.Beginx()
+		require.NoError(t, err)
+		require.NoError(t, bufWriter(&onTx).Emit(sqldb.WithTx(ctx, tx), makeData(t, "order", workflow.ActionCreated, uuid.New())))
+		require.NoError(t, tx.Rollback())
+		require.NotContains(t, onTx.String(), warnMsg, "on-tx Emit must not warn about the pool fallback")
+
+		// With no tx on ctx the Emit falls back to the base pool — it must warn loudly.
+		var pool bytes.Buffer
+		require.NoError(t, bufWriter(&pool).Emit(ctx, makeData(t, "order", workflow.ActionCreated, uuid.New())))
+		require.Contains(t, pool.String(), warnMsg, "pool fallback must log the loud non-atomic warn")
 	})
 }
