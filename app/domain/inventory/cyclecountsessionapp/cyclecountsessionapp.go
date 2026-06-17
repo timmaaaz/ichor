@@ -17,6 +17,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryadjustmentbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 )
 
 // App manages the set of app layer APIs for cycle count session access.
@@ -129,6 +130,10 @@ func (a *App) complete(ctx context.Context, session cyclecountsessionbus.CycleCo
 		return CycleCountSession{}, fmt.Errorf("begin transaction: %w", err)
 	}
 	defer tx.Rollback()
+
+	// Enroll the tx on ctx so cascade outbox.Emit rides the same transaction as the entity
+	// write (they commit or roll back together) instead of falling back to the base pool.
+	ctx = sqldb.WithTx(ctx, tx)
 
 	// 1. Re-query the session inside the transaction to guard against TOCTOU races.
 	sessionBusTx, err := a.cycleCountSessionBus.NewWithTx(tx)

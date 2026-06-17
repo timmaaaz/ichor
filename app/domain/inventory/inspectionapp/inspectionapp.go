@@ -15,6 +15,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/lottrackingsbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 )
 
 type App struct {
@@ -189,6 +190,10 @@ func (a *App) Fail(ctx context.Context, id uuid.UUID, app FailInspection) (FailI
 		return FailInspectionResult{}, fmt.Errorf("begin transaction: %w", err)
 	}
 	defer tx.Rollback()
+
+	// Enroll the tx on ctx so cascade outbox.Emit rides the same transaction as the entity
+	// write (they commit or roll back together) instead of falling back to the base pool.
+	ctx = sqldb.WithTx(ctx, tx)
 
 	// 4. Update inspection status to "failed" inside the transaction.
 	inspBusTx, err := a.inspectionbus.NewWithTx(tx)
