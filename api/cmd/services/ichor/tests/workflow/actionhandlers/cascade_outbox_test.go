@@ -36,7 +36,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/timmaaaz/ichor/api/cmd/services/ichor/build/all/workflowdomains"
 	"github.com/timmaaaz/ichor/business/domain/inventory/transferorderbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/transferorderbus/stores/transferorderdb"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
@@ -47,6 +46,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/workflow/temporal/stores/edgedb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/control"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/inventory"
+	"github.com/timmaaaz/ichor/business/sdk/workflowdomains"
 	foundationtemporal "github.com/timmaaaz/ichor/foundation/temporal"
 	temporalclient "go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"

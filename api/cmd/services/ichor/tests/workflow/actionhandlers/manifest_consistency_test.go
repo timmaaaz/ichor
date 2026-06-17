@@ -65,7 +65,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/inventory"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/procurement"
 
-	"github.com/timmaaaz/ichor/api/cmd/services/ichor/build/all/workflowdomains"
+	"github.com/timmaaaz/ichor/business/sdk/workflowdomains"
 )
 
 // ─── delegate recorder ───────────────────────────────────────────────────────

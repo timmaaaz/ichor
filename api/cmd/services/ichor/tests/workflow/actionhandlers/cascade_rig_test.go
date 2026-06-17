@@ -3,12 +3,13 @@ package actionhandlers_test
 // PL (Live-System Verification) shared rig.
 //
 // These helpers stand up the REAL cascade pipeline — a live Temporal worker bound to a
-// caller-supplied ActionRegistry, plus the WorkflowTrigger + DelegateHandler wiring that
-// turns a bus (or synthesized M1/M2) delegate event into a downstream rule dispatch. It
-// mirrors the production wiring (all.go:574-610) and the one-hop rig in
-// cascade_lineage_test.go, generalized so the PL suites (loop guard, M2 live, fan-out /
-// idempotency) can each build a registry, seed rules, fire an event, and poll
-// automation_executions for the cascade outcome + visited-set lineage.
+// caller-supplied ActionRegistry, plus the WorkflowTrigger + transactional-outbox RELAY
+// that turns a bus (or synthesized M1/M2) cascade write into a downstream rule dispatch.
+// It mirrors the post-F2 production wiring (all.go: Writer-injected buses + a server-side
+// relay, NO DelegateHandler) so the PL suites (loop guard, M2 live, fan-out / idempotency)
+// each exercise the SAME outbox cascade path production uses: build a registry, seed rules,
+// fire an event, and poll automation_executions for the cascade outcome + visited-set
+// lineage.
 //
 // Rules are created via the workflow BUS (CreateRule/CreateRuleAction), which deliberately
 // BYPASSES the P2 static cascade detector (that enforces only at the app layer —
@@ -24,7 +25,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/timmaaaz/ichor/api/cmd/services/ichor/build/all/workflowdomains"
 	"github.com/timmaaaz/ichor/business/domain/products/productcategorybus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
@@ -41,14 +41,14 @@ type cascadeRig struct {
 	workflowBus      *workflow.Business
 	triggerProcessor *workflow.TriggerProcessor
 	workflowTrigger  *workflowtemporal.WorkflowTrigger
-	delegateHandler  *workflowtemporal.DelegateHandler
 	taskQueue        string
 }
 
 // startCascadeRig boots a real Temporal worker bound to registry, wires the
-// WorkflowTrigger + DelegateHandler, and registers the FULL production domain set
-// (workflowdomains.Registrations()) so any bus or synthesized event cascades — exactly
-// as all.go does. Cleanup (worker stop + client close) is registered on t.
+// WorkflowTrigger, and starts the transactional-outbox relay so any cascade write that
+// emits a row (every dbtest bus + any Path-C handler wired with the BusDomain Writer)
+// dispatches downstream — exactly as all.go does post-F2. Cleanup (relay cancel, worker
+// stop, client close) is registered on t.
 func startCascadeRig(t *testing.T, ctx context.Context, db *dbtest.Database, registry *workflow.ActionRegistry) *cascadeRig {
 	t.Helper()
 
@@ -82,16 +82,23 @@ func startCascadeRig(t *testing.T, ctx context.Context, db *dbtest.Database, reg
 	workflowTrigger := workflowtemporal.NewWorkflowTrigger(db.Log, tc, triggerProcessor, edgeStore, workflowStore).
 		WithTaskQueue(taskQueue)
 
-	delegateHandler := workflowtemporal.NewDelegateHandler(db.Log, workflowTrigger)
-	for _, reg := range workflowdomains.Registrations() {
-		delegateHandler.RegisterDomain(db.BusDomain.Delegate, reg.Domain, reg.Entity)
-	}
+	// Cascade dispatch via the transactional outbox + relay — the post-F2 production path.
+	// db.BusDomain buses persist an outbox row per cascade write (dbtest injects the Writer),
+	// and the caller's Path-C generic-data handlers do too when wired with
+	// data.WithOutbox(db.BusDomain.OutboxWriter). The relay drains those rows into
+	// WorkflowTrigger.OnEntityEvent. We wire NO DelegateHandler: the relay is the SOLE
+	// dispatcher, exactly like all.go, so each cascade write fires exactly once.
+	relay := workflowtemporal.NewRelay(db.Log, db.DB, workflowTrigger, workflowtemporal.RelayConfig{
+		PollInterval: 200 * time.Millisecond,
+	})
+	relayCtx, cancelRelay := context.WithCancel(ctx)
+	t.Cleanup(cancelRelay)
+	go func() { _ = relay.Run(relayCtx) }()
 
 	return &cascadeRig{
 		workflowBus:      workflowBus,
 		triggerProcessor: triggerProcessor,
 		workflowTrigger:  workflowTrigger,
-		delegateHandler:  delegateHandler,
 		taskQueue:        taskQueue,
 	}
 }

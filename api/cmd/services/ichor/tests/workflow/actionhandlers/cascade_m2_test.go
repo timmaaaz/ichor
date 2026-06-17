@@ -44,7 +44,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/data"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/inventory"
 
-	"github.com/timmaaaz/ichor/api/cmd/services/ichor/build/all/workflowdomains"
+	"github.com/timmaaaz/ichor/business/sdk/workflowdomains"
 )
 
 // ── EventContract + ProtectedTargetBlocked (no worker) ─────────────────────────────────
@@ -139,11 +139,14 @@ func TestCascade_M2_LiveCascade(t *testing.T) {
 
 	orderID := seedOrderWithLineItem(t, ctx, db, base, base.productIDs[0])
 
-	// The cascaded action is update_field (wired to fire synthesized events).
+	// The cascaded action is update_field (wired to synthesize events AND emit them to the
+	// outbox so the rig's relay dispatches the hop). The M2 allocation_results event itself
+	// is emitted by db.BusDomain.Workflow's WithOutboxEmitter.
 	registry := workflow.NewActionRegistry()
 	registry.Register(data.NewUpdateFieldHandler(db.Log, db.DB,
 		data.WithDelegate(db.BusDomain.Delegate),
-		data.WithEntityRegistry(workflowdomains.ReverseMap())))
+		data.WithEntityRegistry(workflowdomains.ReverseMap()),
+		data.WithOutbox(db.BusDomain.OutboxWriter)))
 	rig := startCascadeRig(t, ctx, db, registry)
 
 	entityType, err := rig.workflowBus.QueryEntityTypeByName(ctx, "table")

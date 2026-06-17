@@ -29,7 +29,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/data"
 
-	"github.com/timmaaaz/ichor/api/cmd/services/ichor/build/all/workflowdomains"
+	"github.com/timmaaaz/ichor/business/sdk/workflowdomains"
 )
 
 func TestCascade_MultiRowUpdateFiresSingleEvent(t *testing.T) {

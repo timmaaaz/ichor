@@ -3,6 +3,7 @@ package apitest
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus/stores/alertdb"
@@ -27,7 +28,6 @@ type WorkflowInfra struct {
 	WorkflowBus        *workflow.Business
 	TemporalClient     temporalclient.Client
 	WorkflowTrigger    *temporal.WorkflowTrigger
-	DelegateHandler    *temporal.DelegateHandler
 	TriggerProcessor   *workflow.TriggerProcessor
 	Worker             worker.Worker
 	ApprovalRequestBus *approvalrequestbus.Business
@@ -103,22 +103,31 @@ func InitWorkflowInfra(t *testing.T, db *dbtest.Database) *WorkflowInfra {
 		db.Log, tc, triggerProcessor, edgeStore, workflowStore,
 	).WithTaskQueue(taskQueue)
 
-	// 6. Create delegate handler.
-	delegateHandler := temporal.NewDelegateHandler(db.Log, workflowTrigger)
+	// 6. Start the transactional-outbox relay — the post-F2 production cascade dispatcher.
+	// db.BusDomain buses persist an outbox row per cascade write (dbtest injects the Writer);
+	// the relay drains those rows into WorkflowTrigger.OnEntityEvent. No DelegateHandler is
+	// wired: the relay is the SOLE dispatcher (matching all.go), so a cascade write fires
+	// exactly once. Tests that previously called wf.DelegateHandler.RegisterDomain just
+	// write to db.BusDomain now; the relay dispatches.
+	relay := temporal.NewRelay(db.Log, db.DB, workflowTrigger, temporal.RelayConfig{
+		PollInterval: 200 * time.Millisecond,
+	})
+	relayCtx, cancelRelay := context.WithCancel(ctx)
+	go func() { _ = relay.Run(relayCtx) }()
 
-	// 7. Register cleanup.
+	// 7. Register cleanup (stop the relay before the worker/client).
 	t.Cleanup(func() {
+		cancelRelay()
 		w.Stop()
 		tc.Close()
 	})
 
-	t.Log("Temporal workflow infrastructure initialized")
+	t.Log("Temporal workflow infrastructure initialized (cascade relay started)")
 
 	return &WorkflowInfra{
 		WorkflowBus:        workflowBus,
 		TemporalClient:     tc,
 		WorkflowTrigger:    workflowTrigger,
-		DelegateHandler:    delegateHandler,
 		TriggerProcessor:   triggerProcessor,
 		Worker:             w,
 		ApprovalRequestBus: approvalBus,

@@ -36,7 +36,8 @@ type TriggerTestData struct {
 }
 
 // insertTriggerSeedData initializes trigger test infrastructure.
-// It sets up the delegate handler to bridge domain events to workflow events.
+// Cascades dispatch via the transactional-outbox relay (apitest.InitWorkflowInfra starts
+// it): a customersBus write emits an outbox row the relay drains into the workflow trigger.
 func insertTriggerSeedData(t *testing.T, test *apitest.Test, esd ExecutionTestData) TriggerTestData {
 	t.Helper()
 	ctx := context.Background()
@@ -44,8 +45,8 @@ func insertTriggerSeedData(t *testing.T, test *apitest.Test, esd ExecutionTestDa
 	db := test.DB
 	busDomain := db.BusDomain
 
-	// Register customers domain for event bridging via Temporal delegate handler.
-	esd.WF.DelegateHandler.RegisterDomain(busDomain.Delegate, customersbus.DomainName, customersbus.EntityName)
+	// No delegate subscriber wiring: the customersBus write below emits an outbox row
+	// (dbtest injects the Writer) that the relay dispatches — exactly as production does.
 
 	// Use the existing customersbus from BusDomain.
 	customersBus := busDomain.Customers

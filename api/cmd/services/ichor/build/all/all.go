@@ -361,7 +361,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/communication"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/data"
 
-	"github.com/timmaaaz/ichor/api/cmd/services/ichor/build/all/workflowdomains"
+	"github.com/timmaaaz/ichor/business/sdk/workflowdomains"
 
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/rabbitmq"

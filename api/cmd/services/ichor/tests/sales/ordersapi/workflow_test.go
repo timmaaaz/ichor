@@ -138,10 +138,11 @@ func TestWorkflow_OrdersDelegateEvents(t *testing.T) {
 	}
 
 	// -------------------------------------------------------------------------
-	// Register orders domain with Temporal delegate handler.
+	// Cascades dispatch via the transactional-outbox relay that
+	// apitest.InitWorkflowInfra starts. The ordersBus write below persists an outbox
+	// row (dbtest injects the Writer) that the relay drains into the workflow trigger —
+	// no delegate subscriber wiring needed (matches production, all.go).
 	// -------------------------------------------------------------------------
-
-	wf.DelegateHandler.RegisterDomain(db.BusDomain.Delegate, ordersbus.DomainName, ordersbus.EntityName)
 
 	// Use the existing ordersbus from BusDomain.
 	ordersBus := db.BusDomain.Order
