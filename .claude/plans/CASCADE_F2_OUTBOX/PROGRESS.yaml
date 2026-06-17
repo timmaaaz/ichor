@@ -303,12 +303,12 @@ verify:
 ship:
   F7:
     title: "Cleanup sweep + docs + ship"
-    status: not_started
+    status: done
     gate: "after F6"
     tasks:
       - id: F7.1
         title: "Dead-code sweep: grep confirms no old goroutine / handler-side OnEntityEvent / dropped WorkflowTrigger field / dead delegate.Call remains; no orphaned imports"
-        status: in_progress
+        status: done
         note: >
           PART 1 DONE (DelegateHandler removal): relocated the shared enrichment helpers
           (computeFieldChanges/extractEntityData/extractIDViaReflection — the relay's only remaining caller)
@@ -323,10 +323,16 @@ ship:
           build. Fixed idiomatically: relay_test.go -> package temporal_test (external) reaching unexported
           internals via a new export_test.go (NewRelayForTest/Relay.BuildEvent/DecodeLineage). VERIFIED: go
           build ./... + go vet clean; temporal TestRelay*/TestGuard*/enrichment helper tests GREEN.
-          PART 2 REMAINING: drop the ~64 dead cascade-only delegate.Call sites.
+          PART 2 CANCELLED (2026-06-17, corrected framing): the ~64-bus delegate.Call
+          drop was considered and DROPPED. delegate.Call STAYS on every bus as the
+          general best-effort cross-domain hook ("no subscriber today" != dead). F2
+          moved only the durable cascade off the delegate onto the outbox; the delegate
+          is preserved unchanged. So PART 1 (DelegateHandler removal) was the whole of
+          the real dead-code sweep — F7.1 is done. See memory delegate governance +
+          docs/arch/delegate.md.
       - id: F7.2
         title: "Docs: docs/arch/delegate.md + docs/arch/workflow-engine.md — outbox+relay cascade path + the 3-mechanism cross-domain model"
-        status: not_started   # DO IN A FRESH WINDOW (this session hit ~600k). Full spec below; memory project_delegate_governance.md + committed code carry the rest.
+        status: done   # DONE 2026-06-17 — both docs rewritten per the spec below, every anchor re-verified against committed code (relay/emit/store/enrichment/trigger/migration/all.go/dbtest/live subscribers). delegate.md: corrected framing (delegate UNCHANGED best-effort hook; cascade moved off it) + 3-mechanism table + governance rule + decision test + DelegateHandler-deleted/enrichment-relocated note + updated ⚠ callouts. workflow-engine.md: Pipeline→outbox+relay, DelegateHandler section→Outbox[sdk]+Relay[sdk], workflowdomains path fix (api→business), workflow-id dedup format, cascade_outbox in DBSchema, new ⚠ cascade-path file-map+reliability-tests callout.
         note: >
           DOC SPEC (captured 2026-06-17 from the live architecture discussion so a fresh window writes
           without re-deriving). Source of truth = committed code (F5 db477618, F6 ec8c6639, F8 d089c706,
@@ -372,7 +378,7 @@ ship:
           cascade_outbox_test.go (e2e) + TestRelay_*/TestGuard_ABA_StopsAfterOneHop + TestCascade_LoopGuard.
       - id: F7.3
         title: "go build ./... clean; PROGRESS -> done; conventional commit; (push only when user asks)"
-        status: not_started   # RESEQUENCED: gated on F8 — the dead delegate.Call drop + DelegateHandler removal are only safe once the TEST harness leaves the delegate path (F8). Do F7 cleanup AFTER F8.
+        status: done   # DONE 2026-06-17 — `go build ./...` clean (exit 0, empty output); F7/F7.1/F7.2/F7.3 flipped to done; conventional commit made. NOT pushed (per instruction — push only when user asks). F2 project COMPLETE: prod + test harness both flow cascades through the transactional outbox+relay; delegate preserved as the general best-effort cross-domain hook.
 
 harness_parity:
   F8:
