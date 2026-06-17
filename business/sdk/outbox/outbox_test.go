@@ -259,4 +259,47 @@ func TestEmit(t *testing.T) {
 		err = w.Emit(sqldb.WithTx(ctx, tx), makeData(t, "order", workflow.ActionCreated, uuid.New()))
 		require.Error(t, err, "Emit must return the executor error, not swallow it")
 	})
+
+	// DESIGN §8 poison backstop (I2): the outbox INSERT and the entity write share one tx.
+	// If the outbox INSERT fails, PostgreSQL aborts the transaction and downgrades the
+	// COMMIT to ROLLBACK, so the co-tx entity write can never commit on its own. Nothing
+	// asserted this before F9 ("poison" had 0 hits in the test tree).
+	t.Run("poison backstop: a failed outbox INSERT aborts the tx, taking the co-tx write with it", func(t *testing.T) {
+		truncate(t, db)
+		w := newWriter()
+		store := outbox.NewStore(db.Log)
+
+		// Pre-commit a row on the pool; its id is the collision used to fail a later outbox
+		// INSERT and poison the shared tx.
+		poison := outbox.Outbox{
+			ID: uuid.New(), Domain: "order", Action: workflow.ActionCreated,
+			EventType: workflow.EventTypeOnCreate, EntityName: "orders",
+			Payload: json.RawMessage(`{"Domain":"order"}`),
+		}
+		require.NoError(t, store.Insert(ctx, db.DB, poison))
+		require.Equal(t, 1, countRows(t, db))
+
+		tx, err := db.DB.Beginx()
+		require.NoError(t, err)
+		txCtx := sqldb.WithTx(ctx, tx)
+
+		// The co-tx write that MUST roll back if the outbox INSERT fails. It stands in for the
+		// entity write, which in production shares this exact transaction with the cascade Emit.
+		require.NoError(t, w.Emit(txCtx, makeData(t, "order", workflow.ActionUpdated, uuid.New())))
+
+		// Force the outbox INSERT FAILURE on the SAME tx: a duplicate primary key violates the
+		// unique constraint and poisons the transaction (every later statement errors until rollback).
+		require.Error(t, store.Insert(txCtx, tx, poison), "duplicate id must fail the outbox INSERT")
+
+		// COMMIT on a poisoned tx is downgraded to ROLLBACK by PostgreSQL. lib/pq may surface
+		// that as a commit error or silently — either way the unit of work is gone, which the
+		// row count below proves.
+		commitErr := tx.Commit()
+		t.Logf("commit on poisoned tx returned: %v", commitErr)
+
+		// Backstop holds: the co-tx write rolled back with the failed INSERT; only the
+		// pre-committed poison row survives. Entity row and (new) outbox row both absent.
+		require.Equal(t, 1, countRows(t, db),
+			"poison backstop: a failed outbox INSERT must abort the tx and roll back the co-tx write")
+	})
 }
