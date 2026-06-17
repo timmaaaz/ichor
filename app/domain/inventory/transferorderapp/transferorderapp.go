@@ -18,6 +18,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/transferorderbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 )
 
 type App struct {
@@ -261,6 +262,10 @@ func (a *App) Execute(ctx context.Context, id uuid.UUID) (TransferOrder, error) 
 		return TransferOrder{}, fmt.Errorf("begin transaction: %w", err)
 	}
 	defer tx.Rollback()
+
+	// Enroll the tx on ctx so cascade outbox.Emit rides the same transaction as the entity
+	// write (they commit or roll back together) instead of falling back to the base pool.
+	ctx = sqldb.WithTx(ctx, tx)
 
 	// 1. Mark transfer order as completed.
 	toBusTx, err := a.transferorderbus.NewWithTx(tx)

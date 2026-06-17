@@ -17,6 +17,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/putawaytaskbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 )
 
 // App manages the set of app layer APIs for put-away task access.
@@ -146,6 +147,10 @@ func (a *App) complete(ctx context.Context, task putawaytaskbus.PutAwayTask, upt
 		return PutAwayTask{}, fmt.Errorf("begin transaction: %w", err)
 	}
 	defer tx.Rollback()
+
+	// Enroll the tx on ctx so cascade outbox.Emit rides the same transaction as the entity
+	// write (they commit or roll back together) instead of falling back to the base pool.
+	ctx = sqldb.WithTx(ctx, tx)
 
 	// 1. Update put-away task status inside the transaction.
 	patBusTx, err := a.putAwayTaskBus.NewWithTx(tx)

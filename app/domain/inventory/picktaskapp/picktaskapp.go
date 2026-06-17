@@ -17,6 +17,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/picktaskbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 )
 
 // App manages the set of app layer APIs for pick task access.
@@ -165,6 +166,10 @@ func (a *App) complete(ctx context.Context, task picktaskbus.PickTask, upt pickt
 		return PickTask{}, fmt.Errorf("begin transaction: %w", err)
 	}
 	defer tx.Rollback()
+
+	// Enroll the tx on ctx so cascade outbox.Emit rides the same transaction as the entity
+	// write (they commit or roll back together) instead of falling back to the base pool.
+	ctx = sqldb.WithTx(ctx, tx)
 
 	// 1. Update pick task status inside the transaction.
 	ptBusTx, err := a.pickTaskBus.NewWithTx(tx)

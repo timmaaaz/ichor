@@ -24,6 +24,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus/types"
 	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
@@ -32,7 +33,7 @@ type App struct {
 	log                          *logger.Logger
 	db                           *sqlx.DB
 	ordersBus                    *ordersbus.Business
-	orderLineItemsBus             *orderlineitemsbus.Business
+	orderLineItemsBus            *orderlineitemsbus.Business
 	inventoryItemBus             *inventoryitembus.Business
 	inventoryTransactionBus      *inventorytransactionbus.Business
 	orderFulfillmentStatusBus    *orderfulfillmentstatusbus.Business
@@ -54,7 +55,7 @@ func NewApp(
 		log:                          log,
 		db:                           db,
 		ordersBus:                    ordersBus,
-		orderLineItemsBus:             orderLineItemsBus,
+		orderLineItemsBus:            orderLineItemsBus,
 		inventoryItemBus:             inventoryItemBus,
 		inventoryTransactionBus:      inventoryTransactionBus,
 		orderFulfillmentStatusBus:    orderFulfillmentStatusBus,
@@ -126,6 +127,10 @@ func (a *App) PickQuantity(ctx context.Context, lineItemID uuid.UUID, req PickQu
 		return orderlineitemsapp.OrderLineItem{}, errs.Newf(errs.Internal, "begin tx: %s", err)
 	}
 	defer tx.Rollback()
+
+	// Enroll the tx on ctx so cascade outbox.Emit rides the same transaction as the entity
+	// write (they commit or roll back together) instead of falling back to the base pool.
+	ctx = sqldb.WithTx(ctx, tx)
 
 	// Create tx-bound buses.
 	txInventoryItemBus, err := a.inventoryItemBus.NewWithTx(tx)
@@ -303,6 +308,10 @@ func (a *App) ShortPick(ctx context.Context, lineItemID uuid.UUID, req ShortPick
 		return orderlineitemsapp.OrderLineItem{}, errs.Newf(errs.Internal, "begin tx: %s", err)
 	}
 	defer tx.Rollback()
+
+	// Enroll the tx on ctx so cascade outbox.Emit rides the same transaction as the entity
+	// write (they commit or roll back together) instead of falling back to the base pool.
+	ctx = sqldb.WithTx(ctx, tx)
 
 	txInventoryItemBus, err := a.inventoryItemBus.NewWithTx(tx)
 	if err != nil {

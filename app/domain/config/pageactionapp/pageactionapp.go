@@ -11,6 +11,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/config/pageactionbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 )
 
 // App manages the set of app layer api functions for the page action domain.
@@ -295,6 +296,10 @@ func (a *App) BatchCreate(ctx context.Context, app BatchCreateRequest) (PageActi
 		return nil, errs.Newf(errs.Internal, "begin transaction: %s", err)
 	}
 	defer tx.Rollback()
+
+	// Enroll the tx on ctx so cascade outbox.Emit rides the same transaction as the entity
+	// write (they commit or roll back together) instead of falling back to the base pool.
+	ctx = sqldb.WithTx(ctx, tx)
 
 	// Get transactional business layer
 	pageactionBusTx, err := a.pageactionbus.NewWithTx(tx)
