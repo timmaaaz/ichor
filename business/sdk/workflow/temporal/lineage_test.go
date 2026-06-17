@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/sdk/client"
 
-	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
@@ -360,40 +359,12 @@ func TestGuard_VisitedSetSurvivesContinueAsNew(t *testing.T) {
 	require.Equal(t, execID, got.OriginatingExecutionID)
 }
 
-// Scenario: full chokepoint end-to-end. A real DelegateHandler reads the lineage
-// stamped on ctx (as the action activity would), and after its dispatch goroutine
-// the real WorkflowTrigger has seeded the next generation onto the dispatched
-// WorkflowInput. Proves the lineage survives delegatehandler.go's goroutine.
-func TestGuard_DelegateHandler_ThreadsAndSeedsLineage(t *testing.T) {
-	ruleA := uuid.New()
-	ruleB := uuid.New()
-	orderID := uuid.New()
-	lineItemID := uuid.New()
-
-	es := newStubEdgeStore()
-	es.registerGraph(ruleB)
-	starter := newRecordingStarter()
-	matcher := &settableMatcher{result: matchOne(ruleB, "Rule B")}
-	trig := NewWorkflowTrigger(guardLogger(), starter, matcher, es, noopExecutionStore{})
-	h := NewDelegateHandler(guardLogger(), trig)
-
-	// Simulate the action activity having stamped a parent lineage {(A, order)}.
-	parent := WorkflowLineage{Visited: []string{lineagePairKey(ruleA, orderID)}}
-	ctx := contextWithLineage(context.Background(), parent)
-
-	params := workflow.DelegateEventParams{EntityID: lineItemID, UserID: uuid.New()}
-	raw, err := json.Marshal(params)
-	require.NoError(t, err)
-
-	require.NoError(t, h.handleEvent(ctx, "on_update", "order_line_items", delegate.Data{RawParams: raw}))
-
-	require.Eventually(t, func() bool { return starter.count() == 1 }, 2*time.Second, 5*time.Millisecond,
-		"DelegateHandler should dispatch one workflow")
-
-	seeded := dispatchedLineage(t, starter.last())
-	require.True(t, seeded.Contains(ruleA, orderID), "parent pair must survive the goroutine")
-	require.True(t, seeded.Contains(ruleB, lineItemID), "new (B, line_item) pair must be seeded")
-}
+// NOTE: the former TestGuard_DelegateHandler_ThreadsAndSeedsLineage was removed with
+// the DelegateHandler itself (F7 cleanup). F2 moved cascade dispatch onto the
+// transactional outbox + relay; the lineage-through-dispatch guarantee it proved is now
+// covered by TestRelay_DecodeLineage (relay rehydrates row.lineage) + the live
+// cascade_outbox_test / TestCascade_LoopGuard (full accumulate-survive-and-stop through
+// the relay).
 
 // =============================================================================
 // lineage.go unit tests

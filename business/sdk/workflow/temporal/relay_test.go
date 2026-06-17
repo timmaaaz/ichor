@@ -1,4 +1,10 @@
-package temporal
+package temporal_test
+
+// External test package (temporal_test): these tests import dbtest for a real DB, and
+// dbtest imports the temporal package (since F8, for the outbox Writer's lineage
+// extractor). An internal (package temporal) test importing dbtest would cycle, so the
+// relay tests live here and reach unexported relay internals via export_test.go
+// (NewRelayForTest / Relay.BuildEvent / DecodeLineage).
 
 import (
 	"context"
@@ -15,6 +21,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 	"github.com/timmaaaz/ichor/business/sdk/outbox"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/temporal"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
@@ -23,7 +30,7 @@ func relayLog() *logger.Logger {
 }
 
 // fakeDispatcher is a test EventDispatcher: it records every dispatched event and
-// returns errFn's verdict, letting tests drive success/failure deterministically.
+// returns err's verdict, letting tests drive success/failure deterministically.
 type fakeDispatcher struct {
 	mu     sync.Mutex
 	events []workflow.TriggerEvent
@@ -79,7 +86,7 @@ func TestRelay_DrainsInSeqOrderThenDeletes(t *testing.T) {
 	}
 
 	fake := &fakeDispatcher{}
-	relay := NewRelay(db.Log, db.DB, fake, RelayConfig{})
+	relay := temporal.NewRelay(db.Log, db.DB, fake, temporal.RelayConfig{})
 
 	n, err := relay.ProcessBatch(ctx)
 	require.NoError(t, err)
@@ -106,7 +113,7 @@ func TestRelay_RetriesThenMarksDeadAfterMaxAttempts(t *testing.T) {
 	require.NoError(t, store.Insert(ctx, db.DB, row))
 
 	fake := &fakeDispatcher{err: errors.New("dispatch boom")}
-	relay := NewRelay(db.Log, db.DB, fake, RelayConfig{MaxAttempts: 3})
+	relay := temporal.NewRelay(db.Log, db.DB, fake, temporal.RelayConfig{MaxAttempts: 3})
 
 	// Each failing poll re-claims the still-pending row and bumps attempts.
 	for i := 1; i <= 3; i++ {
@@ -145,7 +152,7 @@ func TestRelay_ReapsAgedDeadRowsOnly(t *testing.T) {
 		`UPDATE workflow.cascade_outbox SET created_at = now() - interval '30 days' WHERE id = $1`, old.ID)
 	require.NoError(t, err)
 
-	relay := NewRelay(db.Log, db.DB, &fakeDispatcher{}, RelayConfig{}) // default 7d window
+	relay := temporal.NewRelay(db.Log, db.DB, &fakeDispatcher{}, temporal.RelayConfig{}) // default 7d window
 
 	n, err := relay.Reap(ctx)
 	require.NoError(t, err)
@@ -158,7 +165,7 @@ func TestRelay_ReapsAgedDeadRowsOnly(t *testing.T) {
 // (it reuses the same extractEntityData / computeFieldChanges).
 func TestRelay_BuildEventEnrichment(t *testing.T) {
 	t.Parallel()
-	r := &Relay{log: relayLog()}
+	r := temporal.NewRelayForTest(relayLog())
 	ctx := context.Background()
 
 	t.Run("on_create extracts id + raw data + event id", func(t *testing.T) {
@@ -166,7 +173,7 @@ func TestRelay_BuildEventEnrichment(t *testing.T) {
 		row := outboxRow(t, "orders", workflow.ActionCreated, workflow.EventTypeOnCreate, entityID,
 			map[string]any{"id": entityID.String(), "status": "pending"}, nil)
 
-		ev, ok := r.buildEvent(ctx, row)
+		ev, ok := r.BuildEvent(ctx, row)
 		require.True(t, ok)
 		require.Equal(t, workflow.EventTypeOnCreate, ev.EventType)
 		require.Equal(t, "orders", ev.EntityName)
@@ -181,7 +188,7 @@ func TestRelay_BuildEventEnrichment(t *testing.T) {
 			map[string]any{"id": entityID.String(), "status": "approved"},
 			map[string]any{"id": entityID.String(), "status": "pending"})
 
-		ev, ok := r.buildEvent(ctx, row)
+		ev, ok := r.BuildEvent(ctx, row)
 		require.True(t, ok)
 		require.Contains(t, ev.FieldChanges, "status")
 		require.Equal(t, "pending", ev.FieldChanges["status"].OldValue)
@@ -190,7 +197,7 @@ func TestRelay_BuildEventEnrichment(t *testing.T) {
 
 	t.Run("corrupt payload is not dispatchable", func(t *testing.T) {
 		row := outbox.Outbox{ID: uuid.New(), EventType: workflow.EventTypeOnCreate, Payload: []byte("not json")}
-		_, ok := r.buildEvent(ctx, row)
+		_, ok := r.BuildEvent(ctx, row)
 		require.False(t, ok, "undecodable payload returns ok=false so the relay retires it dead")
 	})
 }
@@ -198,15 +205,15 @@ func TestRelay_BuildEventEnrichment(t *testing.T) {
 func TestRelay_DecodeLineage(t *testing.T) {
 	t.Parallel()
 
-	require.Empty(t, decodeLineage(nil).Visited, "nil lineage starts a fresh chain")
-	require.Empty(t, decodeLineage([]byte("garbage")).Visited, "garbage degrades to empty")
+	require.Empty(t, temporal.DecodeLineage(nil).Visited, "nil lineage starts a fresh chain")
+	require.Empty(t, temporal.DecodeLineage([]byte("garbage")).Visited, "garbage degrades to empty")
 
-	l := decodeLineage([]byte(`{"visited":["rule:entity"]}`))
+	l := temporal.DecodeLineage([]byte(`{"visited":["rule:entity"]}`))
 	require.Equal(t, []string{"rule:entity"}, l.Visited)
 
 	// Round-trips a real lineage built via the carrier's own API.
-	src := WorkflowLineage{}.With(uuid.New(), uuid.New())
+	src := temporal.WorkflowLineage{}.With(uuid.New(), uuid.New())
 	b, err := json.Marshal(src)
 	require.NoError(t, err)
-	require.Equal(t, src.Visited, decodeLineage(b).Visited)
+	require.Equal(t, src.Visited, temporal.DecodeLineage(b).Visited)
 }

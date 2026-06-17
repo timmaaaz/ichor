@@ -308,7 +308,22 @@ ship:
     tasks:
       - id: F7.1
         title: "Dead-code sweep: grep confirms no old goroutine / handler-side OnEntityEvent / dropped WorkflowTrigger field / dead delegate.Call remains; no orphaned imports"
-        status: not_started
+        status: in_progress
+        note: >
+          PART 1 DONE (DelegateHandler removal): relocated the shared enrichment helpers
+          (computeFieldChanges/extractEntityData/extractIDViaReflection — the relay's only remaining caller)
+          from delegatehandler.go into a new temporal/enrichment.go (+ renamed delegatehandler_test.go ->
+          enrichment_test.go); DELETED delegatehandler.go (struct + NewDelegateHandler + RegisterDomain +
+          handleEvent goroutine — all dead after F8). Deleted the superseded cascade_lineage_test.go (its
+          delegate-path lineage proof is now cascade_outbox_test.go) and removed the obsolete
+          TestGuard_DelegateHandler_ThreadsAndSeedsLineage from lineage_test.go. grep confirms ZERO
+          temporal.DelegateHandler/NewDelegateHandler refs remain (AlertHubDelegateHandler is a separate
+          alertws type, kept). ALSO FIXED a latent cycle F8.2 introduced: dbtest now imports temporal (for
+          MarshalLineageFromContext), so relay_test.go (internal, imports dbtest) cycled in the temporal test
+          build. Fixed idiomatically: relay_test.go -> package temporal_test (external) reaching unexported
+          internals via a new export_test.go (NewRelayForTest/Relay.BuildEvent/DecodeLineage). VERIFIED: go
+          build ./... + go vet clean; temporal TestRelay*/TestGuard*/enrichment helper tests GREEN.
+          PART 2 REMAINING: drop the ~64 dead cascade-only delegate.Call sites.
       - id: F7.2
         title: "Docs: docs/arch/delegate.md (delegate = cycle-break-only again) + workflow-engine.md (outbox seam, relay, dedup); note F8 lineage/traceparent hook"
         status: not_started
