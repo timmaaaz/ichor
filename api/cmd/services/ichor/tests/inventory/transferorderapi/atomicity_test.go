@@ -47,12 +47,22 @@ func Test_TransferOrderExecute_NoPhantomOnRollback(t *testing.T) {
 
 	// Walk a pending transfer order: pending -> approved -> in_transit, so Execute proceeds
 	// past its status guard and reaches the first cascade emit before the rollback trigger.
-	toIDStr := sd.TransferOrders[0].TransferID
+	// TestSeedTransferOrders sorts its returned slice by random UUID, so the slice order (and
+	// thus a given index's status) is non-deterministic — locate a pending order by status
+	// rather than assuming a position.
+	var toIDStr string
+	for i := range sd.TransferOrders {
+		if sd.TransferOrders[i].Status == "pending" {
+			toIDStr = sd.TransferOrders[i].TransferID
+			break
+		}
+	}
+	require.NotEmpty(t, toIDStr, "seed must include at least one pending transfer order")
 	toID, err := uuid.Parse(toIDStr)
 	require.NoError(t, err, "parsing transfer order id")
 	to, err := db.BusDomain.TransferOrder.QueryByID(ctx, toID)
 	require.NoError(t, err, "querying seeded transfer order")
-	require.Equal(t, "pending", to.Status, "seed[0] must be pending to walk the status machine")
+	require.Equal(t, "pending", to.Status, "selected transfer order must be pending to walk the status machine")
 
 	approverID := sd.Admins[0].ID
 	approved, err := db.BusDomain.TransferOrder.Approve(ctx, to, approverID, "")
