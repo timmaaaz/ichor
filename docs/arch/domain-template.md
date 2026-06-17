@@ -10,19 +10,26 @@ Reference domain: sales/orders (ordersbus)
 ## {Entity}Bus [bus]
 
 file: business/domain/{area}/{entity}bus/{entity}bus.go
-imports: {entity}db.Store[db], delegate.Delegate, logger.Logger
+imports: {entity}db.Store[db], delegate.Delegate, outbox.Writer[sdk], logger.Logger
 key facts:
-  - Business struct: log *logger.Logger, storer Storer, delegate *delegate.Delegate
-  - Constructor: NewBusiness(log, delegate, storer) *Business
+  - Business struct: log *logger.Logger, storer Storer, delegate *delegate.Delegate, outbox *outbox.Writer
+  - Constructor: NewBusiness(log, delegate, storer) *Business  (outbox injected separately, NOT via the constructor)
+  - WithOutbox(w *outbox.Writer) *Business — returns a copy wired to the cascade outbox; the composition
+    root (all.go / worker / dbtest) calls this. A nil Writer makes Emit a no-op (inert until F2 cutover)
   - NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) — creates tx-scoped copy
   - CRUD methods: Create, Update, Delete, Query, Count, QueryByID
-  - Create/Update/Delete each call delegate.Call() after DB write (workflow trigger hook)
+  - Create/Update/Delete: after the DB write, build `evtData := Action{X}Data(...)` ONCE, then
+      b.outbox.Emit(ctx, evtData)  — durable cascade, SAME tx; RETURN its error (rolls the write back)
+      b.delegate.Call(ctx, ...)    — best-effort cross-domain hook; error is logged, NOT returned
+    The cascade now flows via the outbox+relay, NOT the delegate (see delegate.md / workflow-engine.md).
   - filter: {Entity}Filter with queryable fields
 
-delegate events fired:
-  Create → delegate.Call(ctx, ActionCreatedData(entity))    — params: EntityID, UserID, Entity
-  Update → delegate.Call(ctx, ActionUpdatedData(before, entity)) — params: EntityID, UserID, Entity, BeforeEntity
-  Delete → delegate.Call(ctx, ActionDeletedData(entity))    — params: EntityID, UserID, Entity
+cascade events fired (the SAME Action{X}Data payload feeds BOTH b.outbox.Emit and b.delegate.Call):
+  Create → ActionCreatedData(entity)          — params: EntityID, UserID, Entity
+  Update → ActionUpdatedData(before, entity)  — params: EntityID, UserID, Entity, BeforeEntity
+  Delete → ActionDeletedData(entity)          — params: EntityID, UserID, Entity
+  → outbox.Emit persists it to workflow.cascade_outbox (durable; the relay dispatches the cascade)
+  → delegate.Call fans it out best-effort in-process (no cascade subscriber today — see delegate.md governance)
 
 ⊗ {schema}.{table}
 ⊕ {schema}.{table}
@@ -110,7 +117,7 @@ rule: two sites feeding the same `map[string]any` consumer → use a typed struc
 
 existing shared builders:
   api/domain/http/{area}/{entity}api/{entity}api.go : toApp{Entity}                 (HTTP response shape)
-  business/domain/{area}/{entity}bus/event.go : ActionCreated/Updated/DeletedData   (delegate event payload)
+  business/domain/{area}/{entity}bus/event.go : ActionCreated/Updated/DeletedData   (cascade event payload — fed to BOTH outbox.Emit + delegate.Call)
   api/domain/http/workflow/approvalapi/approvalapi.go : buildResolveResult           (Temporal activity Result)
   business/sdk/workflow/workflowactions/communication/alert.go : BuildAlertPayload   (WebSocket alert shape)
 
@@ -130,3 +137,12 @@ audit: tasks/twin-site-audit.md
   business/sdk/dbtest/dbtest.go                                   (add to BusDomain)
   api/cmd/services/ichor/tests/{area}/{entity}api/                (integration tests)
   api/cmd/services/ichor/tests/{area}/{entity}api/seed_test.go    (seed data)
+
+  if the domain must CASCADE (fire workflow events) — additionally:
+  business/domain/{area}/{entity}bus/{entity}bus.go               (add `outbox *outbox.Writer` field + WithOutbox option; b.outbox.Emit(ctx, evtData) + return err in each CRUD)
+  business/domain/{area}/{entity}bus/event.go                     (Action{Created,Updated,Deleted}Data payload builders)
+  business/sdk/workflowdomains/workflowdomains.go                 (add the (schema, domain, entity) Registrations() entry — drives the outbox entity-name map + relay)
+  api/cmd/services/ichor/build/all/all.go                         (append .WithOutbox(outboxWriter) to the bus)
+  api/cmd/services/workflow-worker/main.go                        (append .WithOutbox(outboxWriter) IF the worker constructs this bus)
+  business/sdk/dbtest/dbtest.go                                   (append .WithOutbox(outboxWriter) so integration tests exercise the cascade — F8 parity)
+  → delegate.Call alone no longer cascades; the durable path is the outbox. See delegate.md + workflow-engine.md.

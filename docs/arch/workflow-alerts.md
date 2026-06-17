@@ -65,7 +65,7 @@ handleAlert routing:
   msg.Payload["role_id"] present    → parse UUID → BroadcastToRole(roleID, bytes)
   else                              → BroadcastAll(bytes)
 
-message types: "alert" (new alert), "alert_updated" (status change)
+message types: "alert" (new alert), "alert_updated" (status change), "approval_resolved" (→ websocket.MessageTypeApprovalResolved; consumer.go:74)
 error handling: marshal/targeting errors not retried — returns nil
 
 ---
@@ -95,9 +95,9 @@ key facts:
 file: business/domain/workflow/approvalrequestbus/approvalrequestbus.go
 ```go
 type Business struct {
-    log    *logger.Logger
-    del    *delegate.Delegate
-    storer Storer
+    log      *logger.Logger
+    delegate *delegate.Delegate   // struct field is `delegate`; NewBusiness's param is `del`
+    storer   Storer
 }
 ```
 
@@ -166,8 +166,8 @@ Hub api:
 
 ## ⚠ Adding a new delegate subscriber to AlertHub
 
-  api/domain/http/workflow/alertws/delegate.go       (Register() call for new domain/action pair)
-  api/cmd/services/ichor/build/all/all.go            (wire new delegate registration at startup)
+  api/domain/http/workflow/alertws/delegate.go       (add del.Register(domain, action, handler) — today wired via the handler's RegisterRoleChanges(del) method, alertws/delegate.go:27)
+  api/cmd/services/ichor/build/all/all.go            (call the handler's Register* method at startup — e.g. alertHubDelegate.RegisterRoleChanges(delegate), all.go:1491)
 
 ## ⚠ Changing WebSocket Client ID scheme (currently "user:{uuid}" / "role:{uuid}")
 
