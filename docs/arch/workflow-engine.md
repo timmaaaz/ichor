@@ -14,50 +14,97 @@ invariant: each rule execution gets unique executionID; workflow ID deterministi
 
 ---
 
-## Pipeline
+## Pipeline (cascade dispatch — F2 outbox + relay)
 
-DelegateHandler[sdk] → WorkflowTrigger[sdk] → Temporal[⚡] → Worker → Activities[sdk]
-        ↑
-event sources → delegate.Call():
-  - all domain [bus] Create/Update/Delete
+bus write (Path A/B/C) → b.outbox.Emit(ctx, data) [SAME tx] → workflow.cascade_outbox
+  → Relay[sdk] poll → buildEvent (enrichment.go) → contextWithLineage → WorkflowTrigger[sdk]
+  → Temporal[⚡] → Worker → Activities[sdk]
+
+The Relay is the SOLE cascade dispatcher after the F2 cutover (2026-06-17) — the old
+delegate DelegateHandler subscriber is DELETED (see delegate.md). A cascade-relevant
+write persists ONE outbox row in its own tx; a single polling relay drains it. The
+3-mechanism cross-domain model (orchestration / outbox / delegate) lives in delegate.md.
+
+event sources → b.outbox.Emit(ctx, data) (alongside the KEPT best-effort b.delegate.Call):
+  - all cascade-relevant domain [bus] Create/Update/Delete (Path A human + Path B handlers)
   - generic data handlers (update_field/create_entity/transition_status) fire
-    SyntheticEventData after a confirmed raw-SQL write (synthesize.go) — this is what
+    SyntheticEventData after a confirmed raw-SQL write (synthesize.go) — Path C, what
     makes a worker activity's write cascade to downstream rules
   - workflowbus fires ActionAllocationResultCreatedData (domain "allocation_result")
 
-TWO DelegateHandler subscribers, one per binary (both register the identical domain
-set from workflowdomains.Registrations()):
-  - server: all.go — handles events from in-process bus writes
-  - worker: workflow-worker/main.go — handles events synthesized inside the worker's
-    own activities (own delegate.New(); without it the cascade dies at hop 1)
+Composition roots wire ONE outbox.Writer each (built identically all three places):
+  - server: all.go — Writer injected into 67 cascade buses + workflowBus; STARTS the relay
+  - worker: workflow-worker/main.go — Writer injected into its ~5 buses; does NOT start a
+    relay (server-only v1). Worker activity writes (Path B/C ORIGINATE here) Emit rows the
+    SERVER relay drains
+  - tests: dbtest.go — Writer injected into the same buses so the integration suite
+    exercises the live relay path (F8 parity), not a retired transport
 
 ---
 
-## DelegateHandler [sdk]
+## Outbox [sdk]
 
-file: business/sdk/workflow/temporal/delegatehandler.go
-imports: delegate.Handler interface, WorkflowTrigger
+file: business/sdk/outbox/{model,store,emit}.go
+imports: delegate, sqldb, workflow (NOT temporal — would cycle via the relay)
 key facts:
-  - Implements delegate.Handler — registered at startup in BOTH all.go and
-    workflow-worker/main.go, each over workflowdomains.Registrations()
-  - delegate.Data → workflow.TriggerEvent conversion (extractEntityData via reflection)
-  - Fires for: domain bus create/update/delete, synthesized generic-write events
-    (synthesize.go), and allocation_results creation
+  - Writer.Emit(ctx, delegate.Data) persists ONE workflow.cascade_outbox row on the
+    originating tx (sqldb.GetTxExecutor(ctx)); RETURNS its error so the bus propagates
+    it (return err) → mid.BeginCommitRollback rolls back entity row + outbox row together
+  - nil *Writer = no-op (inert until the F5 cutover injects a real Writer — DESIGN §6;
+    this is what lets the Emit calls be added across buses ahead of an atomic flip)
+  - No tx on ctx → falls back to the base pool with a LOUD warn (NOT atomic; the
+    on-a-tx trip-wire flags any covered path that lands here)
+  - Two facts not in delegate.Data are injected by the composition root (keeps the pkg
+    api/temporal-free): entityForDomain map[domain]entity (from
+    workflowdomains.Registrations()) + lineage func(ctx)[]byte (temporal.MarshalLineageFromContext)
+  - Store: Insert / FetchPending (ORDER BY seq, FOR UPDATE SKIP LOCKED) /
+    DeletePublished / MarkAttempt / Reap — each takes the sqlx.ExtContext explicitly
+  - // bouncer: marker at the emit seam reserves a volume-guard pre-filter (follow-up)
+⊕ workflow.cascade_outbox
 
 ---
 
-## workflowdomains [build]
+## Relay [sdk]
 
-file: api/cmd/services/ichor/build/all/workflowdomains/workflowdomains.go
+file: business/sdk/workflow/temporal/relay.go
+imports: outbox.Store, workflow, delegate, EventDispatcher (← *WorkflowTrigger)
 key facts:
-  - Single source of (schema, domain, entity) registrations — consumed by THREE call
-    sites: all.go RegisterDomain loop, worker RegisterDomain loop, and the generic-write
-    handler reverse map
+  - The SOLE cascade dispatcher post-F2. Run(ctx) polls every PollInterval (500ms
+    default), claims a batch FOR UPDATE SKIP LOCKED ORDER BY seq, dispatches in seq order
+  - dispatchRow: buildEvent(row) → contextWithLineage(decodeLineage(row.Lineage)) →
+    dispatcher.OnEntityEvent → success: DeletePublished (delete-on-publish); error:
+    MarkAttempt, dead after MaxAttempts (5) so it never head-of-line blocks
+  - buildEvent (enrichment.go: extractEntityData / computeFieldChanges, relocated from
+    the deleted DelegateHandler) rebuilds workflow.TriggerEvent from row.Payload and
+    sets event.EventID = row.ID (the dedup key)
+  - EventDispatcher interface (OnEntityEvent) extracted so the relay is testable with a
+    fake — no Temporal stack. ProcessBatch/Reap exported for deterministic test draining
+  - RelayConfig: PollInterval 500ms / BatchSize 100 / MaxAttempts 5 / DeadRowWindow 7d /
+    ReapInterval 1h (zero-value fields fall back to these; ICHOR_* at the call site)
+  - SERVER-ONLY v1: all.go starts it in a goroutine inside `if cfg.TemporalClient != nil`;
+    the worker does not. A LISTEN/NOTIFY fast-path or a broker is a swap behind the same
+    table + the same OnEntityEvent boundary (DESIGN §2)
+⊗ workflow.cascade_outbox (FetchPending) ⊕ delete / mark-attempt / reap
+
+---
+
+## workflowdomains [sdk]
+
+file: business/sdk/workflowdomains/workflowdomains.go
+  (relocated api→business in F8.1 so dbtest can build the outbox Writer without a
+   business→api import)
+key facts:
+  - Single source of (schema, domain, entity) registrations. Post-F2 it drives the
+    OUTBOX, not a delegate subscriber loop: the composition roots build the
+    entityForDomain map (delegate domain → workflow entity name) for outbox.NewWriter
+    from Registrations(); the generic-write handler builds its reverse map from it
   - Registrations() → []EntityReg; references bus DomainName/EntityName consts so a
     drifted name fails the build, not silently at runtime
-  - ReverseMap() → map[schema.table]EntityRef for generic-write synthesis; entries with
-    empty Schema (e.g. allocation_results) are subscriber-only, absent from the map
-  - Lives under build/all/ but imported cross-binary by the worker (see delegate.md)
+  - ReverseMap() → map[schema.table]EntityRef for generic-write synthesis; gated by
+    data.IsValidTableName so a non-writable / empty-Schema entry (e.g. allocation_results)
+    is absent from the map
+  - The Registrations()-coverage test asserts every cascade bus actually emits — a bus
+    that gets WithOutbox but forgets Emit goes RED (its cascade would silently vanish)
 
 ---
 
@@ -66,11 +113,16 @@ key facts:
 file: business/sdk/workflow/temporal/trigger.go
 imports: RuleMatcher[sdk], WorkflowStarter (narrow client.Client interface), EdgeStore[db]
 key facts:
-  - OnEntityEvent(ctx, TriggerEvent) — entry point from DelegateHandler
+  - OnEntityEvent(ctx, TriggerEvent) — entry point; post-F2 the caller is the Relay
   - RuleMatcher.ProcessEvent() → []MatchedRule
   - Loads GraphDefinition per matched rule from EdgeStore
   - Fails open: individual rule failure logged + skipped; other rules proceed
-  - Workflow ID: "workflow-{ruleID}-{entityID}-{executionID}" (deterministic prefix)
+  - Workflow ID: "workflow-{ruleID}-{dedupKey}" (trigger.go:200-214). dedupKey =
+    event.EventID (= outbox row id) when drained by the relay, else a per-dispatch
+    random executionID fallback (zero-EventID direct test callers). With
+    WorkflowIDReusePolicy=REJECT_DUPLICATE (trigger.go:265) a re-published row → same id
+    → Temporal rejects the dup: at-least-once emission, effectively-once execution
+  - TriggerEvent.EventID added (models.go:29) — the relay sets it = row.ID
   - Task queue: "ichor-workflow-queue" (models.go:18) (tests: "test-workflow-{t.Name()}")
 
 ⚡ Temporal.ExecuteWorkflow
@@ -311,6 +363,10 @@ workflow.rule_actions           — action nodes attached to rules
 workflow.action_edges           — directed edges (type: start / sequence / always)
 workflow.action_templates       — reusable action type configs
 workflow.automation_executions  — execution history
+workflow.cascade_outbox         — F2 transactional outbox (migration 2.42): one row per
+                                  cascade event, drained by the relay. id = dedup key,
+                                  seq = total order, lineage = loop-guard visited-set
+                                  (also F8's traceparent slot); partial index on pending rows
 
 ---
 
@@ -366,4 +422,37 @@ tests: assert to map[string]any, never concrete struct
   business/sdk/workflow/temporal/trigger.go                        (populate new fields when dispatching)
   business/sdk/workflow/temporal/graph_executor.go                 (consume new fields if needed)
   apitest/workflow.go                                               (update test infra if WorkflowInfra changes)
+
+## ⚠ Cascade path (outbox → relay) — files & reliability tests
+
+seam: bus write → b.outbox.Emit(ctx, delegate.Data) INSERT workflow.cascade_outbox
+(SAME tx; migration 2.42) → relay.go polls (FOR UPDATE SKIP LOCKED, ORDER BY seq) →
+buildEvent (enrichment.go) → contextWithLineage → WorkflowTrigger.OnEntityEvent.
+
+LINEAGE (the A→B→A loop guard): WorkflowLineage{Visited[], OriginatingExecutionID}
+(lineage.go) is serialized into the row's lineage column at emit
+(temporal.MarshalLineageFromContext — nil for human/non-workflow writes, so the column
+stays NULL and a fresh chain starts) and rehydrated before dispatch (decodeLineage →
+contextWithLineage). The guard SURVIVES the serialize→DB→rehydrate round-trip. F2
+changed DELIVERY only (best-effort → durable at-least-once + dedup); the guard logic,
+which rules match, and which events fire are unchanged.
+
+DEDUP: workflow id = workflow-{ruleID}-{eventID}, eventID = outbox row id,
+REJECT_DUPLICATE (see WorkflowTrigger above).
+
+  business/sdk/outbox/{model,store,emit}.go                        (table model + Store + Writer.Emit)
+  business/sdk/workflow/temporal/relay.go                          (the polling relay — sole dispatcher)
+  business/sdk/workflow/temporal/enrichment.go                     (buildEvent helpers; was delegatehandler.go)
+  business/sdk/workflow/temporal/lineage.go                        (WorkflowLineage; MarshalLineageFromContext; contextWithLineage)
+  business/sdk/sqldb/context.go                                    (WithTx / GetTx / GetTxExecutor — the tx-on-ctx carrier Emit reads)
+  business/sdk/migrate/sql/migrate.sql                             (Version: 2.42 — workflow.cascade_outbox)
+  api/cmd/services/ichor/build/all/all.go                          (Writer built + injected into 67 buses; relay STARTED)
+  api/cmd/services/workflow-worker/main.go                         (Writer injected; NO relay)
+  business/sdk/dbtest/dbtest.go                                    (Writer injected — F8 test parity; BusDomain.OutboxWriter)
+
+reliability tests (changed-pkg only — NEVER go test ./...):
+  api/cmd/services/ichor/tests/workflow/actionhandlers/cascade_outbox_test.go (e2e: human → ruleA activity → Emit → relay → ruleB; lineage survives)
+  business/sdk/workflow/temporal/relay_test.go                     (TestRelay_* — drain order, retry/dead, reap, buildEvent enrichment, decode lineage)
+  business/sdk/workflow/temporal/{lineage_test,trigger_test}.go    (TestGuard_ABA_StopsAfterOneHop, TestCascade_LoopGuard, dedup id)
+  business/sdk/outbox/{outbox_test,coverage_test}.go               (Emit atomicity / RYW / pool fallback; every-cascade-bus-emits coverage)
 
