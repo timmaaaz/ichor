@@ -27,7 +27,7 @@ import (
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/data"
 
-	"github.com/timmaaaz/ichor/api/cmd/services/ichor/build/all/workflowdomains"
+	"github.com/timmaaaz/ichor/business/sdk/workflowdomains"
 )
 
 const pcEntityTable = "products.product_categories"
@@ -40,11 +40,13 @@ func TestCascade_LoopGuard(t *testing.T) {
 	base := seedConsistencyBase(t, ctx, db)
 	uid := base.userID
 
-	// The only handler the rules use: update_field, wired to fire synthesized events.
+	// The only handler the rules use: update_field, wired to synthesize events AND emit
+	// them to the outbox (data.WithOutbox) so the rig's relay dispatches each cascade hop.
 	registry := workflow.NewActionRegistry()
 	registry.Register(data.NewUpdateFieldHandler(db.Log, db.DB,
 		data.WithDelegate(db.BusDomain.Delegate),
-		data.WithEntityRegistry(workflowdomains.ReverseMap())))
+		data.WithEntityRegistry(workflowdomains.ReverseMap()),
+		data.WithOutbox(db.BusDomain.OutboxWriter)))
 	rig := startCascadeRig(t, ctx, db, registry)
 
 	entityType, err := rig.workflowBus.QueryEntityTypeByName(ctx, "table")

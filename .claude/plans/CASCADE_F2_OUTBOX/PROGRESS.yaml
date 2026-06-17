@@ -314,7 +314,73 @@ ship:
         status: not_started
       - id: F7.3
         title: "go build ./... clean; PROGRESS -> done; conventional commit; (push only when user asks)"
-        status: not_started
+        status: not_started   # RESEQUENCED: gated on F8 — the dead delegate.Call drop + DelegateHandler removal are only safe once the TEST harness leaves the delegate path (F8). Do F7 cleanup AFTER F8.
+
+harness_parity:
+  F8:
+    title: "Test-harness parity — make integration tests exercise the production outbox+relay cascade path"
+    status: done   # F8.1-F8.5 all DONE + verified. The integration suite now guards the LIVE cascade transport. UNBLOCKS the F7 cleanup (drop dead delegate.Call + remove DelegateHandler).
+    gate: "after F5/F6 (prod live). RESEQUENCES F7: tests must leave the delegate path BEFORE the dead delegate.Call sites + DelegateHandler can be removed."
+    rationale: >
+      Post-F5, PRODUCTION cascades flow through the outbox+relay, but the integration-test harness
+      (dbtest buses had no Writer; apitest/cascade_rig wired a DelegateHandler) still flowed through the
+      DELEGATE — a test/prod divergence (the broad suite was guarding a retired transport). 3-agent
+      investigation (opus) settled the idiomatic fix: the Writer is a BUS dependency (like `delegate`),
+      so it belongs in dbtest where `delegate` is built — NOT re-wrapped in the api-layer rig (no
+      precedent for that). That required relocating the (api-symbol-free) workflowdomains registry to the
+      business layer so dbtest can build the Writer. The api-layer rigs then own only the DISPATCH swap
+      (relay + drop DelegateHandler).
+    tasks:
+      - id: F8.1
+        title: "Relocate workflowdomains api->business layer (business/sdk/workflowdomains) so dbtest can build the Writer without a business->api import"
+        status: done
+        note: >
+          DONE. `git mv` to business/sdk/workflowdomains (package clause unchanged); updated 8 importer paths
+          (all.go, worker, 6 actionhandlers tests); gofmt. Verified api-symbol-free (Agent 2): every value
+          comes from business-layer bus consts (ordersbus.DomainName/.EntityName, workflow.AllocationResultDomainName)
+          + data.EntityRef/IsValidTableName. `go build ./...` clean — no import cycle (dbtest->workflowdomains->
+          buses; nothing imports dbtest back).
+      - id: F8.2
+        title: "dbtest.newBusDomains: build the outbox.Writer (entityForDomain from Registrations + temporal.MarshalLineageFromContext) and inject .WithOutbox into the same 67 cascade buses all.go wires + .WithOutboxEmitter on workflowBus"
+        status: done
+        note: >
+          DONE. Mirrors all.go exactly: Writer built right after `delegate := delegate.New(log)`; scripted
+          `.WithOutbox(outboxWriter)` appended to all 67 emit-buses (driven off the WithOutbox-method marker —
+          set-equal to all.go; 0 missing); workflowBus got `.WithOutboxEmitter(outboxWriter.Emit)`. VERIFIED
+          INERT + non-breaking: with no relay yet running in the harness, the emitted rows sit undrained and
+          cascades still flow via the existing DelegateHandler — TestCascade_LoopGuard / M2_LiveCascade /
+          OutboxRoundTrip + transferorderbus all GREEN. (NEXT: expose the Writer on BusDomain so Path-C handlers
+          in consumer tests can data.WithOutbox it.)
+      - id: F8.3
+        title: "Dispatch swap in cascade_rig (startCascadeRig): start a relay, DROP the DelegateHandler.RegisterDomain loop; consumer tests wire Path-C data.WithOutbox + rely on the relay"
+        status: done
+        note: >
+          DONE. Exposed db.BusDomain.OutboxWriter (mirrors Delegate) so Path-C handlers share the dbtest Writer.
+          startCascadeRig: replaced the NewDelegateHandler + Registrations() loop with NewRelay + go Run(relayCtx)
+          (t.Cleanup cancels); dropped the workflowdomains import + the delegateHandler struct field; refreshed the
+          doc comments. cascade_loop + cascade_m2_live update_field handlers got data.WithOutbox(db.BusDomain.OutboxWriter);
+          cascade_fanout + cascade_m2 EventContract LEFT on the delegate-recorder path (they assert the synthesized
+          delegate.Call contract, no relay). VERIFIED: full actionhandlers package GREEN (12.7s) — incl.
+          TestCascade_LoopGuard (A->B->A now STOPS through the relay — the decisive guarantee, live), M2_LiveCascade,
+          OutboxRoundTrip, and the contract tests.
+      - id: F8.4
+        title: "apitest/workflow.go (InitWorkflowInfra) dispatch swap + remove the per-test RegisterDomain callers (ordersapi, workflowsaveapi)"
+        status: done
+        note: >
+          DONE. InitWorkflowInfra: removed the DelegateHandler field + NewDelegateHandler build; start a relay
+          (go Run, cleanup cancels it before worker/client). Removed the 2 consumer RegisterDomain calls
+          (ordersapi/workflow_test.go, workflowsaveapi/trigger_test.go) — those tests' db.BusDomain writes now emit
+          rows the relay drains. VERIFIED GREEN on the relay path: ordersapi TestWorkflow_OrdersDelegateEvents (13.5s),
+          formdataapi TestWorkflow_OrderCreateEvent (11.4s), workflowsaveapi Test_WorkflowSaveAPI (31s),
+          approvalapi (7.9s). cascade_lineage_test still builds its OWN NewDelegateHandler (standalone, untouched) —
+          to be deleted in the F7 cleanup (now unblocked: both prod AND tests are off the delegate cascade path).
+      - id: F8.5
+        title: "Verify: run the workflow integration suites GREEN on the relay path"
+        status: done
+        note: >
+          DONE (rolled into F8.2-F8.4 verification): actionhandlers (full pkg), ordersapi, formdataapi,
+          workflowsaveapi, approvalapi all GREEN on the relay path; transferorderbus GREEN (global-emit harmless for
+          normal bus tests); go build ./... + go vet clean throughout.
 
 follow_up:
   - id: F2.followup.bouncer

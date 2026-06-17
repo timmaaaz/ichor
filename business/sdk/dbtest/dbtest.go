@@ -52,6 +52,10 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/hr/commentbus"
 	"github.com/timmaaaz/ichor/business/domain/hr/commentbus/stores/commentdb"
 	"github.com/timmaaaz/ichor/business/domain/introspectionbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/cyclecountitembus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/cyclecountitembus/stores/cyclecountitemdb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/cyclecountsessionbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/cyclecountsessionbus/stores/cyclecountsessiondb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inspectionbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inspectionbus/stores/inspectiondb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryadjustmentbus"
@@ -62,22 +66,14 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorylocationbus/stores/inventorylocationdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus/stores/inventorytransactiondb"
-	"github.com/timmaaaz/ichor/business/domain/labels/labelbus"
-	"github.com/timmaaaz/ichor/business/domain/labels/labelbus/stores/labeldb"
-	"github.com/timmaaaz/ichor/business/domain/scenarios/scenariobus"
-	"github.com/timmaaaz/ichor/business/domain/scenarios/scenariobus/stores/scenariodb"
-	"github.com/timmaaaz/ichor/business/domain/inventory/cyclecountitembus"
-	"github.com/timmaaaz/ichor/business/domain/inventory/cyclecountitembus/stores/cyclecountitemdb"
-	"github.com/timmaaaz/ichor/business/domain/inventory/cyclecountsessionbus"
-	"github.com/timmaaaz/ichor/business/domain/inventory/cyclecountsessionbus/stores/cyclecountsessiondb"
-	"github.com/timmaaaz/ichor/business/domain/inventory/picktaskbus"
-	"github.com/timmaaaz/ichor/business/domain/inventory/picktaskbus/stores/picktaskdb"
-	"github.com/timmaaaz/ichor/business/domain/inventory/putawaytaskbus"
-	"github.com/timmaaaz/ichor/business/domain/inventory/putawaytaskbus/stores/putawaytaskdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/lotlocationbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/lotlocationbus/stores/lotlocationdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/lottrackingsbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/lottrackingsbus/stores/lottrackingsdb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/picktaskbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/picktaskbus/stores/picktaskdb"
+	"github.com/timmaaaz/ichor/business/domain/inventory/putawaytaskbus"
+	"github.com/timmaaaz/ichor/business/domain/inventory/putawaytaskbus/stores/putawaytaskdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/serialnumberbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/serialnumberbus/stores/serialnumberdb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/transferorderbus"
@@ -86,6 +82,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/warehousebus/stores/warehousedb"
 	"github.com/timmaaaz/ichor/business/domain/inventory/zonebus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/zonebus/stores/zonedb"
+	"github.com/timmaaaz/ichor/business/domain/labels/labelbus"
+	"github.com/timmaaaz/ichor/business/domain/labels/labelbus/stores/labeldb"
 	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderbus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderbus/stores/purchaseorderdb"
 	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitembus"
@@ -120,6 +118,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/sales/orderlineitemsbus/stores/orderlineitemsdb"
 	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus/stores/ordersdb"
+	"github.com/timmaaaz/ichor/business/domain/scenarios/scenariobus"
+	"github.com/timmaaaz/ichor/business/domain/scenarios/scenariobus/stores/scenariodb"
 	"github.com/timmaaaz/ichor/business/domain/workflow/actionpermissionsbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/actionpermissionsbus/stores/actionpermissionsdb"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
@@ -187,10 +187,13 @@ import (
 
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/migrate"
+	"github.com/timmaaaz/ichor/business/sdk/outbox"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/business/sdk/tablebuilder"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/stores/workflowdb"
+	"github.com/timmaaaz/ichor/business/sdk/workflow/temporal"
+	"github.com/timmaaaz/ichor/business/sdk/workflowdomains"
 	"github.com/timmaaaz/ichor/foundation/docker"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/otel"
@@ -199,6 +202,12 @@ import (
 // BusDomain represents all the business domain apis needed for testing.
 type BusDomain struct {
 	Delegate *delegate.Delegate
+
+	// OutboxWriter is the transactional-outbox Writer injected into every cascade bus
+	// above (F8). Exposed — like Delegate — so tests/handlers that write OUTSIDE a bus
+	// (e.g. the Path-C generic data handlers, which write raw SQL then synthesize) can
+	// share the same Writer instance via data.WithOutbox(db.BusDomain.OutboxWriter).
+	OutboxWriter *outbox.Writer
 
 	// Locations
 	Home     *homebus.Business
@@ -325,114 +334,128 @@ type BusDomain struct {
 func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	delegate := delegate.New(log)
 
+	// F8 harness parity: build the transactional-outbox Writer and inject it into the
+	// same cascade buses production wires (mirrors all.go), so integration tests exercise
+	// the live outbox+relay cascade path rather than the legacy delegate path. The
+	// domain→entity map comes from the (now business-layer) workflowdomains registry; the
+	// lineage extractor is the exported temporal helper. The Writer makes every cascade
+	// bus write persist an outbox row; cascades only DISPATCH where a relay runs (the
+	// workflow rigs start one), so non-workflow tests just emit harmless rows dropped at
+	// teardown.
+	entityForDomain := make(map[string]string)
+	for _, r := range workflowdomains.Registrations() {
+		entityForDomain[r.Domain] = r.Entity
+	}
+	outboxWriter := outbox.NewWriter(log, db, entityForDomain, temporal.MarshalLineageFromContext)
+
 	// Users
-	userapprovalstatusbus := approvalbus.NewBusiness(log, delegate, approvaldb.NewStore(log, db))
-	userBus := userbus.NewBusiness(log, delegate, userapprovalstatusbus, usercache.NewStore(log, userdb.NewStore(log, db), time.Hour))
-	reportsToBus := reportstobus.NewBusiness(log, delegate, reportstodb.NewStore(log, db))
-	userApprovalCommentBus := commentbus.NewBusiness(log, delegate, userBus, commentdb.NewStore(log, db))
-	titlebus := titlebus.NewBusiness(log, delegate, titledb.NewStore(log, db))
+	userapprovalstatusbus := approvalbus.NewBusiness(log, delegate, approvaldb.NewStore(log, db)).WithOutbox(outboxWriter)
+	userBus := userbus.NewBusiness(log, delegate, userapprovalstatusbus, usercache.NewStore(log, userdb.NewStore(log, db), time.Hour)).WithOutbox(outboxWriter)
+	reportsToBus := reportstobus.NewBusiness(log, delegate, reportstodb.NewStore(log, db)).WithOutbox(outboxWriter)
+	userApprovalCommentBus := commentbus.NewBusiness(log, delegate, userBus, commentdb.NewStore(log, db)).WithOutbox(outboxWriter)
+	titlebus := titlebus.NewBusiness(log, delegate, titledb.NewStore(log, db)).WithOutbox(outboxWriter)
 
 	// Locations
 	countryBus := countrybus.NewBusiness(log, delegate, countrydb.NewStore(log, db))
 	regionBus := regionbus.NewBusiness(log, delegate, regiondb.NewStore(log, db))
-	cityBus := citybus.NewBusiness(log, delegate, citydb.NewStore(log, db))
-	streetBus := streetbus.NewBusiness(log, delegate, streetdb.NewStore(log, db))
-	timezoneBus := timezonebus.NewBusiness(log, delegate, timezonedb.NewStore(log, db))
-	homeBus := homebus.NewBusiness(log, userBus, delegate, homedb.NewStore(log, db))
-	officeBus := officebus.NewBusiness(log, delegate, officedb.NewStore(log, db))
+	cityBus := citybus.NewBusiness(log, delegate, citydb.NewStore(log, db)).WithOutbox(outboxWriter)
+	streetBus := streetbus.NewBusiness(log, delegate, streetdb.NewStore(log, db)).WithOutbox(outboxWriter)
+	timezoneBus := timezonebus.NewBusiness(log, delegate, timezonedb.NewStore(log, db)).WithOutbox(outboxWriter)
+	homeBus := homebus.NewBusiness(log, userBus, delegate, homedb.NewStore(log, db)).WithOutbox(outboxWriter)
+	officeBus := officebus.NewBusiness(log, delegate, officedb.NewStore(log, db)).WithOutbox(outboxWriter)
 
 	// Assets
-	assetTypeBus := assettypebus.NewBusiness(log, delegate, assettypedb.NewStore(log, db))
-	validAssetBus := validassetbus.NewBusiness(log, delegate, validassetdb.NewStore(log, db))
-	assetConditionBus := assetconditionbus.NewBusiness(log, delegate, assetconditiondb.NewStore(log, db))
-	approvalstatusBus := approvalstatusbus.NewBusiness(log, delegate, approvalstatusdb.NewStore(log, db))
-	fulfillmentstatusBus := fulfillmentstatusbus.NewBusiness(log, delegate, fulfillmentstatusdb.NewStore(log, db))
-	tagBus := tagbus.NewBusiness(log, delegate, tagdb.NewStore(log, db))
-	assetTagBus := assettagbus.NewBusiness(log, delegate, assettagdb.NewStore(log, db))
-	userAssetBus := userassetbus.NewBusiness(log, delegate, userassetdb.NewStore(log, db))
-	assetBus := assetbus.NewBusiness(log, delegate, assetdb.NewStore(log, db))
+	assetTypeBus := assettypebus.NewBusiness(log, delegate, assettypedb.NewStore(log, db)).WithOutbox(outboxWriter)
+	validAssetBus := validassetbus.NewBusiness(log, delegate, validassetdb.NewStore(log, db)).WithOutbox(outboxWriter)
+	assetConditionBus := assetconditionbus.NewBusiness(log, delegate, assetconditiondb.NewStore(log, db)).WithOutbox(outboxWriter)
+	approvalstatusBus := approvalstatusbus.NewBusiness(log, delegate, approvalstatusdb.NewStore(log, db)).WithOutbox(outboxWriter)
+	fulfillmentstatusBus := fulfillmentstatusbus.NewBusiness(log, delegate, fulfillmentstatusdb.NewStore(log, db)).WithOutbox(outboxWriter)
+	tagBus := tagbus.NewBusiness(log, delegate, tagdb.NewStore(log, db)).WithOutbox(outboxWriter)
+	assetTagBus := assettagbus.NewBusiness(log, delegate, assettagdb.NewStore(log, db)).WithOutbox(outboxWriter)
+	userAssetBus := userassetbus.NewBusiness(log, delegate, userassetdb.NewStore(log, db)).WithOutbox(outboxWriter)
+	assetBus := assetbus.NewBusiness(log, delegate, assetdb.NewStore(log, db)).WithOutbox(outboxWriter)
 
 	// Core
-	contactInfosBus := contactinfosbus.NewBusiness(log, delegate, contactinfosdb.NewStore(log, db))
-	customersBus := customersbus.NewBusiness(log, delegate, customersdb.NewStore(log, db))
-	paymentTermBus := paymenttermbus.NewBusiness(log, delegate, paymenttermdb.NewStore(log, db))
-	currencyBus := currencybus.NewBusiness(log, delegate, currencycache.NewStore(log, currencydb.NewStore(log, db), 60*time.Minute))
+	contactInfosBus := contactinfosbus.NewBusiness(log, delegate, contactinfosdb.NewStore(log, db)).WithOutbox(outboxWriter)
+	customersBus := customersbus.NewBusiness(log, delegate, customersdb.NewStore(log, db)).WithOutbox(outboxWriter)
+	paymentTermBus := paymenttermbus.NewBusiness(log, delegate, paymenttermdb.NewStore(log, db)).WithOutbox(outboxWriter)
+	currencyBus := currencybus.NewBusiness(log, delegate, currencycache.NewStore(log, currencydb.NewStore(log, db), 60*time.Minute)).WithOutbox(outboxWriter)
 	userPreferencesBus := userpreferencesbus.NewBusiness(log, userpreferencesdb.NewStore(log, db))
 
 	// Inventory
-	brandBus := brandbus.NewBusiness(log, delegate, branddb.NewStore(log, db))
-	productCategoryBus := productcategorybus.NewBusiness(log, delegate, productcategorydb.NewStore(log, db))
-	productBus := productbus.NewBusiness(log, delegate, productdb.NewStore(log, db))
+	brandBus := brandbus.NewBusiness(log, delegate, branddb.NewStore(log, db)).WithOutbox(outboxWriter)
+	productCategoryBus := productcategorybus.NewBusiness(log, delegate, productcategorydb.NewStore(log, db)).WithOutbox(outboxWriter)
+	productBus := productbus.NewBusiness(log, delegate, productdb.NewStore(log, db)).WithOutbox(outboxWriter)
 	productUOMBus := productuombus.NewBusiness(log, delegate, productuomdb.NewStore(log, db))
-	physicalAttributeBus := physicalattributebus.NewBusiness(log, delegate, physicalattributedb.NewStore(log, db))
-	inventoryItemBus := inventoryitembus.NewBusiness(log, delegate, inventoryitemdb.NewStore(log, db))
+	physicalAttributeBus := physicalattributebus.NewBusiness(log, delegate, physicalattributedb.NewStore(log, db)).WithOutbox(outboxWriter)
+	inventoryItemBus := inventoryitembus.NewBusiness(log, delegate, inventoryitemdb.NewStore(log, db)).WithOutbox(outboxWriter)
 
 	// Warehouses
-	warehouseBus := warehousebus.NewBusiness(log, delegate, warehousedb.NewStore(log, db))
-	zoneBus := zonebus.NewBusiness(log, delegate, zonedb.NewStore(log, db))
-	inventoryLocationBus := inventorylocationbus.NewBusiness(log, delegate, inventorylocationdb.NewStore(log, db))
+	warehouseBus := warehousebus.NewBusiness(log, delegate, warehousedb.NewStore(log, db)).WithOutbox(outboxWriter)
+	zoneBus := zonebus.NewBusiness(log, delegate, zonedb.NewStore(log, db)).WithOutbox(outboxWriter)
+	inventoryLocationBus := inventorylocationbus.NewBusiness(log, delegate, inventorylocationdb.NewStore(log, db)).WithOutbox(outboxWriter)
 
 	// Permissions
-	roleBus := rolebus.NewBusiness(log, delegate, rolecache.NewStore(log, roledb.NewStore(log, db), 60*time.Minute))
-	pageBus := pagebus.NewBusiness(log, delegate, pagedb.NewStore(log, db))
-	rolePageBus := rolepagebus.NewBusiness(log, delegate, rolepagedb.NewStore(log, db))
-	userRoleBus := userrolebus.NewBusiness(log, delegate, userrolecache.NewStore(log, userroledb.NewStore(log, db), 60*time.Minute))
-	tableAccessBus := tableaccessbus.NewBusiness(log, delegate, tableaccesscache.NewStore(log, tableaccessdb.NewStore(log, db), 60*time.Minute))
+	roleBus := rolebus.NewBusiness(log, delegate, rolecache.NewStore(log, roledb.NewStore(log, db), 60*time.Minute)).WithOutbox(outboxWriter)
+	pageBus := pagebus.NewBusiness(log, delegate, pagedb.NewStore(log, db)).WithOutbox(outboxWriter)
+	rolePageBus := rolepagebus.NewBusiness(log, delegate, rolepagedb.NewStore(log, db)).WithOutbox(outboxWriter)
+	userRoleBus := userrolebus.NewBusiness(log, delegate, userrolecache.NewStore(log, userroledb.NewStore(log, db), 60*time.Minute)).WithOutbox(outboxWriter)
+	tableAccessBus := tableaccessbus.NewBusiness(log, delegate, tableaccesscache.NewStore(log, tableaccessdb.NewStore(log, db), 60*time.Minute)).WithOutbox(outboxWriter)
 	permissionsBus := permissionsbus.NewBusiness(log, delegate, permissionscache.NewStore(log, permissionsdb.NewStore(log, db), 60*time.Minute), userRoleBus, tableAccessBus, roleBus)
 
 	// Introspection
 	introspectionBus := introspectionbus.NewBusiness(log, db)
 
 	// Finance
-	productCostBus := productcostbus.NewBusiness(log, delegate, productcostdb.NewStore(log, db))
-	costHistoryBus := costhistorybus.NewBusiness(log, delegate, costhistorydb.NewStore(log, db))
+	productCostBus := productcostbus.NewBusiness(log, delegate, productcostdb.NewStore(log, db)).WithOutbox(outboxWriter)
+	costHistoryBus := costhistorybus.NewBusiness(log, delegate, costhistorydb.NewStore(log, db)).WithOutbox(outboxWriter)
 
 	// Suppliers
-	supplierBus := supplierbus.NewBusiness(log, delegate, supplierdb.NewStore(log, db))
-	supplierProductBus := supplierproductbus.NewBusiness(log, delegate, supplierproductdb.NewStore(log, db))
+	supplierBus := supplierbus.NewBusiness(log, delegate, supplierdb.NewStore(log, db)).WithOutbox(outboxWriter)
+	supplierProductBus := supplierproductbus.NewBusiness(log, delegate, supplierproductdb.NewStore(log, db)).WithOutbox(outboxWriter)
 
 	// Purchase Orders
-	purchaseOrderStatusBus := purchaseorderstatusbus.NewBusiness(log, delegate, purchaseorderstatusdb.NewStore(log, db))
-	purchaseOrderLineItemStatusBus := purchaseorderlineitemstatusbus.NewBusiness(log, delegate, purchaseorderlineitemstatusdb.NewStore(log, db))
-	purchaseOrderBus := purchaseorderbus.NewBusiness(log, delegate, purchaseorderdb.NewStore(log, db))
-	purchaseOrderLineItemBus := purchaseorderlineitembus.NewBusiness(log, delegate, purchaseorderlineitemdb.NewStore(log, db))
+	purchaseOrderStatusBus := purchaseorderstatusbus.NewBusiness(log, delegate, purchaseorderstatusdb.NewStore(log, db)).WithOutbox(outboxWriter)
+	purchaseOrderLineItemStatusBus := purchaseorderlineitemstatusbus.NewBusiness(log, delegate, purchaseorderlineitemstatusdb.NewStore(log, db)).WithOutbox(outboxWriter)
+	purchaseOrderBus := purchaseorderbus.NewBusiness(log, delegate, purchaseorderdb.NewStore(log, db)).WithOutbox(outboxWriter)
+	purchaseOrderLineItemBus := purchaseorderlineitembus.NewBusiness(log, delegate, purchaseorderlineitemdb.NewStore(log, db)).WithOutbox(outboxWriter)
 
 	// Quality
-	metricsBus := metricsbus.NewBusiness(log, delegate, metricsdb.NewStore(log, db))
-	inspectionBus := inspectionbus.NewBusiness(log, delegate, inspectiondb.NewStore(log, db))
+	metricsBus := metricsbus.NewBusiness(log, delegate, metricsdb.NewStore(log, db)).WithOutbox(outboxWriter)
+	inspectionBus := inspectionbus.NewBusiness(log, delegate, inspectiondb.NewStore(log, db)).WithOutbox(outboxWriter)
 
 	// Lots
-	lotTrackingsBus := lottrackingsbus.NewBusiness(log, delegate, lottrackingsdb.NewStore(log, db))
-	serialNumberBus := serialnumberbus.NewBusiness(log, delegate, serialnumberdb.NewStore(log, db))
-	lotLocationBus := lotlocationbus.NewBusiness(log, delegate, lotlocationdb.NewStore(log, db))
+	lotTrackingsBus := lottrackingsbus.NewBusiness(log, delegate, lottrackingsdb.NewStore(log, db)).WithOutbox(outboxWriter)
+	serialNumberBus := serialnumberbus.NewBusiness(log, delegate, serialnumberdb.NewStore(log, db)).WithOutbox(outboxWriter)
+	lotLocationBus := lotlocationbus.NewBusiness(log, delegate, lotlocationdb.NewStore(log, db)).WithOutbox(outboxWriter)
 
 	// Movement
-	inventoryTransactionBus := inventorytransactionbus.NewBusiness(log, delegate, inventorytransactiondb.NewStore(log, db))
-	inventoryAdjustmentBus := inventoryadjustmentbus.NewBusiness(log, delegate, inventoryadjustmentdb.NewStore(log, db))
-	transferOrderBus := transferorderbus.NewBusiness(log, delegate, transferorderdb.NewStore(log, db))
-	putAwayTaskBus := putawaytaskbus.NewBusiness(log, delegate, putawaytaskdb.NewStore(log, db))
-	pickTaskBus := picktaskbus.NewBusiness(log, delegate, picktaskdb.NewStore(log, db))
-	cycleCountSessionBus := cyclecountsessionbus.NewBusiness(log, delegate, cyclecountsessiondb.NewStore(log, db))
-	cycleCountItemBus := cyclecountitembus.NewBusiness(log, delegate, cyclecountitemdb.NewStore(log, db))
+	inventoryTransactionBus := inventorytransactionbus.NewBusiness(log, delegate, inventorytransactiondb.NewStore(log, db)).WithOutbox(outboxWriter)
+	inventoryAdjustmentBus := inventoryadjustmentbus.NewBusiness(log, delegate, inventoryadjustmentdb.NewStore(log, db)).WithOutbox(outboxWriter)
+	transferOrderBus := transferorderbus.NewBusiness(log, delegate, transferorderdb.NewStore(log, db)).WithOutbox(outboxWriter)
+	putAwayTaskBus := putawaytaskbus.NewBusiness(log, delegate, putawaytaskdb.NewStore(log, db)).WithOutbox(outboxWriter)
+	pickTaskBus := picktaskbus.NewBusiness(log, delegate, picktaskdb.NewStore(log, db)).WithOutbox(outboxWriter)
+	cycleCountSessionBus := cyclecountsessionbus.NewBusiness(log, delegate, cyclecountsessiondb.NewStore(log, db)).WithOutbox(outboxWriter)
+	cycleCountItemBus := cyclecountitembus.NewBusiness(log, delegate, cyclecountitemdb.NewStore(log, db)).WithOutbox(outboxWriter)
 
 	// Labels — printer is nil at the BusDomain layer; tests that exercise
 	// printing inject a recording printer through the API stack via
 	// mux.Config.LabelPrinter. Direct bus-level tests do not print.
-	labelBus := labelbus.NewBusiness(log, delegate, labeldb.NewStore(log, db), nil)
+	labelBus := labelbus.NewBusiness(log, delegate, labeldb.NewStore(log, db), nil).WithOutbox(outboxWriter)
 
 	// Scenarios — beginner is required for transactional Load/Reset.
 	// Pass "" for scenariosRoot: dbtest contexts do not exercise the YAML
 	// worker-zone path.
-	scenarioBus := scenariobus.NewBusiness(log, delegate, scenariodb.NewStore(log, db), sqldb.NewBeginner(db), "")
+	scenarioBus := scenariobus.NewBusiness(log, delegate, scenariodb.NewStore(log, db), sqldb.NewBeginner(db), "").WithOutbox(outboxWriter)
 
 	// Orders
-	orderFulfillmentStatusBus := orderfulfillmentstatusbus.NewBusiness(log, delegate, orderfulfillmentstatusdb.NewStore(log, db))
-	lineItemFulfillmentStatusBus := lineitemfulfillmentstatusbus.NewBusiness(log, delegate, lineitemfulfillmentstatusdb.NewStore(log, db))
-	ordersBus := ordersbus.NewBusiness(log, delegate, ordersdb.NewStore(log, db))
-	orderLineItemsBus := orderlineitemsbus.NewBusiness(log, delegate, orderlineitemsdb.NewStore(log, db))
+	orderFulfillmentStatusBus := orderfulfillmentstatusbus.NewBusiness(log, delegate, orderfulfillmentstatusdb.NewStore(log, db)).WithOutbox(outboxWriter)
+	lineItemFulfillmentStatusBus := lineitemfulfillmentstatusbus.NewBusiness(log, delegate, lineitemfulfillmentstatusdb.NewStore(log, db)).WithOutbox(outboxWriter)
+	ordersBus := ordersbus.NewBusiness(log, delegate, ordersdb.NewStore(log, db)).WithOutbox(outboxWriter)
+	orderLineItemsBus := orderlineitemsbus.NewBusiness(log, delegate, orderlineitemsdb.NewStore(log, db)).WithOutbox(outboxWriter)
 
 	// Workflow
-	workflowBus := workflow.NewBusiness(log, delegate, workflowdb.NewStore(log, db))
+	workflowBus := workflow.NewBusiness(log, delegate, workflowdb.NewStore(log, db)).WithOutboxEmitter(outboxWriter.Emit)
 	alertBus := alertbus.NewBusiness(log, alertdb.NewStore(log, db))
 	actionPermissionsBus := actionpermissionsbus.NewBusiness(log, actionpermissionsdb.NewStore(log, db))
 	notificationBus := notificationbus.NewBusiness(log, notificationdb.NewStore(log, db))
@@ -442,15 +465,16 @@ func newBusDomains(log *logger.Logger, db *sqlx.DB) BusDomain {
 	tableBus := tablebuilder.NewStore(log, db)
 
 	// Config
-	formFieldBus := formfieldbus.NewBusiness(log, delegate, formfielddb.NewStore(log, db))
-	formBus := formbus.NewBusiness(log, delegate, formdb.NewStore(log, db), formFieldBus)
-	pageContentBus := pagecontentbus.NewBusiness(log, delegate, pagecontentdb.NewStore(log, db))
-	pageActionBus := pageactionbus.NewBusiness(log, delegate, pageactiondb.NewStore(log, db))
-	pageConfigBus := pageconfigbus.NewBusiness(log, delegate, pageconfigdb.NewStore(log, db), pageContentBus, pageActionBus)
+	formFieldBus := formfieldbus.NewBusiness(log, delegate, formfielddb.NewStore(log, db)).WithOutbox(outboxWriter)
+	formBus := formbus.NewBusiness(log, delegate, formdb.NewStore(log, db), formFieldBus).WithOutbox(outboxWriter)
+	pageContentBus := pagecontentbus.NewBusiness(log, delegate, pagecontentdb.NewStore(log, db)).WithOutbox(outboxWriter)
+	pageActionBus := pageactionbus.NewBusiness(log, delegate, pageactiondb.NewStore(log, db)).WithOutbox(outboxWriter)
+	pageConfigBus := pageconfigbus.NewBusiness(log, delegate, pageconfigdb.NewStore(log, db), pageContentBus, pageActionBus).WithOutbox(outboxWriter)
 	settingsBus := settingsbus.NewBusiness(log, delegate, settingscache.NewStore(log, settingsdb.NewStore(log, db), 30*time.Second))
 
 	return BusDomain{
 		Delegate:                    delegate,
+		OutboxWriter:                outboxWriter,
 		Home:                        homeBus,
 		AssetType:                   assetTypeBus,
 		ValidAsset:                  validAssetBus,
