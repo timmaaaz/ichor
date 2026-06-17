@@ -325,8 +325,51 @@ ship:
           build ./... + go vet clean; temporal TestRelay*/TestGuard*/enrichment helper tests GREEN.
           PART 2 REMAINING: drop the ~64 dead cascade-only delegate.Call sites.
       - id: F7.2
-        title: "Docs: docs/arch/delegate.md (delegate = cycle-break-only again) + workflow-engine.md (outbox seam, relay, dedup); note F8 lineage/traceparent hook"
-        status: not_started
+        title: "Docs: docs/arch/delegate.md + docs/arch/workflow-engine.md — outbox+relay cascade path + the 3-mechanism cross-domain model"
+        status: not_started   # DO IN A FRESH WINDOW (this session hit ~600k). Full spec below; memory project_delegate_governance.md + committed code carry the rest.
+        note: >
+          DOC SPEC (captured 2026-06-17 from the live architecture discussion so a fresh window writes
+          without re-deriving). Source of truth = committed code (F5 db477618, F6 ec8c6639, F8 d089c706,
+          F7.1 61d5a6b6) + DESIGN.md + memory [[delegate-universal-cross-domain-governance]]. ⚠ The OLD F7.2
+          title ("delegate = cycle-break-only again") is WRONG — do NOT write that.
+
+          CORRECTED FRAMING (decided with Jake): the delegate did NOT shrink. It STAYS the general
+          best-effort cross-domain hook on EVERY bus (b.delegate.Call on each CRUD op — do NOT drop it; it
+          is the cross-domain extension point, "no subscriber today" != dead). F2 moved ONLY the durable
+          workflow cascade OFF the delegate onto the outbox+relay. The 64-bus delegate.Call drop was
+          considered and CANCELLED.
+
+          THREE CROSS-DOMAIN MECHANISMS BY GUARANTEE (the spine of both docs):
+            1. Direct app-layer orchestration (several buses, one tx) = must-happen ATOMIC. e.g. pickingapp,
+               the Path-B workflow handlers (allocate/createpo BeginTxx+NewWithTx). NOT the delegate.
+            2. Outbox -> relay = must-happen ASYNC cascade (domain write -> workflow engine, durable,
+               at-least-once). business/sdk/outbox + temporal/relay.go.
+            3. Delegate = survivable-if-missed best-effort reaction (domain write -> other domains' handlers;
+               Delegate.Call swallows errors). business/sdk/delegate.
+          GOVERNANCE rule to state explicitly: register a delegate subscriber ONLY for functionality
+          universal across ALL customers (platform invariants: permission-cache recompute permissionsbus.go:56-73,
+          WebSocket notify alertws/delegate.go:28-29, rule-cache reload). Customer-specific/configurable cross-
+          domain reactions -> WORKFLOWS (per-customer rule-configured), never the delegate. Decision test:
+          "needed for EVERY customer, always?" yes=delegate / customer-varying=workflow / must-atomic=orchestration.
+
+          docs/arch/delegate.md — UPDATE (read it first; preserve its structure): delegate = general best-effort
+          cross-domain cycle-breaker (unchanged purpose). Add the 3-mechanism table + the governance rule + the
+          decision test. State that after F2 the workflow cascade is NO LONGER a delegate subscriber (it is the
+          outbox); the delegate's live subscribers are permissions(role/tableaccess/userrole) + alertws(userrole)
+          + trigger rule-cache reload. The DelegateHandler type was DELETED (F7.1); enrichment helpers moved to
+          temporal/enrichment.go.
+
+          docs/arch/workflow-engine.md — UPDATE (read first): document the OUTBOX+RELAY cascade path that
+          replaced the delegate dispatch. Seam: bus write -> b.outbox.Emit(ctx, delegate.Data) INSERT into
+          workflow.cascade_outbox (SAME tx; migration 2.42) -> temporal/relay.go polls (FOR UPDATE SKIP LOCKED,
+          ORDER BY seq) -> buildEvent (enrichment.go) -> contextWithLineage -> WorkflowTrigger.OnEntityEvent.
+          DEDUP: workflow id = workflow-{ruleID}-{eventID}, eventID = outbox row id, REJECT_DUPLICATE (trigger.go).
+          LINEAGE: WorkflowLineage visited-set serialized into the row's lineage column, rehydrated before
+          dispatch (the A->B->A loop guard; survives the round-trip). Relay = SERVER-ONLY (all.go starts it;
+          worker does not). Note the F8 traceparent hook (lineage column is the slot). Composition roots:
+          all.go (Writer built + injected into 67 buses + relay started) + worker/main.go (Writer, no relay) +
+          dbtest.go (Writer injected so the TEST harness exercises the same relay path — F8 parity). Reliability:
+          cascade_outbox_test.go (e2e) + TestRelay_*/TestGuard_ABA_StopsAfterOneHop + TestCascade_LoopGuard.
       - id: F7.3
         title: "go build ./... clean; PROGRESS -> done; conventional commit; (push only when user asks)"
         status: not_started   # RESEQUENCED: gated on F8 — the dead delegate.Call drop + DelegateHandler removal are only safe once the TEST harness leaves the delegate path (F8). Do F7 cleanup AFTER F8.
