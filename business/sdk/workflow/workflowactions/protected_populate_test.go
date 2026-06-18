@@ -29,7 +29,7 @@ func TestPopulateProtected(t *testing.T) {
 	reg := workflow.NewActionRegistry()
 	reg.Register(inventory.NewReserveInventoryHandler(log, nil, nil, nil))                // on_update inventory_items.reserved_quantity
 	reg.Register(procurement.NewApprovePurchaseOrderHandler(log, nil))                    // on_update purchase_orders.approved_by/...
-	reg.Register(inventory.NewCreatePutAwayTaskHandler(log, nil, nil, nil))               // on_create put_away_tasks (must be EXCLUDED)
+	reg.Register(inventory.NewCreatePutAwayTaskHandler(log, nil, nil, nil, nil))          // on_create put_away_tasks (must be EXCLUDED)
 	reg.Register(data.NewUpdateFieldHandler(log, nil))                                    // generic (must be skipped)
 	reg.Register(inventory.NewReleaseToPickingHandler(log, nil, nil, nil, nil, nil, nil)) // on_update sales.orders.order_fulfillment_status_id
 	reg.Register(inventory.NewClaimTransferOrderHandler(log, nil))                        // on_update transfer_orders.claimed_by/...

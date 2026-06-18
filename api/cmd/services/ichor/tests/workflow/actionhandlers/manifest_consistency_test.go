@@ -540,7 +540,7 @@ func Test_ManifestConsistency_DeclaredEqualsFired(t *testing.T) {
 
 	// 11. create_put_away_task → putawaytask.created (needs quantity_received delta > 0).
 	t.Run("create_put_away_task", func(t *testing.T) {
-		h := inventory.NewCreatePutAwayTaskHandler(db.Log, db.BusDomain.PutAwayTask, db.BusDomain.SupplierProduct, db.BusDomain.PurchaseOrder)
+		h := inventory.NewCreatePutAwayTaskHandler(db.Log, db.DB, db.BusDomain.PutAwayTask, db.BusDomain.SupplierProduct, db.BusDomain.PurchaseOrder)
 		cfg := mustJSON(t, map[string]any{
 			"source_from_po":    false,
 			"product_id":        base.productIDs[0].String(),
