@@ -398,6 +398,30 @@ required key "output": string matched against ActionEdge.SourceOutput
 typed structs fine internally — only Execute() return must be map
 tests: assert to map[string]any, never concrete struct
 
+## ⚠ Execute() failure reporting — soft "failure" output vs hard error (retry semantics)
+
+two ways to report a failure from Execute(), with DIFFERENT engine behavior:
+  - hard error (`return nil, err`): Temporal treats the activity as failed → RETRIES it
+    (activityOptions MaximumAttempts=3 for normal actions; longRunning/human differ — temporal/workflow.go)
+  - soft failure (`return map{"output":"failure", ...}, nil`): no error → NO retry; GraphExecutor
+    just routes to the "failure" output edge (activities.go: nil err → Success:true, output preserved)
+
+choose by whether the handler's write is SAFE TO RETRY (idempotent):
+  - idempotent / safe to re-run → hard error is fine; it auto-recovers transient blips. Most self-tx
+    inventory handlers (receive, allocate, …) hard-error on tx/commit failure.
+  - NON-idempotent (creates a fresh row with a new uuid + no dedup key) → a retry makes a DUPLICATE;
+    use soft "failure" so a transient failure does NOT auto-duplicate.
+
+worst case is a Commit failure: it is in-doubt (server may have committed after the client saw a
+network error) — retrying a non-idempotent create then is the classic duplicate-write hazard.
+
+deliberate divergence in tree: create_put_away_task (createputawaytask.go) returns soft "failure" on
+BeginTxx/NewWithTx/Commit failure because putawaytaskbus.Create mints a fresh uuid with no dedup →
+retry = duplicate task. Do NOT "simplify" it to match the hard-error siblings. Trade-off accepted: a
+transient failure leaves the task MISSING (visible, recoverable) rather than DUPLICATED (silent,
+corrupts inventory). Proper long-term fix = idempotency key on Create, after which retry becomes safe
+and the whole handler family could go hard.
+
 ## ⚠ Adding a new ActionHandler
 
   business/sdk/workflow/interfaces.go                              (confirm ActionHandler interface satisfied)
@@ -405,6 +429,7 @@ tests: assert to map[string]any, never concrete struct
   api/cmd/services/ichor/build/all/all.go                          (Register() call in ActionRegistry setup)
   business/sdk/dbtest/seedmodels/                                   (new test seed if handler needs domain data)
   docs/workflow/README.md                                           (update handler catalog)
+  decide Execute() failure contract: soft "failure" output vs hard error — see ⚠ above (non-idempotent writes MUST use soft; retry = duplicate)
   verify: goToImplementation(business/sdk/workflow/interfaces.go:39:6) — confirm existing 28 implementors; register new handler alongside them in all.go
 
 ## ⚠ Adding a new Edge type
