@@ -108,6 +108,10 @@ func (noopExecutionStore) CreateExecution(context.Context, workflow.AutomationEx
 	return nil
 }
 
+func (noopExecutionStore) DeleteExecution(context.Context, uuid.UUID) error {
+	return nil
+}
+
 type settableMatcher struct {
 	result *workflow.ProcessingResult
 }

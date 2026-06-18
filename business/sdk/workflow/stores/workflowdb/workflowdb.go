@@ -993,6 +993,29 @@ func (s *Store) CreateExecution(ctx context.Context, exec workflow.AutomationExe
 	return nil
 }
 
+// DeleteExecution removes an automation execution record by id. The trigger writes the
+// execution record before starting the Temporal workflow (so activities can reference its
+// FK → automation_executions); when the start fails or is rejected as a duplicate
+// re-delivery, the trigger reclaims the orphaned StatusPending row via this — making
+// execution-record dedup record-level, not just run-level.
+func (s *Store) DeleteExecution(ctx context.Context, id uuid.UUID) error {
+	data := struct {
+		ID string `db:"id"`
+	}{
+		ID: id.String(),
+	}
+
+	const q = `
+	DELETE FROM workflow.automation_executions
+	WHERE id = :id`
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, data); err != nil {
+		return fmt.Errorf("namedexeccontext: %w", err)
+	}
+
+	return nil
+}
+
 // QueryExecutionHistory gets execution history for the specified automation rule from the database.
 func (s *Store) QueryExecutionHistory(ctx context.Context, ruleID uuid.UUID, limit int) ([]workflow.AutomationExecution, error) {
 	data := struct {

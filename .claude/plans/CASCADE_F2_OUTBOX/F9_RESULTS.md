@@ -75,12 +75,43 @@ unaffected.)
    - Test bar: inject an Emit failure → prove the ENTITY write rolls back with it, + an A→B→A cascade
      through the new atomic path.
 
-3. **Execution-record dedup (run-level vs record-level).** Per the I4 finding, `trigger.go:234`
-   `CreateExecution` runs before `ExecuteWorkflow`; a deduped (REJECT_DUPLICATE) re-dispatch still writes
-   a second StatusPending record (orphaned per the `:245` TODO). Low frequency (needs a relay re-delivery
-   after a failed delete-on-publish), but worth closing: delete the orphaned row on `ExecuteWorkflow`
-   error, or move record creation after a successful start / make it idempotent on the workflow id.
+3. **Execution-record dedup (run-level vs record-level). ✅ DONE** (branch
+   `feature/cascade-exec-record-dedup`). `trigger.go` now (a) sets
+   `WorkflowExecutionErrorWhenAlreadyStarted=true` so a duplicate start *surfaces* as an error — the
+   SDK otherwise SWALLOWS `WorkflowExecutionAlreadyStarted` and returns the existing run with nil err
+   (`internal_workflow_client.go:1793`), which is why delete-on-error alone wasn't enough — and (b)
+   on any `ExecuteWorkflow` error deletes the just-created record via a new
+   `ExecutionStore.DeleteExecution` (impl in `workflowdb.go`). Both the orphan-on-failure case and the
+   re-delivery double-record case now leave exactly one row. Contract: a row survives dispatch iff its
+   workflow run was accepted. Rejected idempotent-create (`ON CONFLICT`) — needs a migration + a
+   deterministic key (direct callers carry zero EventID), no extra correctness. Tests: decisive rig
+   `cascade_dedup_record_test.go` (same EventID twice → 1 row, RED 2 → GREEN 1, exercises the live
+   DeleteExecution SQL) + unit `TestOnEntityEvent_OrphanRecordDeletedOnStartFailure` (generic +
+   already-started shapes). No migration. (Doc note: `docs/arch/workflow-engine.md` dedup section now
+   describes run-level dedup only — a small accuracy follow-up could add the record-level guarantee.)
 
 4. **`nontx_buses` (`workflowactions/inventory/createputawaytask.go:239`).** `putawaytaskbus.Create` on a
    tx-less ctx (pool fallback). Risk is a lost/orphaned event if the process dies mid-write (fail-safe),
    not phantom-on-rollback. Wrap the write+emit in a tx + `WithTx`. Deferred.
+
+5. **Execution-record lifecycle — proper state machine (SPEC; next task after #3).** #3's delete-on-error
+   is the minimal correct compensation; this is the idiomatic "create provisional → confirm-or-reap"
+   version, and it also fixes a **latent bug**: the Temporal cascade path writes `automation_executions`
+   at `StatusPending` and NOTHING advances it (only the synchronous manual path `actionservice.go:436-438`
+   sets running/completed), yet `executionapi` (`filter.go:59`, `model.go:92`) exposes status to users —
+   so every cascaded run shows "pending" forever. Design:
+   - enum already complete (`models.go:42-46`: pending/running/completed/failed/cancelled) — **no enum migration**.
+   - `MarkExecutionRunning` as the FIRST activity of `ExecuteGraphWorkflow` (before any child-writing
+     activity, e.g. seek_approval→approval_requests). This establishes the invariant **"pending ⟹ no
+     children"**, which is what makes the reaper's DELETE FK-safe. `MarkExecutionCompleted/Failed` at end.
+   - new store methods `UpdateExecutionStatus` + `ReapStaleExecutions` (mirror relay `Reap` at
+     `relay.go:257`); TTL keys on `executed_at`.
+   - thread the execution store into the `Activities` struct — wire in **BOTH** composition roots
+     (`all.go` server + `workflow-worker/main.go` worker, since activities run in the WORKER). This
+     cross-cutting wiring is the bulk of the effort, not the SQL.
+   - start an execution-reaper goroutine (or fold into the relay's existing reap ticker); migration 2.43 =
+     index on `automation_executions(status, executed_at)`.
+   - keep #3's delete-on-error as the fast-path compensation; reap is the crash-safe backstop.
+   Effort ~1-1.5d, ~8-12 files (+ executionapi test status-expectation updates). Tiers: cheaper
+   trigger-flip+reap (no Activities/worker change, weaker invariant) vs full workflow-confirm+reap (FK-safe
+   invariant, fixes the executionapi "eternally pending" bug). See [[reference_temporal_swallows_already_started]].
