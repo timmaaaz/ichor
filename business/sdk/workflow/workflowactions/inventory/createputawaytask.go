@@ -2,15 +2,18 @@ package inventory
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 	"github.com/timmaaaz/ichor/business/domain/inventory/putawaytaskbus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderbus"
 	"github.com/timmaaaz/ichor/business/domain/procurement/supplierproductbus"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
@@ -49,20 +52,24 @@ type CreatePutAwayTaskConfig struct {
 //   - "failure"           — unexpected error
 type CreatePutAwayTaskHandler struct {
 	log                *logger.Logger
+	db                 *sqlx.DB
 	putAwayTaskBus     *putawaytaskbus.Business
 	supplierProductBus *supplierproductbus.Business
 	purchaseOrderBus   *purchaseorderbus.Business
 }
 
 // NewCreatePutAwayTaskHandler creates a new CreatePutAwayTaskHandler.
+// db is required for the entity-write + cascade-emit transaction (see Execute step 5).
 func NewCreatePutAwayTaskHandler(
 	log *logger.Logger,
+	db *sqlx.DB,
 	putAwayTaskBus *putawaytaskbus.Business,
 	supplierProductBus *supplierproductbus.Business,
 	purchaseOrderBus *purchaseorderbus.Business,
 ) *CreatePutAwayTaskHandler {
 	return &CreatePutAwayTaskHandler{
 		log:                log,
+		db:                 db,
 		putAwayTaskBus:     putAwayTaskBus,
 		supplierProductBus: supplierProductBus,
 		purchaseOrderBus:   purchaseOrderBus,
@@ -235,8 +242,37 @@ func (h *CreatePutAwayTaskHandler) Execute(ctx context.Context, config json.RawM
 		refNum = resolveTemplate(refNum, execCtx.RawData)
 	}
 
-	// Step 5: Create the task.
-	task, err := h.putAwayTaskBus.Create(ctx, putawaytaskbus.NewPutAwayTask{
+	// Step 5: Create the task inside a transaction so the entity write and its cascade
+	// outbox.Emit commit (or roll back) together — no lost event if the process dies
+	// mid-write. The tx MECHANICS match the sibling inventory handlers (receive.go,
+	// allocate.go): the emit discovers this tx via sqldb.WithTx on ctx, while NewWithTx
+	// routes the entity write onto the same tx.
+	//
+	// Error handling INTENTIONALLY diverges from those siblings: the tx-failure paths
+	// below return a soft "failure" output (nil error), not a hard error. A hard error
+	// would make Temporal retry the activity (MaximumAttempts=3), but Create mints a
+	// fresh, non-idempotent put_away_task each call (no dedup key) — so a retry,
+	// especially after an in-doubt Commit, would create a DUPLICATE task. Soft-routing to
+	// the "failure" port avoids that and preserves this handler's existing all-soft
+	// contract. Do NOT "simplify" these to hard errors to match the siblings.
+	tx, err := h.db.BeginTxx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+	if err != nil {
+		h.log.Error(ctx, "create_put_away_task: begin transaction failed", "error", err)
+		return map[string]any{"output": "failure", "error": err.Error()}, nil
+	}
+	defer tx.Rollback()
+
+	// Carry the tx on ctx so the cascade Emit inside putAwayTaskBus.Create persists its
+	// outbox row in THIS transaction (the relay dispatches only after commit).
+	ctx = sqldb.WithTx(ctx, tx)
+
+	txPutAwayTaskBus, err := h.putAwayTaskBus.NewWithTx(tx)
+	if err != nil {
+		h.log.Error(ctx, "create_put_away_task: create transactional put-away task bus failed", "error", err)
+		return map[string]any{"output": "failure", "error": err.Error()}, nil
+	}
+
+	task, err := txPutAwayTaskBus.Create(ctx, putawaytaskbus.NewPutAwayTask{
 		ProductID:       productID,
 		LocationID:      locationID,
 		Quantity:        delta,
@@ -245,6 +281,11 @@ func (h *CreatePutAwayTaskHandler) Execute(ctx context.Context, config json.RawM
 	})
 	if err != nil {
 		h.log.Error(ctx, "create_put_away_task: failed to create task", "error", err)
+		return map[string]any{"output": "failure", "error": err.Error()}, nil
+	}
+
+	if err := tx.Commit(); err != nil {
+		h.log.Error(ctx, "create_put_away_task: commit transaction failed", "error", err)
 		return map[string]any{"output": "failure", "error": err.Error()}, nil
 	}
 

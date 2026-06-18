@@ -220,6 +220,7 @@ func RegisterGranularInventoryActions(registry *workflow.ActionRegistry, config 
 	if config.Buses.PutAwayTask != nil {
 		registry.Register(inventory.NewCreatePutAwayTaskHandler(
 			config.Log,
+			config.DB,
 			config.Buses.PutAwayTask,
 			config.Buses.SupplierProduct,
 			config.Buses.PurchaseOrder,
@@ -276,7 +277,7 @@ func RegisterCoreActions(registry *workflow.ActionRegistry, log *logger.Logger, 
 	registry.Register(communication.NewCreateAlertHandler(log, nil, nil))
 
 	// Inventory actions - nil buses for core path (cascade detection via EntityModifier)
-	registry.Register(inventory.NewCreatePutAwayTaskHandler(log, nil, nil, nil))
+	registry.Register(inventory.NewCreatePutAwayTaskHandler(log, db, nil, nil, nil))
 
 	// Integration actions - no bus/DB/queue dependencies
 	registry.Register(integration.NewCallWebhookHandler(log))

@@ -29,6 +29,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/products/productbus"
 	"github.com/timmaaaz/ichor/business/domain/products/productcategorybus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
+	"github.com/timmaaaz/ichor/business/sdk/outbox"
 	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/unitest"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
@@ -52,6 +53,7 @@ func Test_CreatePutAwayTask(t *testing.T) {
 
 	sd.Handler = inventory.NewCreatePutAwayTaskHandler(
 		log,
+		db.DB,
 		db.BusDomain.PutAwayTask,
 		db.BusDomain.SupplierProduct,
 		db.BusDomain.PurchaseOrder,
@@ -59,6 +61,113 @@ func Test_CreatePutAwayTask(t *testing.T) {
 
 	unitest.Run(t, createPutAwayTaskValidateTests(sd), "validate")
 	unitest.Run(t, createPutAwayTaskExecuteTests(db.BusDomain, sd), "execute")
+}
+
+// Test_CreatePutAwayTask_AtomicCascadeEmit proves the handler writes the put-away task
+// AND emits its cascade outbox event inside ONE transaction. putawaytaskbus.Create does
+// two writes — the entity row, then outbox.Emit — and Emit discovers its transaction from
+// the context (sqldb.GetTxExecutor). With no tx on ctx the Emit falls back to the base pool
+// and logs a loud warn; the entity write and the event then commit as two uncoordinated
+// statements, so a crash between them loses the cascade event (FF#4).
+//
+// The decisive signal is the absence of that pool-fallback warn: RED before FF#4 (the handler
+// called Create on a tx-less ctx → warn fired), GREEN after (the write+emit share a tx). The
+// outbox-row delta is a reinforcing check that the event was actually emitted (it holds in
+// both states — the tx-less path still writes the row, just non-atomically on the pool).
+func Test_CreatePutAwayTask_AtomicCascadeEmit(t *testing.T) {
+	db := dbtest.NewDatabase(t, "Test_CreatePutAwayTask_AtomicCascadeEmit")
+
+	sd, err := insertCreatePutAwayTaskSeedData(db.BusDomain)
+	if err != nil {
+		t.Fatalf("Seeding error: %s", err)
+	}
+
+	var buf bytes.Buffer
+	log := logger.New(&buf, logger.LevelInfo, "TEST", func(context.Context) string {
+		return otel.GetTraceID(context.Background())
+	})
+
+	// Route this bus's cascade emit through an outbox Writer backed by our buffer so the
+	// emit's pool-fallback warn (logged by the Writer, not the handler) is observable here.
+	// The seed above used db.BusDomain's own logger, so its tx-less warns never reach buf.
+	bufWriter := outbox.NewWriter(log, db.DB, map[string]string{"putawaytask": "put_away_tasks"}, nil)
+	putAwayBus := db.BusDomain.PutAwayTask.WithOutbox(bufWriter)
+
+	handler := inventory.NewCreatePutAwayTaskHandler(
+		log,
+		db.DB,
+		putAwayBus,
+		db.BusDomain.SupplierProduct,
+		db.BusDomain.PurchaseOrder,
+	)
+
+	ctx := context.Background()
+	product := sd.Products[0]
+	location := sd.InventoryLocations[0]
+	const delta = 12
+
+	cfg := inventory.CreatePutAwayTaskConfig{
+		SourceFromPO:     false,
+		ProductID:        product.ProductID.String(),
+		LocationStrategy: "static",
+		LocationID:       location.LocationID.String(),
+		ReferenceNumber:  "ATOMIC-EMIT-TEST",
+	}
+	configJSON, _ := json.Marshal(cfg)
+
+	execCtx := sd.ExecutionContext
+	execCtx.ExecutionID = uuid.New()
+	execCtx.FieldChanges = map[string]workflow.FieldChange{
+		"quantity_received": {OldValue: float64(0), NewValue: float64(delta)},
+	}
+
+	// Snapshot outbox rows after seeding so the delta isolates this handler's single emit.
+	outboxBefore := cascadeOutboxCount(t, db)
+
+	result, err := handler.Execute(ctx, configJSON, execCtx)
+	if err != nil {
+		t.Fatalf("execute failed: %v", err)
+	}
+	resultMap, ok := result.(map[string]any)
+	if !ok {
+		t.Fatalf("expected map[string]any, got %T", result)
+	}
+	if resultMap["output"] != "created" {
+		t.Fatalf("expected output=created, got %v (error=%v)", resultMap["output"], resultMap["error"])
+	}
+
+	// Entity write committed: the task is readable.
+	taskID, err := uuid.Parse(resultMap["task_id"].(string))
+	if err != nil {
+		t.Fatalf("task_id not a valid UUID: %v", resultMap["task_id"])
+	}
+	if _, err := db.BusDomain.PutAwayTask.QueryByID(ctx, taskID); err != nil {
+		t.Fatalf("created task not found (entity write not committed): %v", err)
+	}
+
+	// DECISIVE (FF#4 RED→GREEN): the cascade emit rode the handler's transaction, so the loud
+	// pool-fallback warn must be absent. Mirrors business/sdk/outbox/outbox_test.go.
+	const warnMsg = "outbox: no transaction on context — emitting on base pool (NOT atomic with entity write)"
+	if strings.Contains(buf.String(), warnMsg) {
+		t.Errorf("cascade emit fell back to the base pool (NOT atomic with the entity write): found warn %q in handler logs", warnMsg)
+	}
+
+	// Reinforce: exactly one new cascade_outbox row from the put-away task create.
+	if d := cascadeOutboxCount(t, db) - outboxBefore; d != 1 {
+		t.Errorf("expected exactly 1 new cascade_outbox row from the put-away task create, got %d", d)
+	}
+}
+
+// cascadeOutboxCount reports the number of rows in the cascade outbox from the base pool.
+// Mirrors the helper idiom in business/sdk/outbox/outbox_test.go.
+func cascadeOutboxCount(t *testing.T, db *dbtest.Database) int {
+	t.Helper()
+	var n int
+	if err := db.DB.QueryRowContext(context.Background(),
+		`SELECT count(*) FROM workflow.cascade_outbox`).Scan(&n); err != nil {
+		t.Fatalf("counting cascade_outbox rows: %v", err)
+	}
+	return n
 }
 
 // =============================================================================
