@@ -2716,3 +2716,12 @@ CREATE TABLE workflow.cascade_outbox (
 CREATE INDEX idx_cascade_outbox_pending
     ON workflow.cascade_outbox (seq)
     WHERE published_at IS NULL AND dead = false;
+
+-- Version: 2.43
+-- Description: Partial index for the execution-record reaper (fast-follow #5). The reaper sweeps
+-- orphaned StatusPending automation_executions older than a cutoff; this index serves its
+-- WHERE status = 'pending' AND executed_at < :cutoff predicate (the existing
+-- idx_automation_executions_status is single-column on status only).
+CREATE INDEX idx_automation_executions_stale
+    ON workflow.automation_executions (executed_at)
+    WHERE status = 'pending';

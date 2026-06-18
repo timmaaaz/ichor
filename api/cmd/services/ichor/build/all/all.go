@@ -637,7 +637,18 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 				}
 			}()
 
-			cfg.Log.Info(context.Background(), "temporal workflow infrastructure initialized (cascade relay started)")
+			// Execution-record reaper (fast-follow #5): the crash-safe backstop that deletes
+			// orphaned StatusPending automation_executions left behind if a process dies between
+			// the trigger's CreateExecution and ExecuteWorkflow. Server-only, alongside the relay;
+			// the activities (worker-side) advance the happy-path lifecycle, this reclaims orphans.
+			execReaper := temporalpkg.NewExecutionReaper(cfg.Log, workflowStore, temporalpkg.ExecutionReaperConfig{})
+			go func() {
+				if err := execReaper.Run(context.Background()); err != nil && err != context.Canceled {
+					cfg.Log.Error(context.Background(), "execution reaper exited", "error", err)
+				}
+			}()
+
+			cfg.Log.Info(context.Background(), "temporal workflow infrastructure initialized (cascade relay + execution reaper started)")
 		}
 	} else {
 		cfg.Log.Info(context.Background(),

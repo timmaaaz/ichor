@@ -19,7 +19,9 @@ package actionhandlers_test
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"testing"
 	"time"
 
@@ -59,12 +61,17 @@ func startCascadeRig(t *testing.T, ctx context.Context, db *dbtest.Database, reg
 	}
 
 	taskQueue := "test-cascade-pl-" + t.Name()
+	// Build the execution store up front so it can be wired into the worker's Activities —
+	// this is what lets the dispatched workflow advance pending → running → completed (mirrors
+	// workflow-worker/main.go, where the activities run in production).
+	workflowStore := workflowdb.NewStore(db.Log, db.DB)
 	w := worker.New(tc, taskQueue, worker.Options{})
 	w.RegisterWorkflow(workflowtemporal.ExecuteGraphWorkflow)
 	w.RegisterWorkflow(workflowtemporal.ExecuteBranchUntilConvergence)
 	w.RegisterActivity(&workflowtemporal.Activities{
-		Registry:      registry,
-		AsyncRegistry: workflowtemporal.NewAsyncRegistry(),
+		Registry:       registry,
+		AsyncRegistry:  workflowtemporal.NewAsyncRegistry(),
+		ExecutionStore: workflowStore,
 	})
 	if err := w.Start(); err != nil {
 		tc.Close()
@@ -72,7 +79,6 @@ func startCascadeRig(t *testing.T, ctx context.Context, db *dbtest.Database, reg
 	}
 	t.Cleanup(func() { w.Stop(); tc.Close() })
 
-	workflowStore := workflowdb.NewStore(db.Log, db.DB)
 	workflowBus := workflow.NewBusiness(db.Log, db.BusDomain.Delegate, workflowStore)
 	edgeStore := edgedb.NewStore(db.Log, db.DB)
 	triggerProcessor := workflow.NewTriggerProcessor(db.Log, db.DB, workflowBus)
@@ -257,6 +263,26 @@ func executionVisitedSets(t *testing.T, ctx context.Context, db *dbtest.Database
 func executionCount(t *testing.T, ctx context.Context, db *dbtest.Database, ruleID uuid.UUID) int {
 	t.Helper()
 	return len(executionVisitedSets(t, ctx, db, ruleID))
+}
+
+// executionStatus returns the status of the (single) automation_executions row for the rule,
+// read via a scoped raw SELECT (QueryExecutionHistory can't scan a pending row's NULL
+// actions_executed). Used by the lifecycle test to assert a cascaded run advances
+// pending → running → completed rather than being stranded at "pending". Fatals on a real
+// query error; returns "" when no row exists yet (so it is safe to call inside an eventually poll).
+func executionStatus(t *testing.T, ctx context.Context, db *dbtest.Database, ruleID uuid.UUID) string {
+	t.Helper()
+	var status string
+	err := db.DB.QueryRowContext(ctx,
+		`SELECT status FROM workflow.automation_executions WHERE automation_rules_id = $1
+		 ORDER BY executed_at DESC LIMIT 1`, ruleID).Scan(&status)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ""
+	}
+	if err != nil {
+		t.Fatalf("reading execution status for rule %s: %v", ruleID, err)
+	}
+	return status
 }
 
 // eventually polls cond until it returns true or timeout elapses; returns the final result.

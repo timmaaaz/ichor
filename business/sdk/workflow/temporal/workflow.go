@@ -60,7 +60,10 @@ func ExecuteGraphWorkflow(ctx workflow.Context, input WorkflowInput) error {
 
 	// Version the interpreter logic for safe deployments.
 	// Increment maxVersion when making breaking changes to execution logic.
-	v := workflow.GetVersion(ctx, "graph-interpreter", workflow.DefaultVersion, 1)
+	// v2 (fast-follow #5): adds the MarkExecution* lifecycle activities below. Gating new
+	// activity dispatches behind the version keeps replay of pre-#5 histories deterministic —
+	// an in-flight run recorded at v1 replays without the new activities; new runs record v2.
+	v := workflow.GetVersion(ctx, "graph-interpreter", workflow.DefaultVersion, 2)
 
 	logger.Info("Starting graph workflow",
 		"rule_id", input.RuleID,
@@ -84,13 +87,50 @@ func ExecuteGraphWorkflow(ctx workflow.Context, input WorkflowInput) error {
 
 	// Find start actions (edges with source_action_id = nil).
 	startActions := executor.GetStartActions()
-	if len(startActions) == 0 {
-		logger.Info("Empty workflow - no start actions found")
-		return nil
+
+	// Lifecycle write-back (v2): advance the automation_executions record pending → running →
+	// completed|failed so a cascaded/Temporal-dispatched run no longer displays "pending" forever
+	// (the synchronous manual path already self-reports; this is the cascade path's equivalent).
+	lcCtx := workflow.WithActivityOptions(ctx, lifecycleActivityOptions())
+
+	// MarkExecutionRunning fires BEFORE any child-writing action, establishing the invariant
+	// "status = pending ⟹ the row has no children" (what makes the reaper's DELETE FK-safe).
+	// Once per logical execution — skipped on Continue-As-New (the record is already running).
+	// Its error is propagated: failing here means no child was written, so the record stays a
+	// clean pending row the reaper can reclaim.
+	if v >= 2 && input.ContinuationState == nil {
+		if err := workflow.ExecuteActivity(lcCtx, "MarkExecutionRunning", input.ExecutionID).Get(ctx, nil); err != nil {
+			logger.Error("Failed to mark execution running", "execution_id", input.ExecutionID, "error", err)
+			return fmt.Errorf("mark execution running: %w", err)
+		}
 	}
 
-	// Execute from start (may be multiple parallel start actions).
-	return executeActions(ctx, executor, startActions, mergedCtx, input)
+	// Execute from start (may be multiple parallel start actions). An empty graph is a no-op
+	// success — the record still advances running → completed below rather than stranding pending.
+	var runErr error
+	if len(startActions) == 0 {
+		logger.Info("Empty workflow - no start actions found")
+	} else {
+		runErr = executeActions(ctx, executor, startActions, mergedCtx, input)
+	}
+
+	// Terminal lifecycle write-back (best-effort — the work is already done; never mask runErr).
+	// Continue-As-New is NOT a terminal state: return it untouched so the continued run (which
+	// sees ContinuationState != nil and skips MarkExecutionRunning) owns the eventual completion.
+	if v >= 2 && !workflow.IsContinueAsNewError(runErr) {
+		if runErr != nil {
+			if mErr := workflow.ExecuteActivity(lcCtx, "MarkExecutionFailed",
+				MarkExecutionFailedInput{ExecutionID: input.ExecutionID, ErrorMessage: runErr.Error()}).Get(ctx, nil); mErr != nil {
+				logger.Error("Failed to mark execution failed", "execution_id", input.ExecutionID, "error", mErr)
+			}
+		} else {
+			if mErr := workflow.ExecuteActivity(lcCtx, "MarkExecutionCompleted", input.ExecutionID).Get(ctx, nil); mErr != nil {
+				logger.Error("Failed to mark execution completed", "execution_id", input.ExecutionID, "error", mErr)
+			}
+		}
+	}
+
+	return runErr
 }
 
 // shouldContinueAsNew is the testable core of the threshold check.
@@ -619,6 +659,21 @@ func activityOptions(actionType string) workflow.ActivityOptions {
 	}
 
 	return ao
+}
+
+// lifecycleActivityOptions builds the ActivityOptions for the MarkExecution* status-write-back
+// activities. These are tiny UPDATE-by-id calls, so the timeout is short; a handful of retries
+// rides out a transient DB blip without coupling to the action-type-keyed activityOptions.
+func lifecycleActivityOptions() workflow.ActivityOptions {
+	return workflow.ActivityOptions{
+		StartToCloseTimeout: 30 * time.Second,
+		RetryPolicy: &temporal.RetryPolicy{
+			InitialInterval:    time.Second,
+			BackoffCoefficient: 2.0,
+			MaximumInterval:    10 * time.Second,
+			MaximumAttempts:    3,
+		},
+	}
 }
 
 // selectActivityFunc returns the activity method name based on action type.
