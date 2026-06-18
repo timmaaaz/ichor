@@ -43,10 +43,9 @@ func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &App{
-		paymentTermBus: paymentTermBusTx,
-		auth:           a.auth,
-	}, nil
+	nb := *a
+	nb.paymentTermBus = paymentTermBusTx
+	return &nb, nil
 }
 
 // Create adds a new payment term to the system.

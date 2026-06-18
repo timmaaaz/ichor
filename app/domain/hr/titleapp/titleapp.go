@@ -43,10 +43,9 @@ func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &App{
-		titlebus: titlebusTx,
-		auth:     a.auth,
-	}, nil
+	nb := *a
+	nb.titlebus = titlebusTx
+	return &nb, nil
 }
 
 // Create adds a new title to the system

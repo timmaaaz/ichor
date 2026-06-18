@@ -43,10 +43,9 @@ func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &App{
-		cityBus: cityBusTx,
-		auth:    a.auth,
-	}, nil
+	nb := *a
+	nb.cityBus = cityBusTx
+	return &nb, nil
 }
 
 // Create adds a new city to the system.

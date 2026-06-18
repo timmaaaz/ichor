@@ -44,10 +44,9 @@ func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &App{
-		warehouseBus: warehouseBusTx,
-		auth:         a.auth,
-	}, nil
+	nb := *a
+	nb.warehouseBus = warehouseBusTx
+	return &nb, nil
 }
 
 // Create adds a new warehouse to the system.

@@ -42,10 +42,9 @@ func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &App{
-		tagBus: tagBusTx,
-		auth:   a.auth,
-	}, nil
+	nb := *a
+	nb.tagBus = tagBusTx
+	return &nb, nil
 }
 
 // Create adds a new tag to the system.

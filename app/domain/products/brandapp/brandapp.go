@@ -44,10 +44,9 @@ func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &App{
-		brandbus: brandbusTx,
-		auth:     a.auth,
-	}, nil
+	nb := *a
+	nb.brandbus = brandbusTx
+	return &nb, nil
 }
 
 // Create adds a new brand to the system.

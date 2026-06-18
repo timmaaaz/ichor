@@ -41,10 +41,9 @@ func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &App{
-		orderlineitemsbus: orderlineitemsbusTx,
-		auth:              a.auth,
-	}, nil
+	nb := *a
+	nb.orderlineitemsbus = orderlineitemsbusTx
+	return &nb, nil
 }
 
 func (a *App) Create(ctx context.Context, app NewOrderLineItem) (OrderLineItem, error) {

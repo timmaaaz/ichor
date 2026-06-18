@@ -43,10 +43,9 @@ func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &App{
-		pagebus: pagebusTx,
-		auth:    a.auth,
-	}, nil
+	nb := *a
+	nb.pagebus = pagebusTx
+	return &nb, nil
 }
 
 // Create adds a new page to the system.

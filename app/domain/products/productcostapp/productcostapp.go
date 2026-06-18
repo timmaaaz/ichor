@@ -43,10 +43,9 @@ func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &App{
-		productcostbus: productcostbusTx,
-		auth:           a.auth,
-	}, nil
+	nb := *a
+	nb.productcostbus = productcostbusTx
+	return &nb, nil
 }
 
 // Create adds a new product cost to the system.

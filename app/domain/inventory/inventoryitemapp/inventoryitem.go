@@ -44,10 +44,9 @@ func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &App{
-		inventoryitembus: inventoryitemBusTx,
-		auth:             a.auth,
-	}, nil
+	nb := *a
+	nb.inventoryitembus = inventoryitemBusTx
+	return &nb, nil
 }
 
 // Create creates a new inventory item.

@@ -44,10 +44,9 @@ func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &App{
-		userapprovalcommentbus: userapprovalcommentbusTx,
-		auth:                   a.auth,
-	}, nil
+	nb := *a
+	nb.userapprovalcommentbus = userapprovalcommentbusTx
+	return &nb, nil
 }
 
 // Create adds a new approval status to the system

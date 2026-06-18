@@ -40,10 +40,9 @@ func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &App{
-		supplierproductbus: supplierproductbusTx,
-		auth:               a.auth,
-	}, nil
+	nb := *a
+	nb.supplierproductbus = supplierproductbusTx
+	return &nb, nil
 }
 
 func (a *App) Create(ctx context.Context, app NewSupplierProduct) (SupplierProduct, error) {

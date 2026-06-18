@@ -43,10 +43,9 @@ func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &App{
-		rolebus: rolebusTx,
-		auth:    a.auth,
-	}, nil
+	nb := *a
+	nb.rolebus = rolebusTx
+	return &nb, nil
 }
 
 // Create adds a new  role to the system.

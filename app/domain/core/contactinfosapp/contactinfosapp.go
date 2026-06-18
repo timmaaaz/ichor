@@ -43,10 +43,9 @@ func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &App{
-		contactinfosbus: contactinfosbusTx,
-		auth:            a.auth,
-	}, nil
+	nb := *a
+	nb.contactinfosbus = contactinfosbusTx
+	return &nb, nil
 }
 
 // Create adds a new  contact info to the system.

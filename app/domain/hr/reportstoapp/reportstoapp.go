@@ -44,10 +44,9 @@ func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &App{
-		reportsToBus: reportsToBusTx,
-		auth:         a.auth,
-	}, nil
+	nb := *a
+	nb.reportsToBus = reportsToBusTx
+	return &nb, nil
 }
 
 // Create adds a new reports to entry to the system.

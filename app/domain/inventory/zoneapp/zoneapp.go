@@ -42,10 +42,9 @@ func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &App{
-		zonebus: zoneBusTx,
-		auth:    a.auth,
-	}, nil
+	nb := *a
+	nb.zonebus = zoneBusTx
+	return &nb, nil
 }
 
 func (a *App) Create(ctx context.Context, app NewZone) (Zone, error) {

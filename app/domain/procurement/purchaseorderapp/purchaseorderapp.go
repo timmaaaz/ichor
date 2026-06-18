@@ -43,10 +43,9 @@ func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &App{
-		purchaseorderbus: purchaseorderbusTx,
-		auth:             a.auth,
-	}, nil
+	nb := *a
+	nb.purchaseorderbus = purchaseorderbusTx
+	return &nb, nil
 }
 
 // Create adds a new purchase order to the system.
