@@ -23,6 +23,54 @@ import (
 type Activities struct {
 	Registry      *workflow.ActionRegistry
 	AsyncRegistry *AsyncRegistry
+
+	// ExecutionStore advances the automation_executions lifecycle (pending → running →
+	// completed|failed) via the MarkExecution* activities. Nil-safe: when unset (e.g. unit-test
+	// registrations that don't care about the record table), those activities no-op so the
+	// workflow still runs.
+	ExecutionStore ExecutionLifecycleStore
+}
+
+// ExecutionLifecycleStore advances an execution record's status. Satisfied by
+// workflow/stores/workflowdb.Store. Named distinctly from trigger.go's ExecutionStore
+// (CreateExecution/DeleteExecution): the activities only need the status write-back.
+type ExecutionLifecycleStore interface {
+	UpdateExecutionStatus(ctx context.Context, id uuid.UUID, status workflow.ExecutionStatus, errMsg string) error
+}
+
+// MarkExecutionFailedInput carries the failure detail for the MarkExecutionFailed activity.
+type MarkExecutionFailedInput struct {
+	ExecutionID  uuid.UUID
+	ErrorMessage string
+}
+
+// MarkExecutionRunning advances the execution record to StatusRunning. It is the FIRST activity
+// of ExecuteGraphWorkflow, fired before any child-writing action, which establishes the
+// invariant "status = pending ⟹ the row has no children" — what makes the reaper's DELETE
+// FK-safe. Nil-safe.
+func (a *Activities) MarkExecutionRunning(ctx context.Context, executionID uuid.UUID) error {
+	if a.ExecutionStore == nil {
+		return nil
+	}
+	return a.ExecutionStore.UpdateExecutionStatus(ctx, executionID, workflow.StatusRunning, "")
+}
+
+// MarkExecutionCompleted advances the execution record to StatusCompleted at the workflow's
+// successful terminal point. Nil-safe.
+func (a *Activities) MarkExecutionCompleted(ctx context.Context, executionID uuid.UUID) error {
+	if a.ExecutionStore == nil {
+		return nil
+	}
+	return a.ExecutionStore.UpdateExecutionStatus(ctx, executionID, workflow.StatusCompleted, "")
+}
+
+// MarkExecutionFailed advances the execution record to StatusFailed (recording the error) at the
+// workflow's failing terminal point. Nil-safe.
+func (a *Activities) MarkExecutionFailed(ctx context.Context, in MarkExecutionFailedInput) error {
+	if a.ExecutionStore == nil {
+		return nil
+	}
+	return a.ExecutionStore.UpdateExecutionStatus(ctx, in.ExecutionID, workflow.StatusFailed, in.ErrorMessage)
 }
 
 // =============================================================================

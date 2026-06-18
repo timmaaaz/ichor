@@ -188,7 +188,10 @@ func run(log *logger.Logger) error {
 	productBus := productbus.NewBusiness(log, del, productdb.NewStore(log, db)).WithOutbox(outboxWriter)
 
 	// Workflow bus - for idempotency tracking + the M2 allocation_results cascade emit.
-	workflowBus := workflow.NewBusiness(log, del, workflowdb.NewStore(log, db)).WithOutboxEmitter(outboxWriter.Emit)
+	// workflowStore is hoisted (vs inline) so it can also back the Activities' execution
+	// lifecycle write-back (MarkExecution*) — those activities run in THIS worker process.
+	workflowStore := workflowdb.NewStore(log, db)
+	workflowBus := workflow.NewBusiness(log, del, workflowStore).WithOutboxEmitter(outboxWriter.Emit)
 
 	// Alert bus - required for create_alert action.
 	alertBus := alertbus.NewBusiness(log, alertdb.NewStore(log, db))
@@ -265,8 +268,9 @@ func run(log *logger.Logger) error {
 	// Register activities via Activities struct.
 	// Temporal resolves struct method names by string: "ExecuteActionActivity" / "ExecuteAsyncActionActivity".
 	w.RegisterActivity(&temporal.Activities{
-		Registry:      actionRegistry,
-		AsyncRegistry: asyncRegistry,
+		Registry:       actionRegistry,
+		AsyncRegistry:  asyncRegistry,
+		ExecutionStore: workflowStore,
 	})
 
 	log.Info(context.Background(), "starting workflow worker",

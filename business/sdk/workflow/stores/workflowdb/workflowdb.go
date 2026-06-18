@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -1014,6 +1015,69 @@ func (s *Store) DeleteExecution(ctx context.Context, id uuid.UUID) error {
 	}
 
 	return nil
+}
+
+// UpdateExecutionStatus advances an execution record's status (and, for failures, its error
+// message) by id. The Temporal cascade path writes the record at StatusPending in the trigger
+// (CreateExecution) and the ExecuteGraphWorkflow MarkExecution* activities advance it here —
+// pending → running → completed|failed — so a cascaded run no longer displays "pending" forever
+// (the synchronous manual path already self-reports via actionservice.recordExecution).
+func (s *Store) UpdateExecutionStatus(ctx context.Context, id uuid.UUID, status workflow.ExecutionStatus, errMsg string) error {
+	data := struct {
+		ID           string `db:"id"`
+		Status       string `db:"status"`
+		ErrorMessage string `db:"error_message"`
+	}{
+		ID:           id.String(),
+		Status:       string(status),
+		ErrorMessage: errMsg,
+	}
+
+	const q = `
+	UPDATE workflow.automation_executions
+	SET status = :status, error_message = :error_message
+	WHERE id = :id`
+
+	if err := sqldb.NamedExecContext(ctx, s.log, s.db, q, data); err != nil {
+		return fmt.Errorf("namedexeccontext: %w", err)
+	}
+
+	return nil
+}
+
+// ReapStaleExecutions deletes orphaned StatusPending execution records older than cutoff — the
+// crash-safe backstop for rows the trigger wrote (CreateExecution) before ExecuteWorkflow but
+// never advanced, when a process crash in that window denied #3's delete-on-error the chance to
+// reclaim them. It deletes ONLY pending rows with no children: the "MarkExecutionRunning fires
+// first" invariant guarantees a pending row has none (a running row may), so deleting pending is
+// FK-safe; the NOT EXISTS clauses keep the DELETE per-row safe (one stray child can't abort the
+// whole sweep) as defense-in-depth against an invariant violation. Returns rows reaped.
+func (s *Store) ReapStaleExecutions(ctx context.Context, cutoff time.Time) (int64, error) {
+	data := struct {
+		Cutoff time.Time `db:"cutoff"`
+	}{
+		Cutoff: cutoff,
+	}
+
+	const q = `
+	DELETE FROM workflow.automation_executions ae
+	WHERE ae.status = 'pending'
+	  AND ae.executed_at < :cutoff
+	  AND NOT EXISTS (
+	      SELECT 1 FROM workflow.approval_requests ar
+	      WHERE ar.execution_id = ae.id
+	  )
+	  AND NOT EXISTS (
+	      SELECT 1 FROM workflow.notification_deliveries nd
+	      WHERE nd.automation_execution_id = ae.id
+	  )`
+
+	n, err := sqldb.NamedExecContextWithCount(ctx, s.log, s.db, q, data)
+	if err != nil {
+		return 0, fmt.Errorf("namedexeccontextwithcount: %w", err)
+	}
+
+	return n, nil
 }
 
 // QueryExecutionHistory gets execution history for the specified automation rule from the database.
