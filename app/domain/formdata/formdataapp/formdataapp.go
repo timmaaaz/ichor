@@ -19,6 +19,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/config/formbus"
 	"github.com/timmaaaz/ichor/business/domain/config/formfieldbus"
 	"github.com/timmaaaz/ichor/business/sdk/calculations"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
@@ -183,6 +184,12 @@ func (a *App) UpsertFormData(ctx context.Context, formID uuid.UUID, req FormData
 		return FormDataResponse{}, errs.Newf(errs.Internal, "begin transaction: %s", err)
 	}
 	defer tx.Rollback()
+
+	// Enroll the tx on the context so the registry-driven entity writes ride it (each closure
+	// self-binds via formdataregistry.TxBind -> app.NewWithTx) and the cascade outbox.Emit joins
+	// the same transaction. Without this, the registry writes execute on the base connection pool
+	// and the tx below wraps nothing — leaving earlier writes committed when a later one fails.
+	ctx = sqldb.WithTx(ctx, tx)
 
 	// 4. Execute operations in order
 	results := make(map[string]any)

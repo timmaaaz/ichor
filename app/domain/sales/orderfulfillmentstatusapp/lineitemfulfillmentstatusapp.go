@@ -12,6 +12,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/sales/orderfulfillmentstatusbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 )
 
 type App struct {
@@ -30,6 +31,20 @@ func NewAppWithAuth(orderfulfillmentstatusbus *orderfulfillmentstatusbus.Busines
 		orderfulfillmentstatusbus: orderfulfillmentstatusbus,
 		auth:                      auth,
 	}
+}
+
+// NewWithTx returns a copy of App whose bus(es) run on the given transaction, so callers
+// (e.g. formdataapp.UpsertFormData via formdataregistry.TxBind) can enroll this app's writes
+// in a larger atomic unit of work.
+func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
+	orderfulfillmentstatusbusTx, err := a.orderfulfillmentstatusbus.NewWithTx(tx)
+	if err != nil {
+		return nil, err
+	}
+	return &App{
+		orderfulfillmentstatusbus: orderfulfillmentstatusbusTx,
+		auth:                      a.auth,
+	}, nil
 }
 
 func (a *App) Create(ctx context.Context, app NewOrderFulfillmentStatus) (OrderFulfillmentStatus, error) {

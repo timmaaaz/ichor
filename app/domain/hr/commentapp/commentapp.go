@@ -12,6 +12,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/hr/commentbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 )
 
 // App manages the set of app layer api functions for the approval status domain.
@@ -33,6 +34,20 @@ func NewAppWithAuth(userapprovalcommentbus *commentbus.Business, ath *auth.Auth)
 		auth:                   ath,
 		userapprovalcommentbus: userapprovalcommentbus,
 	}
+}
+
+// NewWithTx returns a copy of App whose bus(es) run on the given transaction, so callers
+// (e.g. formdataapp.UpsertFormData via formdataregistry.TxBind) can enroll this app's writes
+// in a larger atomic unit of work.
+func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
+	userapprovalcommentbusTx, err := a.userapprovalcommentbus.NewWithTx(tx)
+	if err != nil {
+		return nil, err
+	}
+	return &App{
+		userapprovalcommentbus: userapprovalcommentbusTx,
+		auth:                   a.auth,
+	}, nil
 }
 
 // Create adds a new approval status to the system

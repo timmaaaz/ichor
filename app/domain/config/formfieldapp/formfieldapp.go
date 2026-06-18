@@ -11,6 +11,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/config/formfieldbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 )
 
 // App manages the set of app layer api functions for the form field domain.
@@ -32,6 +33,20 @@ func NewAppWithAuth(formfieldbus *formfieldbus.Business, ath *auth.Auth) *App {
 		auth:         ath,
 		formfieldbus: formfieldbus,
 	}
+}
+
+// NewWithTx returns a copy of App whose bus(es) run on the given transaction, so callers
+// (e.g. formdataapp.UpsertFormData via formdataregistry.TxBind) can enroll this app's writes
+// in a larger atomic unit of work.
+func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
+	formfieldbusTx, err := a.formfieldbus.NewWithTx(tx)
+	if err != nil {
+		return nil, err
+	}
+	return &App{
+		formfieldbus: formfieldbusTx,
+		auth:         a.auth,
+	}, nil
 }
 
 // Create adds a new form field to the system.

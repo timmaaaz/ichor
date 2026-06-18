@@ -11,6 +11,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/hr/titlebus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 )
 
 // App manages the set of app layer api functions for the title domain.
@@ -32,6 +33,20 @@ func NewAppWithAuth(titlebus *titlebus.Business, ath *auth.Auth) *App {
 		auth:     ath,
 		titlebus: titlebus,
 	}
+}
+
+// NewWithTx returns a copy of App whose bus(es) run on the given transaction, so callers
+// (e.g. formdataapp.UpsertFormData via formdataregistry.TxBind) can enroll this app's writes
+// in a larger atomic unit of work.
+func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
+	titlebusTx, err := a.titlebus.NewWithTx(tx)
+	if err != nil {
+		return nil, err
+	}
+	return &App{
+		titlebus: titlebusTx,
+		auth:     a.auth,
+	}, nil
 }
 
 // Create adds a new title to the system

@@ -11,6 +11,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/core/userrolebus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 )
 
 // App manages the set of app layer api functions for the userrole domain.
@@ -32,6 +33,20 @@ func NewAppWithAuth(userrolebus *userrolebus.Business, ath *auth.Auth) *App {
 		auth:        ath,
 		userrolebus: userrolebus,
 	}
+}
+
+// NewWithTx returns a copy of App whose bus(es) run on the given transaction, so callers
+// (e.g. formdataapp.UpsertFormData via formdataregistry.TxBind) can enroll this app's writes
+// in a larger atomic unit of work.
+func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
+	userrolebusTx, err := a.userrolebus.NewWithTx(tx)
+	if err != nil {
+		return nil, err
+	}
+	return &App{
+		userrolebus: userrolebusTx,
+		auth:        a.auth,
+	}, nil
 }
 
 // Create adds a new userrole to the system.

@@ -11,6 +11,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assets/tagbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 )
 
 type App struct {
@@ -31,6 +32,20 @@ func NewAppWithAuth(tagBus *tagbus.Business, ath *auth.Auth) *App {
 		auth:   ath,
 		tagBus: tagBus,
 	}
+}
+
+// NewWithTx returns a copy of App whose bus(es) run on the given transaction, so callers
+// (e.g. formdataapp.UpsertFormData via formdataregistry.TxBind) can enroll this app's writes
+// in a larger atomic unit of work.
+func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
+	tagBusTx, err := a.tagBus.NewWithTx(tx)
+	if err != nil {
+		return nil, err
+	}
+	return &App{
+		tagBus: tagBusTx,
+		auth:   a.auth,
+	}, nil
 }
 
 // Create adds a new tag to the system.

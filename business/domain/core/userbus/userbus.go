@@ -78,14 +78,14 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	bus := Business{
-		log:      b.log,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-		storer:   storer,
-	}
+	// Copy every field (log, delegate, outbox, uas, ...) and override only the storer, mirroring
+	// WithOutbox above. The prior explicit-field list silently dropped uas (*approvalbus.Business),
+	// which Create dereferences — so a tx-bound userbus nil-panicked. Copy-then-override can't
+	// drop a dependency.
+	nb := *b
+	nb.storer = storer
 
-	return &bus, nil
+	return &nb, nil
 }
 
 // Create adds a new user to the system.

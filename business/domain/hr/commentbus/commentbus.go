@@ -72,14 +72,26 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	bus := Business{
-		log:      b.log,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-		storer:   storer,
+	// Copy every field and override only the storer. The prior explicit-field
+	// list silently dropped userbus (*userbus.Business), which Create
+	// dereferences (SetUnderReview) — so a tx-bound commentbus nil-panicked.
+	// Copy-then-override can't drop a dependency.
+	nb := *b
+	nb.storer = storer
+
+	// Create calls userbus.SetUnderReview, which WRITES to core.users. Rebind the nested userbus
+	// onto the same tx so that write joins the caller's transaction instead of autocommitting on
+	// the base pool — otherwise a rolled-back form submit (e.g. via formdataapp) would leave the
+	// comment rolled back but the user's status change orphaned.
+	if b.userbus != nil {
+		ub, err := b.userbus.NewWithTx(tx)
+		if err != nil {
+			return nil, err
+		}
+		nb.userbus = ub
 	}
 
-	return &bus, nil
+	return &nb, nil
 }
 
 // Create creates a new user status comment to the system.

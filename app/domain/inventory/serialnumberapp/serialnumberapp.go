@@ -12,6 +12,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/serialnumberbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 )
 
 type App struct {
@@ -30,6 +31,21 @@ func NewAppWithAuth(serialnumberbus *serialnumberbus.Business, auth *auth.Auth) 
 		serialnumberbus: serialnumberbus,
 		auth:            auth,
 	}
+}
+
+// NewWithTx returns a copy of App whose bus(es) run on the given transaction, so callers
+// (e.g. formdataapp.UpsertFormData via formdataregistry.TxBind) can enroll this app's writes
+// in a larger atomic unit of work. The registry uses this app's Create/Update only; its own
+// multi-bus tx methods (e.g. Approve/Execute) are not invoked on the returned copy.
+func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
+	serialnumberBusTx, err := a.serialnumberbus.NewWithTx(tx)
+	if err != nil {
+		return nil, err
+	}
+	return &App{
+		serialnumberbus: serialnumberBusTx,
+		auth:            a.auth,
+	}, nil
 }
 
 func (a *App) Create(ctx context.Context, newSN NewSerialNumber) (SerialNumber, error) {

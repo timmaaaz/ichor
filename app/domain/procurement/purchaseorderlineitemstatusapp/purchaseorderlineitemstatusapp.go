@@ -11,6 +11,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/procurement/purchaseorderlineitemstatusbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 )
 
 // App manages the set of app layer api functions for the purchase order line item status domain.
@@ -32,6 +33,20 @@ func NewAppWithAuth(purchaseorderlineitemstatusbus *purchaseorderlineitemstatusb
 		auth:                           ath,
 		purchaseorderlineitemstatusbus: purchaseorderlineitemstatusbus,
 	}
+}
+
+// NewWithTx returns a copy of App whose bus(es) run on the given transaction, so callers
+// (e.g. formdataapp.UpsertFormData via formdataregistry.TxBind) can enroll this app's writes
+// in a larger atomic unit of work.
+func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
+	purchaseorderlineitemstatusbusTx, err := a.purchaseorderlineitemstatusbus.NewWithTx(tx)
+	if err != nil {
+		return nil, err
+	}
+	return &App{
+		purchaseorderlineitemstatusbus: purchaseorderlineitemstatusbusTx,
+		auth:                           a.auth,
+	}, nil
 }
 
 // Create adds a new purchase order line item status to the system.

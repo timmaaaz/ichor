@@ -11,6 +11,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assets/validassetbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 )
 
 // App manages the set of app layer api functions for the asset domain.
@@ -32,6 +33,20 @@ func NewAppWithAuth(assetBus *validassetbus.Business, ath *auth.Auth) *App {
 		auth:     ath,
 		assetBus: assetBus,
 	}
+}
+
+// NewWithTx returns a copy of App whose bus(es) run on the given transaction, so callers
+// (e.g. formdataapp.UpsertFormData via formdataregistry.TxBind) can enroll this app's writes
+// in a larger atomic unit of work.
+func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
+	assetBusTx, err := a.assetBus.NewWithTx(tx)
+	if err != nil {
+		return nil, err
+	}
+	return &App{
+		assetBus: assetBusTx,
+		auth:     a.auth,
+	}, nil
 }
 
 // Create adds a new asset to the system.

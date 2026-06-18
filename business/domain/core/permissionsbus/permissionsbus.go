@@ -85,12 +85,14 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	bus := Business{
-		log:    b.log,
-		storer: storer,
-	}
+	// Copy every field and override only the storer. The prior explicit-field
+	// list silently dropped del, RolesBus, UserRolesBus, and TableAccessBus,
+	// which QueryUserPermissions dereferences — so a tx-bound permissionsbus
+	// nil-panicked. Copy-then-override can't drop a dependency.
+	nb := *b
+	nb.storer = storer
 
-	return &bus, nil
+	return &nb, nil
 }
 
 // ClearCache clears the cache of the business.
