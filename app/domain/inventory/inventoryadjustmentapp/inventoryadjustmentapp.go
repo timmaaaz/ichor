@@ -78,13 +78,11 @@ func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &App{
-		inventoryadjustmentbus: iaBusTx,
-		invTransactionBus:      txBusTx,
-		invItemBus:             itemBusTx,
-		db:                     a.db,
-		auth:                   a.auth,
-	}, nil
+	nb := *a
+	nb.inventoryadjustmentbus = iaBusTx
+	nb.invTransactionBus = txBusTx
+	nb.invItemBus = itemBusTx
+	return &nb, nil
 }
 
 // Create creates a new inventory adjustment.

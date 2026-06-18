@@ -42,10 +42,9 @@ func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &App{
-		tableaccessbus: tableaccessbusTx,
-		auth:           a.auth,
-	}, nil
+	nb := *a
+	nb.tableaccessbus = tableaccessbusTx
+	return &nb, nil
 }
 
 // Create adds a new tableaccess to the system.

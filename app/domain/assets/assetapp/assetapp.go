@@ -43,10 +43,9 @@ func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &App{
-		assetbus: assetbusTx,
-		auth:     a.auth,
-	}, nil
+	nb := *a
+	nb.assetbus = assetbusTx
+	return &nb, nil
 }
 
 // Create adds a new  asset to the system.

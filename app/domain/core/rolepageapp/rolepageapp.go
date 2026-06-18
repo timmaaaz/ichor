@@ -43,10 +43,9 @@ func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &App{
-		rolepagebus: rolepagebusTx,
-		auth:        a.auth,
-	}, nil
+	nb := *a
+	nb.rolepagebus = rolepagebusTx
+	return &nb, nil
 }
 
 // Create adds a new role page mapping to the system.

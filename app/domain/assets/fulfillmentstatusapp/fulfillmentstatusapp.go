@@ -43,10 +43,9 @@ func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &App{
-		fulfillmentstatusbus: fulfillmentstatusbusTx,
-		auth:                 a.auth,
-	}, nil
+	nb := *a
+	nb.fulfillmentstatusbus = fulfillmentstatusbusTx
+	return &nb, nil
 }
 
 // Create adds a new fulfillment status to the system

@@ -44,10 +44,9 @@ func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &App{
-		metricsbus: metricsbusTx,
-		auth:       a.auth,
-	}, nil
+	nb := *a
+	nb.metricsbus = metricsbusTx
+	return &nb, nil
 }
 
 // Create adds a new quality metric to the system.

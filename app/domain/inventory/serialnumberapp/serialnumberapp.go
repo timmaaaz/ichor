@@ -42,10 +42,9 @@ func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &App{
-		serialnumberbus: serialnumberBusTx,
-		auth:            a.auth,
-	}, nil
+	nb := *a
+	nb.serialnumberbus = serialnumberBusTx
+	return &nb, nil
 }
 
 func (a *App) Create(ctx context.Context, newSN NewSerialNumber) (SerialNumber, error) {

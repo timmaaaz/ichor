@@ -50,11 +50,10 @@ func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &App{
-		inventorylocationbus: inventorylocationBusTx,
-		zonebus:              zoneBusTx,
-		auth:                 a.auth,
-	}, nil
+	nb := *a
+	nb.inventorylocationbus = inventorylocationBusTx
+	nb.zonebus = zoneBusTx
+	return &nb, nil
 }
 
 func (a *App) Create(ctx context.Context, app NewInventoryLocation) (InventoryLocation, error) {

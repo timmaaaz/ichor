@@ -76,13 +76,11 @@ func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &App{
-		transferorderbus:  toBusTx,
-		invTransactionBus: txBusTx,
-		invItemBus:        itemBusTx,
-		db:                a.db,
-		auth:              a.auth,
-	}, nil
+	nb := *a
+	nb.transferorderbus = toBusTx
+	nb.invTransactionBus = txBusTx
+	nb.invItemBus = itemBusTx
+	return &nb, nil
 }
 
 func (a *App) Create(ctx context.Context, app NewTransferOrder) (TransferOrder, error) {

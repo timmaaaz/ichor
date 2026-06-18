@@ -58,23 +58,20 @@ func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
 		return nil, err
 	}
 
-	out := &App{
-		inspectionbus: inspectionBusTx,
-		db:            a.db,
-		auth:          a.auth,
-	}
+	nb := *a
+	nb.inspectionbus = inspectionBusTx
 
 	// lotTrackingsBus is only populated by NewAppWithDB. The form-data registry builds this app
 	// with NewApp (lotTrackingsBus nil) and uses only Create/Update (which touch inspectionbus),
 	// so rebind lotTrackingsBus only when present — NewWithTx must never nil-panic.
 	if a.lotTrackingsBus != nil {
-		out.lotTrackingsBus, err = a.lotTrackingsBus.NewWithTx(tx)
+		nb.lotTrackingsBus, err = a.lotTrackingsBus.NewWithTx(tx)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return out, nil
+	return &nb, nil
 }
 
 func (a *App) Create(ctx context.Context, app NewInspection) (Inspection, error) {

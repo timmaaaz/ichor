@@ -44,10 +44,9 @@ func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &App{
-		supplierbus: supplierbusTx,
-		auth:        a.auth,
-	}, nil
+	nb := *a
+	nb.supplierbus = supplierbusTx
+	return &nb, nil
 }
 
 // Create adds a new supplier to the system.

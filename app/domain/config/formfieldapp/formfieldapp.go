@@ -43,10 +43,9 @@ func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &App{
-		formfieldbus: formfieldbusTx,
-		auth:         a.auth,
-	}, nil
+	nb := *a
+	nb.formfieldbus = formfieldbusTx
+	return &nb, nil
 }
 
 // Create adds a new form field to the system.

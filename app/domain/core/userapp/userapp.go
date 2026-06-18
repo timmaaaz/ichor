@@ -45,10 +45,9 @@ func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &App{
-		userBus: userBusTx,
-		auth:    a.auth,
-	}, nil
+	nb := *a
+	nb.userBus = userBusTx
+	return &nb, nil
 }
 
 // Create adds a new user to the system.

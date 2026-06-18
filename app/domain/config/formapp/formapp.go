@@ -56,22 +56,20 @@ func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
 		return nil, err
 	}
 
-	out := &App{
-		formbus: formbusTx,
-		auth:    a.auth,
-	}
+	nb := *a
+	nb.formbus = formbusTx
 
 	// formfieldbus is only populated by NewAppWithFormFields. The form-data registry builds this
 	// app with NewApp (formfieldbus nil) and uses only Create/Update (which touch formbus), so
 	// rebind formfieldbus only when present — NewWithTx must never nil-panic.
 	if a.formfieldbus != nil {
-		out.formfieldbus, err = a.formfieldbus.NewWithTx(tx)
+		nb.formfieldbus, err = a.formfieldbus.NewWithTx(tx)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return out, nil
+	return &nb, nil
 }
 
 // Create adds a new form to the system.

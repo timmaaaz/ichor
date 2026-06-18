@@ -44,10 +44,9 @@ func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &App{
-		physicalattributebus: physicalattributebusTx,
-		auth:                 a.auth,
-	}, nil
+	nb := *a
+	nb.physicalattributebus = physicalattributebusTx
+	return &nb, nil
 }
 
 // Create adds a new physical attribute to the system.
