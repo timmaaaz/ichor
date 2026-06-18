@@ -81,7 +81,9 @@ import (
 // To register a new entity:
 //
 //  1. Add the app layer import at the top of this file
-//  2. Add registration block following the pattern below
+//  2. Ensure the app exposes NewWithTx(tx) (rebinding its bus(es)); add the registration block
+//     below, wrapping each Create/Update with formdataregistry.TxBind(ctx, app) so the write
+//     rides the form's transaction (atomic multi-entity submit)
 //  3. Test with a simple single-entity form first
 //  4. Then test multi-entity forms with foreign keys
 //
@@ -100,7 +102,11 @@ import (
 //	        return app, nil
 //	    },
 //	    CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-//	        return productApp.Create(ctx, model.(productapp.NewProduct))
+//	        boundApp, err := formdataregistry.TxBind(ctx, productApp)
+//	        if err != nil {
+//	            return nil, err
+//	        }
+//	        return boundApp.Create(ctx, model.(productapp.NewProduct))
 //	    },
 //	    DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
 //	        var app productapp.UpdateProduct
@@ -113,7 +119,11 @@ import (
 //	        return app, nil
 //	    },
 //	    UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-//	        return productApp.Update(ctx, id, model.(productapp.UpdateProduct))
+//	        boundApp, err := formdataregistry.TxBind(ctx, productApp)
+//	        if err != nil {
+//	            return nil, err
+//	        }
+//	        return boundApp.Update(ctx, id, model.(productapp.UpdateProduct))
 //	    },
 //	}); err != nil {
 //	    return nil, fmt.Errorf("register products: %w", err)
@@ -198,7 +208,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return userApp.Create(ctx, model.(userapp.NewUser))
+			boundApp, err := formdataregistry.TxBind(ctx, userApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(userapp.NewUser))
 		},
 		CreateModel: userapp.NewUser{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -215,7 +229,11 @@ func buildFormDataRegistry(
 			// Note: userApp.Update gets user ID from context, not parameter
 			// This may not work as expected for form data updates
 			// Consider using a different approach for user updates
-			return userApp.UpdateNoMid(ctx, model.(userapp.UpdateUser), id)
+			boundApp, err := formdataregistry.TxBind(ctx, userApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.UpdateNoMid(ctx, model.(userapp.UpdateUser), id)
 		},
 		UpdateModel: userapp.UpdateUser{},
 	}); err != nil {
@@ -240,7 +258,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return assetApp.Create(ctx, model.(assetapp.NewAsset))
+			boundApp, err := formdataregistry.TxBind(ctx, assetApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(assetapp.NewAsset))
 		},
 		CreateModel: assetapp.NewAsset{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -254,7 +276,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return assetApp.Update(ctx, model.(assetapp.UpdateAsset), id)
+			boundApp, err := formdataregistry.TxBind(ctx, assetApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(assetapp.UpdateAsset), id)
 		},
 		UpdateModel: assetapp.UpdateAsset{},
 	}); err != nil {
@@ -275,7 +301,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return roleApp.Create(ctx, model.(roleapp.NewRole))
+			boundApp, err := formdataregistry.TxBind(ctx, roleApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(roleapp.NewRole))
 		},
 		CreateModel: roleapp.NewRole{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -289,7 +319,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return roleApp.Update(ctx, model.(roleapp.UpdateRole), id)
+			boundApp, err := formdataregistry.TxBind(ctx, roleApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(roleapp.UpdateRole), id)
 		},
 		UpdateModel: roleapp.UpdateRole{},
 	}); err != nil {
@@ -310,7 +344,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return tableAccessApp.Create(ctx, model.(tableaccessapp.NewTableAccess))
+			boundApp, err := formdataregistry.TxBind(ctx, tableAccessApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(tableaccessapp.NewTableAccess))
 		},
 		CreateModel: tableaccessapp.NewTableAccess{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -324,7 +362,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return tableAccessApp.Update(ctx, model.(tableaccessapp.UpdateTableAccess), id)
+			boundApp, err := formdataregistry.TxBind(ctx, tableAccessApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(tableaccessapp.UpdateTableAccess), id)
 		},
 		UpdateModel: tableaccessapp.UpdateTableAccess{},
 	}); err != nil {
@@ -345,7 +387,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return userRoleApp.Create(ctx, model.(userroleapp.NewUserRole))
+			boundApp, err := formdataregistry.TxBind(ctx, userRoleApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(userroleapp.NewUserRole))
 		},
 		CreateModel: userroleapp.NewUserRole{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -359,7 +405,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return userRoleApp.Create(ctx, model.(userroleapp.NewUserRole)) // Using Create for updates too
+			boundApp, err := formdataregistry.TxBind(ctx, userRoleApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(userroleapp.NewUserRole)) // Using Create for updates too
 		},
 		UpdateModel: userroleapp.NewUserRole{},
 	}); err != nil {
@@ -380,7 +430,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return pageApp.Create(ctx, model.(pageapp.NewPage))
+			boundApp, err := formdataregistry.TxBind(ctx, pageApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(pageapp.NewPage))
 		},
 		CreateModel: pageapp.NewPage{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -394,7 +448,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return pageApp.Update(ctx, model.(pageapp.UpdatePage), id)
+			boundApp, err := formdataregistry.TxBind(ctx, pageApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(pageapp.UpdatePage), id)
 		},
 		UpdateModel: pageapp.UpdatePage{},
 	}); err != nil {
@@ -415,7 +473,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return paymentTermApp.Create(ctx, model.(paymenttermapp.NewPaymentTerm))
+			boundApp, err := formdataregistry.TxBind(ctx, paymentTermApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(paymenttermapp.NewPaymentTerm))
 		},
 		CreateModel: paymenttermapp.NewPaymentTerm{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -429,7 +491,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return paymentTermApp.Update(ctx, model.(paymenttermapp.UpdatePaymentTerm), id)
+			boundApp, err := formdataregistry.TxBind(ctx, paymentTermApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(paymenttermapp.UpdatePaymentTerm), id)
 		},
 		UpdateModel: paymenttermapp.UpdatePaymentTerm{},
 	}); err != nil {
@@ -450,7 +516,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return currencyApp.Create(ctx, model.(currencyapp.NewCurrency))
+			boundApp, err := formdataregistry.TxBind(ctx, currencyApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(currencyapp.NewCurrency))
 		},
 		CreateModel: currencyapp.NewCurrency{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -464,7 +534,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return currencyApp.Update(ctx, model.(currencyapp.UpdateCurrency), id)
+			boundApp, err := formdataregistry.TxBind(ctx, currencyApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(currencyapp.UpdateCurrency), id)
 		},
 		UpdateModel: currencyapp.UpdateCurrency{},
 		QueryByNameFunc: func(ctx context.Context, name string) (uuid.UUID, error) {
@@ -488,7 +562,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return rolePageApp.Create(ctx, model.(rolepageapp.NewRolePage))
+			boundApp, err := formdataregistry.TxBind(ctx, rolePageApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(rolepageapp.NewRolePage))
 		},
 		CreateModel: rolepageapp.NewRolePage{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -502,7 +580,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return rolePageApp.Update(ctx, model.(rolepageapp.UpdateRolePage), id)
+			boundApp, err := formdataregistry.TxBind(ctx, rolePageApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(rolepageapp.UpdateRolePage), id)
 		},
 		UpdateModel: rolepageapp.UpdateRolePage{},
 	}); err != nil {
@@ -523,7 +605,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return contactInfosApp.Create(ctx, model.(contactinfosapp.NewContactInfos))
+			boundApp, err := formdataregistry.TxBind(ctx, contactInfosApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(contactinfosapp.NewContactInfos))
 		},
 		CreateModel: contactinfosapp.NewContactInfos{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -537,7 +623,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return contactInfosApp.Update(ctx, model.(contactinfosapp.UpdateContactInfos), id)
+			boundApp, err := formdataregistry.TxBind(ctx, contactInfosApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(contactinfosapp.UpdateContactInfos), id)
 		},
 		UpdateModel: contactinfosapp.UpdateContactInfos{},
 	}); err != nil {
@@ -562,7 +652,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return assetConditionApp.Create(ctx, model.(assetconditionapp.NewAssetCondition))
+			boundApp, err := formdataregistry.TxBind(ctx, assetConditionApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(assetconditionapp.NewAssetCondition))
 		},
 		CreateModel: assetconditionapp.NewAssetCondition{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -576,7 +670,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return assetConditionApp.Update(ctx, model.(assetconditionapp.UpdateAssetCondition), id)
+			boundApp, err := formdataregistry.TxBind(ctx, assetConditionApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(assetconditionapp.UpdateAssetCondition), id)
 		},
 		UpdateModel: assetconditionapp.UpdateAssetCondition{},
 	}); err != nil {
@@ -597,7 +695,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return assetTypeApp.Create(ctx, model.(assettypeapp.NewAssetType))
+			boundApp, err := formdataregistry.TxBind(ctx, assetTypeApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(assettypeapp.NewAssetType))
 		},
 		CreateModel: assettypeapp.NewAssetType{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -611,7 +713,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return assetTypeApp.Update(ctx, model.(assettypeapp.UpdateAssetType), id)
+			boundApp, err := formdataregistry.TxBind(ctx, assetTypeApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(assettypeapp.UpdateAssetType), id)
 		},
 		UpdateModel: assettypeapp.UpdateAssetType{},
 	}); err != nil {
@@ -632,7 +738,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return fulfillmentStatusApp.Create(ctx, model.(fulfillmentstatusapp.NewFulfillmentStatus))
+			boundApp, err := formdataregistry.TxBind(ctx, fulfillmentStatusApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(fulfillmentstatusapp.NewFulfillmentStatus))
 		},
 		CreateModel: fulfillmentstatusapp.NewFulfillmentStatus{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -646,7 +756,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return fulfillmentStatusApp.Update(ctx, model.(fulfillmentstatusapp.UpdateFulfillmentStatus), id)
+			boundApp, err := formdataregistry.TxBind(ctx, fulfillmentStatusApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(fulfillmentstatusapp.UpdateFulfillmentStatus), id)
 		},
 		UpdateModel: fulfillmentstatusapp.UpdateFulfillmentStatus{},
 	}); err != nil {
@@ -667,7 +781,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return tagApp.Create(ctx, model.(tagapp.NewTag))
+			boundApp, err := formdataregistry.TxBind(ctx, tagApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(tagapp.NewTag))
 		},
 		CreateModel: tagapp.NewTag{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -681,7 +799,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return tagApp.Update(ctx, model.(tagapp.UpdateTag), id)
+			boundApp, err := formdataregistry.TxBind(ctx, tagApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(tagapp.UpdateTag), id)
 		},
 		UpdateModel: tagapp.UpdateTag{},
 	}); err != nil {
@@ -702,7 +824,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return assetTagApp.Create(ctx, model.(assettagapp.NewAssetTag))
+			boundApp, err := formdataregistry.TxBind(ctx, assetTagApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(assettagapp.NewAssetTag))
 		},
 		CreateModel: assettagapp.NewAssetTag{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -716,7 +842,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return assetTagApp.Update(ctx, model.(assettagapp.UpdateAssetTag), id)
+			boundApp, err := formdataregistry.TxBind(ctx, assetTagApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(assettagapp.UpdateAssetTag), id)
 		},
 		UpdateModel: assettagapp.UpdateAssetTag{},
 	}); err != nil {
@@ -737,7 +867,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return validAssetApp.Create(ctx, model.(validassetapp.NewValidAsset))
+			boundApp, err := formdataregistry.TxBind(ctx, validAssetApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(validassetapp.NewValidAsset))
 		},
 		CreateModel: validassetapp.NewValidAsset{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -751,7 +885,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return validAssetApp.Update(ctx, model.(validassetapp.UpdateValidAsset), id)
+			boundApp, err := formdataregistry.TxBind(ctx, validAssetApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(validassetapp.UpdateValidAsset), id)
 		},
 		UpdateModel: validassetapp.UpdateValidAsset{},
 	}); err != nil {
@@ -772,7 +910,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return userAssetApp.Create(ctx, model.(userassetapp.NewUserAsset))
+			boundApp, err := formdataregistry.TxBind(ctx, userAssetApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(userassetapp.NewUserAsset))
 		},
 		CreateModel: userassetapp.NewUserAsset{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -786,7 +928,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return userAssetApp.Update(ctx, model.(userassetapp.UpdateUserAsset), id)
+			boundApp, err := formdataregistry.TxBind(ctx, userAssetApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(userassetapp.UpdateUserAsset), id)
 		},
 		UpdateModel: userassetapp.UpdateUserAsset{},
 	}); err != nil {
@@ -807,7 +953,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return approvalStatusApp.Create(ctx, model.(approvalstatusapp.NewApprovalStatus))
+			boundApp, err := formdataregistry.TxBind(ctx, approvalStatusApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(approvalstatusapp.NewApprovalStatus))
 		},
 		CreateModel: approvalstatusapp.NewApprovalStatus{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -821,7 +971,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return approvalStatusApp.Update(ctx, model.(approvalstatusapp.UpdateApprovalStatus), id)
+			boundApp, err := formdataregistry.TxBind(ctx, approvalStatusApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(approvalstatusapp.UpdateApprovalStatus), id)
 		},
 		UpdateModel: approvalstatusapp.UpdateApprovalStatus{},
 	}); err != nil {
@@ -846,7 +1000,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return cityApp.Create(ctx, model.(cityapp.NewCity))
+			boundApp, err := formdataregistry.TxBind(ctx, cityApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(cityapp.NewCity))
 		},
 		CreateModel: cityapp.NewCity{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -860,7 +1018,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return cityApp.Update(ctx, model.(cityapp.UpdateCity), id)
+			boundApp, err := formdataregistry.TxBind(ctx, cityApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(cityapp.UpdateCity), id)
 		},
 		UpdateModel: cityapp.UpdateCity{},
 	}); err != nil {
@@ -881,7 +1043,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return streetApp.Create(ctx, model.(streetapp.NewStreet))
+			boundApp, err := formdataregistry.TxBind(ctx, streetApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(streetapp.NewStreet))
 		},
 		CreateModel: streetapp.NewStreet{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -895,7 +1061,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return streetApp.Update(ctx, model.(streetapp.UpdateStreet), id)
+			boundApp, err := formdataregistry.TxBind(ctx, streetApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(streetapp.UpdateStreet), id)
 		},
 		UpdateModel: streetapp.UpdateStreet{},
 	}); err != nil {
@@ -916,7 +1086,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return timezoneApp.Create(ctx, model.(timezoneapp.NewTimezone))
+			boundApp, err := formdataregistry.TxBind(ctx, timezoneApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(timezoneapp.NewTimezone))
 		},
 		CreateModel: timezoneapp.NewTimezone{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -930,7 +1104,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return timezoneApp.Update(ctx, model.(timezoneapp.UpdateTimezone), id)
+			boundApp, err := formdataregistry.TxBind(ctx, timezoneApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(timezoneapp.UpdateTimezone), id)
 		},
 		UpdateModel: timezoneapp.UpdateTimezone{},
 	}); err != nil {
@@ -955,7 +1133,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return commentApp.Create(ctx, model.(commentapp.NewUserApprovalComment))
+			boundApp, err := formdataregistry.TxBind(ctx, commentApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(commentapp.NewUserApprovalComment))
 		},
 		CreateModel: commentapp.NewUserApprovalComment{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -969,7 +1151,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return commentApp.Update(ctx, model.(commentapp.UpdateUserApprovalComment), id)
+			boundApp, err := formdataregistry.TxBind(ctx, commentApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(commentapp.UpdateUserApprovalComment), id)
 		},
 		UpdateModel: commentapp.UpdateUserApprovalComment{},
 	}); err != nil {
@@ -990,7 +1176,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return approvalApp.Create(ctx, model.(approvalapp.NewUserApprovalStatus))
+			boundApp, err := formdataregistry.TxBind(ctx, approvalApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(approvalapp.NewUserApprovalStatus))
 		},
 		CreateModel: approvalapp.NewUserApprovalStatus{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -1004,7 +1194,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return approvalApp.Update(ctx, model.(approvalapp.UpdateUserApprovalStatus), id)
+			boundApp, err := formdataregistry.TxBind(ctx, approvalApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(approvalapp.UpdateUserApprovalStatus), id)
 		},
 		UpdateModel: approvalapp.UpdateUserApprovalStatus{},
 	}); err != nil {
@@ -1025,7 +1219,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return reportsToApp.Create(ctx, model.(reportstoapp.NewReportsTo))
+			boundApp, err := formdataregistry.TxBind(ctx, reportsToApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(reportstoapp.NewReportsTo))
 		},
 		CreateModel: reportstoapp.NewReportsTo{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -1039,7 +1237,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return reportsToApp.Update(ctx, model.(reportstoapp.UpdateReportsTo), id)
+			boundApp, err := formdataregistry.TxBind(ctx, reportsToApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(reportstoapp.UpdateReportsTo), id)
 		},
 		UpdateModel: reportstoapp.UpdateReportsTo{},
 	}); err != nil {
@@ -1060,7 +1262,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return officeApp.Create(ctx, model.(officeapp.NewOffice))
+			boundApp, err := formdataregistry.TxBind(ctx, officeApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(officeapp.NewOffice))
 		},
 		CreateModel: officeapp.NewOffice{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -1074,7 +1280,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return officeApp.Update(ctx, model.(officeapp.UpdateOffice), id)
+			boundApp, err := formdataregistry.TxBind(ctx, officeApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(officeapp.UpdateOffice), id)
 		},
 		UpdateModel: officeapp.UpdateOffice{},
 	}); err != nil {
@@ -1095,7 +1305,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return homeApp.Create(ctx, model.(homeapp.NewHome))
+			boundApp, err := formdataregistry.TxBind(ctx, homeApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(homeapp.NewHome))
 		},
 		CreateModel: homeapp.NewHome{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -1109,7 +1323,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return homeApp.Update(ctx, model.(homeapp.UpdateHome))
+			boundApp, err := formdataregistry.TxBind(ctx, homeApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(homeapp.UpdateHome))
 		},
 		UpdateModel: homeapp.UpdateHome{},
 	}); err != nil {
@@ -1130,7 +1348,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return titleApp.Create(ctx, model.(titleapp.NewTitle))
+			boundApp, err := formdataregistry.TxBind(ctx, titleApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(titleapp.NewTitle))
 		},
 		CreateModel: titleapp.NewTitle{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -1144,7 +1366,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return titleApp.Update(ctx, model.(titleapp.UpdateTitle), id)
+			boundApp, err := formdataregistry.TxBind(ctx, titleApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(titleapp.UpdateTitle), id)
 		},
 		UpdateModel: titleapp.UpdateTitle{},
 	}); err != nil {
@@ -1169,7 +1395,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return inspectionApp.Create(ctx, model.(inspectionapp.NewInspection))
+			boundApp, err := formdataregistry.TxBind(ctx, inspectionApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(inspectionapp.NewInspection))
 		},
 		CreateModel: inspectionapp.NewInspection{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -1183,7 +1413,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return inspectionApp.Update(ctx, model.(inspectionapp.UpdateInspection), id)
+			boundApp, err := formdataregistry.TxBind(ctx, inspectionApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(inspectionapp.UpdateInspection), id)
 		},
 		UpdateModel: inspectionapp.UpdateInspection{},
 	}); err != nil {
@@ -1204,7 +1438,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return inventoryAdjustmentApp.Create(ctx, model.(inventoryadjustmentapp.NewInventoryAdjustment))
+			boundApp, err := formdataregistry.TxBind(ctx, inventoryAdjustmentApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(inventoryadjustmentapp.NewInventoryAdjustment))
 		},
 		CreateModel: inventoryadjustmentapp.NewInventoryAdjustment{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -1218,7 +1456,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return inventoryAdjustmentApp.Update(ctx, id, model.(inventoryadjustmentapp.UpdateInventoryAdjustment))
+			boundApp, err := formdataregistry.TxBind(ctx, inventoryAdjustmentApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, id, model.(inventoryadjustmentapp.UpdateInventoryAdjustment))
 		},
 		UpdateModel: inventoryadjustmentapp.UpdateInventoryAdjustment{},
 	}); err != nil {
@@ -1239,7 +1481,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return inventoryLocationApp.Create(ctx, model.(inventorylocationapp.NewInventoryLocation))
+			boundApp, err := formdataregistry.TxBind(ctx, inventoryLocationApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(inventorylocationapp.NewInventoryLocation))
 		},
 		CreateModel: inventorylocationapp.NewInventoryLocation{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -1253,7 +1499,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return inventoryLocationApp.Update(ctx, model.(inventorylocationapp.UpdateInventoryLocation), id)
+			boundApp, err := formdataregistry.TxBind(ctx, inventoryLocationApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(inventorylocationapp.UpdateInventoryLocation), id)
 		},
 		UpdateModel: inventorylocationapp.UpdateInventoryLocation{},
 	}); err != nil {
@@ -1274,7 +1524,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return inventoryTransactionApp.Create(ctx, model.(inventorytransactionapp.NewInventoryTransaction))
+			boundApp, err := formdataregistry.TxBind(ctx, inventoryTransactionApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(inventorytransactionapp.NewInventoryTransaction))
 		},
 		CreateModel: inventorytransactionapp.NewInventoryTransaction{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -1288,7 +1542,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return inventoryTransactionApp.Update(ctx, id, model.(inventorytransactionapp.UpdateInventoryTransaction))
+			boundApp, err := formdataregistry.TxBind(ctx, inventoryTransactionApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, id, model.(inventorytransactionapp.UpdateInventoryTransaction))
 		},
 		UpdateModel: inventorytransactionapp.UpdateInventoryTransaction{},
 	}); err != nil {
@@ -1309,7 +1567,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return serialNumberApp.Create(ctx, model.(serialnumberapp.NewSerialNumber))
+			boundApp, err := formdataregistry.TxBind(ctx, serialNumberApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(serialnumberapp.NewSerialNumber))
 		},
 		CreateModel: serialnumberapp.NewSerialNumber{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -1323,7 +1585,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return serialNumberApp.Update(ctx, model.(serialnumberapp.UpdateSerialNumber), id)
+			boundApp, err := formdataregistry.TxBind(ctx, serialNumberApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(serialnumberapp.UpdateSerialNumber), id)
 		},
 		UpdateModel: serialnumberapp.UpdateSerialNumber{},
 	}); err != nil {
@@ -1344,7 +1610,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return transferOrderApp.Create(ctx, model.(transferorderapp.NewTransferOrder))
+			boundApp, err := formdataregistry.TxBind(ctx, transferOrderApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(transferorderapp.NewTransferOrder))
 		},
 		CreateModel: transferorderapp.NewTransferOrder{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -1358,7 +1628,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return transferOrderApp.Update(ctx, id, model.(transferorderapp.UpdateTransferOrder))
+			boundApp, err := formdataregistry.TxBind(ctx, transferOrderApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, id, model.(transferorderapp.UpdateTransferOrder))
 		},
 		UpdateModel: transferorderapp.UpdateTransferOrder{},
 	}); err != nil {
@@ -1379,7 +1653,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return warehouseApp.Create(ctx, model.(warehouseapp.NewWarehouse))
+			boundApp, err := formdataregistry.TxBind(ctx, warehouseApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(warehouseapp.NewWarehouse))
 		},
 		CreateModel: warehouseapp.NewWarehouse{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -1393,7 +1671,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return warehouseApp.Update(ctx, model.(warehouseapp.UpdateWarehouse), id)
+			boundApp, err := formdataregistry.TxBind(ctx, warehouseApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(warehouseapp.UpdateWarehouse), id)
 		},
 		UpdateModel: warehouseapp.UpdateWarehouse{},
 	}); err != nil {
@@ -1414,7 +1696,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return zoneApp.Create(ctx, model.(zoneapp.NewZone))
+			boundApp, err := formdataregistry.TxBind(ctx, zoneApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(zoneapp.NewZone))
 		},
 		CreateModel: zoneapp.NewZone{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -1428,7 +1714,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return zoneApp.Update(ctx, model.(zoneapp.UpdateZone), id)
+			boundApp, err := formdataregistry.TxBind(ctx, zoneApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(zoneapp.UpdateZone), id)
 		},
 		UpdateModel: zoneapp.UpdateZone{},
 	}); err != nil {
@@ -1449,7 +1739,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return inventoryItemApp.Create(ctx, model.(inventoryitemapp.NewInventoryItem))
+			boundApp, err := formdataregistry.TxBind(ctx, inventoryItemApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(inventoryitemapp.NewInventoryItem))
 		},
 		CreateModel: inventoryitemapp.NewInventoryItem{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -1463,7 +1757,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return inventoryItemApp.Update(ctx, model.(inventoryitemapp.UpdateInventoryItem), id)
+			boundApp, err := formdataregistry.TxBind(ctx, inventoryItemApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(inventoryitemapp.UpdateInventoryItem), id)
 		},
 		UpdateModel: inventoryitemapp.UpdateInventoryItem{},
 	}); err != nil {
@@ -1484,7 +1782,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return lotTrackingsApp.Create(ctx, model.(lottrackingsapp.NewLotTrackings))
+			boundApp, err := formdataregistry.TxBind(ctx, lotTrackingsApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(lottrackingsapp.NewLotTrackings))
 		},
 		CreateModel: lottrackingsapp.NewLotTrackings{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -1498,7 +1800,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return lotTrackingsApp.Update(ctx, model.(lottrackingsapp.UpdateLotTrackings), id)
+			boundApp, err := formdataregistry.TxBind(ctx, lotTrackingsApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(lottrackingsapp.UpdateLotTrackings), id)
 		},
 		UpdateModel: lottrackingsapp.UpdateLotTrackings{},
 	}); err != nil {
@@ -1519,7 +1825,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return lotLocationApp.Create(ctx, model.(lotlocationapp.NewLotLocation))
+			boundApp, err := formdataregistry.TxBind(ctx, lotLocationApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(lotlocationapp.NewLotLocation))
 		},
 		CreateModel: lotlocationapp.NewLotLocation{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -1533,7 +1843,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return lotLocationApp.Update(ctx, model.(lotlocationapp.UpdateLotLocation), id)
+			boundApp, err := formdataregistry.TxBind(ctx, lotLocationApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(lotlocationapp.UpdateLotLocation), id)
 		},
 		UpdateModel: lotlocationapp.UpdateLotLocation{},
 	}); err != nil {
@@ -1558,7 +1872,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return purchaseOrderLineItemStatusApp.Create(ctx, model.(purchaseorderlineitemstatusapp.NewPurchaseOrderLineItemStatus))
+			boundApp, err := formdataregistry.TxBind(ctx, purchaseOrderLineItemStatusApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(purchaseorderlineitemstatusapp.NewPurchaseOrderLineItemStatus))
 		},
 		CreateModel: purchaseorderlineitemstatusapp.NewPurchaseOrderLineItemStatus{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -1572,7 +1890,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return purchaseOrderLineItemStatusApp.Update(ctx, model.(purchaseorderlineitemstatusapp.UpdatePurchaseOrderLineItemStatus), id)
+			boundApp, err := formdataregistry.TxBind(ctx, purchaseOrderLineItemStatusApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(purchaseorderlineitemstatusapp.UpdatePurchaseOrderLineItemStatus), id)
 		},
 		UpdateModel: purchaseorderlineitemstatusapp.UpdatePurchaseOrderLineItemStatus{},
 	}); err != nil {
@@ -1593,7 +1915,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return purchaseOrderStatusApp.Create(ctx, model.(purchaseorderstatusapp.NewPurchaseOrderStatus))
+			boundApp, err := formdataregistry.TxBind(ctx, purchaseOrderStatusApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(purchaseorderstatusapp.NewPurchaseOrderStatus))
 		},
 		CreateModel: purchaseorderstatusapp.NewPurchaseOrderStatus{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -1607,7 +1933,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return purchaseOrderStatusApp.Update(ctx, model.(purchaseorderstatusapp.UpdatePurchaseOrderStatus), id)
+			boundApp, err := formdataregistry.TxBind(ctx, purchaseOrderStatusApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(purchaseorderstatusapp.UpdatePurchaseOrderStatus), id)
 		},
 		UpdateModel: purchaseorderstatusapp.UpdatePurchaseOrderStatus{},
 	}); err != nil {
@@ -1628,7 +1958,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return supplierApp.Create(ctx, model.(supplierapp.NewSupplier))
+			boundApp, err := formdataregistry.TxBind(ctx, supplierApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(supplierapp.NewSupplier))
 		},
 		CreateModel: supplierapp.NewSupplier{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -1642,7 +1976,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return supplierApp.Update(ctx, model.(supplierapp.UpdateSupplier), id)
+			boundApp, err := formdataregistry.TxBind(ctx, supplierApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(supplierapp.UpdateSupplier), id)
 		},
 		UpdateModel: supplierapp.UpdateSupplier{},
 	}); err != nil {
@@ -1663,7 +2001,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return supplierProductApp.Create(ctx, model.(supplierproductapp.NewSupplierProduct))
+			boundApp, err := formdataregistry.TxBind(ctx, supplierProductApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(supplierproductapp.NewSupplierProduct))
 		},
 		CreateModel: supplierproductapp.NewSupplierProduct{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -1677,7 +2019,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return supplierProductApp.Update(ctx, model.(supplierproductapp.UpdateSupplierProduct), id)
+			boundApp, err := formdataregistry.TxBind(ctx, supplierProductApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(supplierproductapp.UpdateSupplierProduct), id)
 		},
 		UpdateModel: supplierproductapp.UpdateSupplierProduct{},
 	}); err != nil {
@@ -1698,7 +2044,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return purchaseOrderApp.Create(ctx, model.(purchaseorderapp.NewPurchaseOrder))
+			boundApp, err := formdataregistry.TxBind(ctx, purchaseOrderApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(purchaseorderapp.NewPurchaseOrder))
 		},
 		CreateModel: purchaseorderapp.NewPurchaseOrder{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -1712,7 +2062,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return purchaseOrderApp.Update(ctx, model.(purchaseorderapp.UpdatePurchaseOrder), id)
+			boundApp, err := formdataregistry.TxBind(ctx, purchaseOrderApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(purchaseorderapp.UpdatePurchaseOrder), id)
 		},
 		UpdateModel: purchaseorderapp.UpdatePurchaseOrder{},
 	}); err != nil {
@@ -1733,7 +2087,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return purchaseOrderLineItemApp.Create(ctx, model.(purchaseorderlineitemapp.NewPurchaseOrderLineItem))
+			boundApp, err := formdataregistry.TxBind(ctx, purchaseOrderLineItemApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(purchaseorderlineitemapp.NewPurchaseOrderLineItem))
 		},
 		CreateModel: purchaseorderlineitemapp.NewPurchaseOrderLineItem{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -1747,7 +2105,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return purchaseOrderLineItemApp.Update(ctx, model.(purchaseorderlineitemapp.UpdatePurchaseOrderLineItem), id)
+			boundApp, err := formdataregistry.TxBind(ctx, purchaseOrderLineItemApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(purchaseorderlineitemapp.UpdatePurchaseOrderLineItem), id)
 		},
 		UpdateModel: purchaseorderlineitemapp.UpdatePurchaseOrderLineItem{},
 	}); err != nil {
@@ -1772,7 +2134,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return brandApp.Create(ctx, model.(brandapp.NewBrand))
+			boundApp, err := formdataregistry.TxBind(ctx, brandApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(brandapp.NewBrand))
 		},
 		CreateModel: brandapp.NewBrand{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -1786,7 +2152,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return brandApp.Update(ctx, model.(brandapp.UpdateBrand), id)
+			boundApp, err := formdataregistry.TxBind(ctx, brandApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(brandapp.UpdateBrand), id)
 		},
 		UpdateModel: brandapp.UpdateBrand{},
 	}); err != nil {
@@ -1807,7 +2177,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return costHistoryApp.Create(ctx, model.(costhistoryapp.NewCostHistory))
+			boundApp, err := formdataregistry.TxBind(ctx, costHistoryApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(costhistoryapp.NewCostHistory))
 		},
 		CreateModel: costhistoryapp.NewCostHistory{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -1821,7 +2195,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return costHistoryApp.Update(ctx, model.(costhistoryapp.UpdateCostHistory), id)
+			boundApp, err := formdataregistry.TxBind(ctx, costHistoryApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(costhistoryapp.UpdateCostHistory), id)
 		},
 		UpdateModel: costhistoryapp.UpdateCostHistory{},
 	}); err != nil {
@@ -1842,7 +2220,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return metricsApp.Create(ctx, model.(metricsapp.NewMetric))
+			boundApp, err := formdataregistry.TxBind(ctx, metricsApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(metricsapp.NewMetric))
 		},
 		CreateModel: metricsapp.NewMetric{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -1856,7 +2238,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return metricsApp.Update(ctx, model.(metricsapp.UpdateMetric), id)
+			boundApp, err := formdataregistry.TxBind(ctx, metricsApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(metricsapp.UpdateMetric), id)
 		},
 		UpdateModel: metricsapp.UpdateMetric{},
 	}); err != nil {
@@ -1877,7 +2263,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return physicalAttributeApp.Create(ctx, model.(physicalattributeapp.NewPhysicalAttribute))
+			boundApp, err := formdataregistry.TxBind(ctx, physicalAttributeApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(physicalattributeapp.NewPhysicalAttribute))
 		},
 		CreateModel: physicalattributeapp.NewPhysicalAttribute{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -1891,7 +2281,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return physicalAttributeApp.Update(ctx, model.(physicalattributeapp.UpdatePhysicalAttribute), id)
+			boundApp, err := formdataregistry.TxBind(ctx, physicalAttributeApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(physicalattributeapp.UpdatePhysicalAttribute), id)
 		},
 		UpdateModel: physicalattributeapp.UpdatePhysicalAttribute{},
 	}); err != nil {
@@ -1912,7 +2306,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return productCategoryApp.Create(ctx, model.(productcategoryapp.NewProductCategory))
+			boundApp, err := formdataregistry.TxBind(ctx, productCategoryApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(productcategoryapp.NewProductCategory))
 		},
 		CreateModel: productcategoryapp.NewProductCategory{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -1926,7 +2324,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return productCategoryApp.Update(ctx, model.(productcategoryapp.UpdateProductCategory), id)
+			boundApp, err := formdataregistry.TxBind(ctx, productCategoryApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(productcategoryapp.UpdateProductCategory), id)
 		},
 		UpdateModel: productcategoryapp.UpdateProductCategory{},
 	}); err != nil {
@@ -1947,7 +2349,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return productCostApp.Create(ctx, model.(productcostapp.NewProductCost))
+			boundApp, err := formdataregistry.TxBind(ctx, productCostApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(productcostapp.NewProductCost))
 		},
 		CreateModel: productcostapp.NewProductCost{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -1961,7 +2367,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return productCostApp.Update(ctx, model.(productcostapp.UpdateProductCost), id)
+			boundApp, err := formdataregistry.TxBind(ctx, productCostApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(productcostapp.UpdateProductCost), id)
 		},
 		UpdateModel: productcostapp.UpdateProductCost{},
 	}); err != nil {
@@ -1982,7 +2392,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return productApp.Create(ctx, model.(productapp.NewProduct))
+			boundApp, err := formdataregistry.TxBind(ctx, productApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(productapp.NewProduct))
 		},
 		CreateModel: productapp.NewProduct{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -1996,7 +2410,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return productApp.Update(ctx, model.(productapp.UpdateProduct), id)
+			boundApp, err := formdataregistry.TxBind(ctx, productApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(productapp.UpdateProduct), id)
 		},
 		UpdateModel: productapp.UpdateProduct{},
 	}); err != nil {
@@ -2021,7 +2439,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return customersApp.Create(ctx, model.(customersapp.NewCustomers))
+			boundApp, err := formdataregistry.TxBind(ctx, customersApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(customersapp.NewCustomers))
 		},
 		CreateModel: customersapp.NewCustomers{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -2035,7 +2457,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return customersApp.Update(ctx, model.(customersapp.UpdateCustomers), id)
+			boundApp, err := formdataregistry.TxBind(ctx, customersApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(customersapp.UpdateCustomers), id)
 		},
 		UpdateModel: customersapp.UpdateCustomers{},
 	}); err != nil {
@@ -2056,7 +2482,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return orderLineItemsApp.Create(ctx, model.(orderlineitemsapp.NewOrderLineItem))
+			boundApp, err := formdataregistry.TxBind(ctx, orderLineItemsApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(orderlineitemsapp.NewOrderLineItem))
 		},
 		CreateModel: orderlineitemsapp.NewOrderLineItem{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -2070,7 +2500,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return orderLineItemsApp.Update(ctx, model.(orderlineitemsapp.UpdateOrderLineItem), id)
+			boundApp, err := formdataregistry.TxBind(ctx, orderLineItemsApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(orderlineitemsapp.UpdateOrderLineItem), id)
 		},
 		UpdateModel: orderlineitemsapp.UpdateOrderLineItem{},
 	}); err != nil {
@@ -2091,7 +2525,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return ordersApp.Create(ctx, model.(ordersapp.NewOrder))
+			boundApp, err := formdataregistry.TxBind(ctx, ordersApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(ordersapp.NewOrder))
 		},
 		CreateModel: ordersapp.NewOrder{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -2105,7 +2543,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return ordersApp.Update(ctx, model.(ordersapp.UpdateOrder), id)
+			boundApp, err := formdataregistry.TxBind(ctx, ordersApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(ordersapp.UpdateOrder), id)
 		},
 		UpdateModel: ordersapp.UpdateOrder{},
 	}); err != nil {
@@ -2127,7 +2569,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return lineItemFulfillmentStatusApp.Create(ctx, model.(lineitemfulfillmentstatusapp.NewLineItemFulfillmentStatus))
+			boundApp, err := formdataregistry.TxBind(ctx, lineItemFulfillmentStatusApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(lineitemfulfillmentstatusapp.NewLineItemFulfillmentStatus))
 		},
 		CreateModel: lineitemfulfillmentstatusapp.NewLineItemFulfillmentStatus{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -2141,7 +2587,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return lineItemFulfillmentStatusApp.Update(ctx, model.(lineitemfulfillmentstatusapp.UpdateLineItemFulfillmentStatus), id)
+			boundApp, err := formdataregistry.TxBind(ctx, lineItemFulfillmentStatusApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(lineitemfulfillmentstatusapp.UpdateLineItemFulfillmentStatus), id)
 		},
 		UpdateModel: lineitemfulfillmentstatusapp.UpdateLineItemFulfillmentStatus{},
 		QueryByNameFunc: func(ctx context.Context, name string) (uuid.UUID, error) {
@@ -2166,7 +2616,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return orderFulfillmentStatusApp.Create(ctx, model.(orderfulfillmentstatusapp.NewOrderFulfillmentStatus))
+			boundApp, err := formdataregistry.TxBind(ctx, orderFulfillmentStatusApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(orderfulfillmentstatusapp.NewOrderFulfillmentStatus))
 		},
 		CreateModel: orderfulfillmentstatusapp.NewOrderFulfillmentStatus{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -2180,7 +2634,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return orderFulfillmentStatusApp.Update(ctx, model.(orderfulfillmentstatusapp.UpdateOrderFulfillmentStatus), id)
+			boundApp, err := formdataregistry.TxBind(ctx, orderFulfillmentStatusApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(orderfulfillmentstatusapp.UpdateOrderFulfillmentStatus), id)
 		},
 		UpdateModel: orderfulfillmentstatusapp.UpdateOrderFulfillmentStatus{},
 		QueryByNameFunc: func(ctx context.Context, name string) (uuid.UUID, error) {
@@ -2208,7 +2666,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return formApp.Create(ctx, model.(formapp.NewForm))
+			boundApp, err := formdataregistry.TxBind(ctx, formApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(formapp.NewForm))
 		},
 		CreateModel: formapp.NewForm{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -2222,7 +2684,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return formApp.Update(ctx, model.(formapp.UpdateForm), id)
+			boundApp, err := formdataregistry.TxBind(ctx, formApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(formapp.UpdateForm), id)
 		},
 		UpdateModel: formapp.UpdateForm{},
 	}); err != nil {
@@ -2243,7 +2709,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		CreateFunc: func(ctx context.Context, model interface{}) (interface{}, error) {
-			return formFieldApp.Create(ctx, model.(formfieldapp.NewFormField))
+			boundApp, err := formdataregistry.TxBind(ctx, formFieldApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Create(ctx, model.(formfieldapp.NewFormField))
 		},
 		CreateModel: formfieldapp.NewFormField{},
 		DecodeUpdate: func(data json.RawMessage) (interface{}, error) {
@@ -2257,7 +2727,11 @@ func buildFormDataRegistry(
 			return app, nil
 		},
 		UpdateFunc: func(ctx context.Context, id uuid.UUID, model interface{}) (interface{}, error) {
-			return formFieldApp.Update(ctx, model.(formfieldapp.UpdateFormField), id)
+			boundApp, err := formdataregistry.TxBind(ctx, formFieldApp)
+			if err != nil {
+				return nil, err
+			}
+			return boundApp.Update(ctx, model.(formfieldapp.UpdateFormField), id)
 		},
 		UpdateModel: formfieldapp.UpdateFormField{},
 	}); err != nil {

@@ -11,6 +11,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/procurement/supplierproductbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 )
 
 type App struct {
@@ -29,6 +30,20 @@ func NewAppWithAuth(supplierproductbus *supplierproductbus.Business, auth *auth.
 		supplierproductbus: supplierproductbus,
 		auth:               auth,
 	}
+}
+
+// NewWithTx returns a copy of App whose bus(es) run on the given transaction, so callers
+// (e.g. formdataapp.UpsertFormData via formdataregistry.TxBind) can enroll this app's writes
+// in a larger atomic unit of work.
+func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
+	supplierproductbusTx, err := a.supplierproductbus.NewWithTx(tx)
+	if err != nil {
+		return nil, err
+	}
+	return &App{
+		supplierproductbus: supplierproductbusTx,
+		auth:               a.auth,
+	}, nil
 }
 
 func (a *App) Create(ctx context.Context, app NewSupplierProduct) (SupplierProduct, error) {

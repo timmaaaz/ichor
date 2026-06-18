@@ -48,6 +48,35 @@ func NewAppWithDB(inspectionbus *inspectionbus.Business, lotTrackingsBus *lottra
 	}
 }
 
+// NewWithTx returns a copy of App whose bus(es) run on the given transaction, so callers
+// (e.g. formdataapp.UpsertFormData via formdataregistry.TxBind) can enroll this app's writes
+// in a larger atomic unit of work. The registry uses this app's Create/Update only; its own
+// multi-bus tx methods (e.g. Approve/Execute) are not invoked on the returned copy.
+func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
+	inspectionBusTx, err := a.inspectionbus.NewWithTx(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := &App{
+		inspectionbus: inspectionBusTx,
+		db:            a.db,
+		auth:          a.auth,
+	}
+
+	// lotTrackingsBus is only populated by NewAppWithDB. The form-data registry builds this app
+	// with NewApp (lotTrackingsBus nil) and uses only Create/Update (which touch inspectionbus),
+	// so rebind lotTrackingsBus only when present — NewWithTx must never nil-panic.
+	if a.lotTrackingsBus != nil {
+		out.lotTrackingsBus, err = a.lotTrackingsBus.NewWithTx(tx)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return out, nil
+}
+
 func (a *App) Create(ctx context.Context, app NewInspection) (Inspection, error) {
 	ni, err := toBusNewInspection(app)
 	if err != nil {

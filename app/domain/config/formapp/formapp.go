@@ -14,6 +14,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/config/formfieldbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 )
 
 // App manages the set of app layer api functions for the form domain.
@@ -44,6 +45,33 @@ func NewAppWithAuth(formbus *formbus.Business, ath *auth.Auth) *App {
 		auth:    ath,
 		formbus: formbus,
 	}
+}
+
+// NewWithTx returns a copy of App whose bus(es) run on the given transaction, so callers
+// (e.g. formdataapp.UpsertFormData via formdataregistry.TxBind) can enroll this app's writes
+// in a larger atomic unit of work.
+func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
+	formbusTx, err := a.formbus.NewWithTx(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := &App{
+		formbus: formbusTx,
+		auth:    a.auth,
+	}
+
+	// formfieldbus is only populated by NewAppWithFormFields. The form-data registry builds this
+	// app with NewApp (formfieldbus nil) and uses only Create/Update (which touch formbus), so
+	// rebind formfieldbus only when present — NewWithTx must never nil-panic.
+	if a.formfieldbus != nil {
+		out.formfieldbus, err = a.formfieldbus.NewWithTx(tx)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return out, nil
 }
 
 // Create adds a new form to the system.
@@ -268,8 +296,8 @@ func (a *App) ImportForms(ctx context.Context, pkg ImportPackage) (ImportResult,
 
 // Variables for testing
 var (
-	timeNow      = func() interface{ Format(string) string } { return timeNowImpl{} }
-	timeRFC3339  = "2006-01-02T15:04:05Z07:00"
+	timeNow     = func() interface{ Format(string) string } { return timeNowImpl{} }
+	timeRFC3339 = "2006-01-02T15:04:05Z07:00"
 )
 
 type timeNowImpl struct{}

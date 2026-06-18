@@ -11,6 +11,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryitembus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 )
 
 // App manages the set of app layer api functions for the product domain.
@@ -32,6 +33,21 @@ func NewAppWithAuth(inventoryitembus *inventoryitembus.Business, ath *auth.Auth)
 		auth:             ath,
 		inventoryitembus: inventoryitembus,
 	}
+}
+
+// NewWithTx returns a copy of App whose bus(es) run on the given transaction, so callers
+// (e.g. formdataapp.UpsertFormData via formdataregistry.TxBind) can enroll this app's writes
+// in a larger atomic unit of work. The registry uses this app's Create/Update only; its own
+// multi-bus tx methods (e.g. Approve/Execute) are not invoked on the returned copy.
+func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
+	inventoryitemBusTx, err := a.inventoryitembus.NewWithTx(tx)
+	if err != nil {
+		return nil, err
+	}
+	return &App{
+		inventoryitembus: inventoryitemBusTx,
+		auth:             a.auth,
+	}, nil
 }
 
 // Create creates a new inventory item.

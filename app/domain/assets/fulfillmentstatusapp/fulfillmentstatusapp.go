@@ -11,6 +11,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/assets/fulfillmentstatusbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 )
 
 // App manages the set of app layer api functions for the fulfillment status domain.
@@ -32,6 +33,20 @@ func NewAppWithAuth(fulfillmentstatusbus *fulfillmentstatusbus.Business, ath *au
 		auth:                 ath,
 		fulfillmentstatusbus: fulfillmentstatusbus,
 	}
+}
+
+// NewWithTx returns a copy of App whose bus(es) run on the given transaction, so callers
+// (e.g. formdataapp.UpsertFormData via formdataregistry.TxBind) can enroll this app's writes
+// in a larger atomic unit of work.
+func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
+	fulfillmentstatusbusTx, err := a.fulfillmentstatusbus.NewWithTx(tx)
+	if err != nil {
+		return nil, err
+	}
+	return &App{
+		fulfillmentstatusbus: fulfillmentstatusbusTx,
+		auth:                 a.auth,
+	}, nil
 }
 
 // Create adds a new fulfillment status to the system

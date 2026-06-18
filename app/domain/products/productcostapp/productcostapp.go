@@ -11,6 +11,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/products/productcostbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 )
 
 // App manages the set of app layer api functions for the productCost domain.
@@ -32,6 +33,20 @@ func NewAppWithAuth(productcostbus *productcostbus.Business, ath *auth.Auth) *Ap
 		auth:           ath,
 		productcostbus: productcostbus,
 	}
+}
+
+// NewWithTx returns a copy of App whose bus(es) run on the given transaction, so callers
+// (e.g. formdataapp.UpsertFormData via formdataregistry.TxBind) can enroll this app's writes
+// in a larger atomic unit of work.
+func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
+	productcostbusTx, err := a.productcostbus.NewWithTx(tx)
+	if err != nil {
+		return nil, err
+	}
+	return &App{
+		productcostbus: productcostbusTx,
+		auth:           a.auth,
+	}, nil
 }
 
 // Create adds a new product cost to the system.

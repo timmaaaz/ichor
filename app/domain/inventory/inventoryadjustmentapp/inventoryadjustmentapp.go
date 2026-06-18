@@ -61,6 +61,32 @@ func NewAppWithAuth(
 	}
 }
 
+// NewWithTx returns a copy of App whose bus(es) run on the given transaction, so callers
+// (e.g. formdataapp.UpsertFormData via formdataregistry.TxBind) can enroll this app's writes
+// in a larger atomic unit of work. The registry uses this app's Create/Update only; its own
+// multi-bus tx methods (e.g. Approve/Execute) are not invoked on the returned copy.
+func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
+	iaBusTx, err := a.inventoryadjustmentbus.NewWithTx(tx)
+	if err != nil {
+		return nil, err
+	}
+	txBusTx, err := a.invTransactionBus.NewWithTx(tx)
+	if err != nil {
+		return nil, err
+	}
+	itemBusTx, err := a.invItemBus.NewWithTx(tx)
+	if err != nil {
+		return nil, err
+	}
+	return &App{
+		inventoryadjustmentbus: iaBusTx,
+		invTransactionBus:      txBusTx,
+		invItemBus:             itemBusTx,
+		db:                     a.db,
+		auth:                   a.auth,
+	}, nil
+}
+
 // Create creates a new inventory adjustment.
 func (a *App) Create(ctx context.Context, app NewInventoryAdjustment) (InventoryAdjustment, error) {
 	newAdjustment, err := toBusNewInventoryAdjustment(app)

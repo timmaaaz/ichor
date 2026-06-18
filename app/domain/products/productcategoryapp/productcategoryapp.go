@@ -12,6 +12,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/products/productcategorybus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 )
 
 // App manages the set of app layer api functions for the product category domain.
@@ -33,6 +34,20 @@ func NewAppWithAuth(productcategorybus *productcategorybus.Business, ath *auth.A
 		auth:               ath,
 		productcategorybus: productcategorybus,
 	}
+}
+
+// NewWithTx returns a copy of App whose bus(es) run on the given transaction, so callers
+// (e.g. formdataapp.UpsertFormData via formdataregistry.TxBind) can enroll this app's writes
+// in a larger atomic unit of work.
+func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
+	productcategorybusTx, err := a.productcategorybus.NewWithTx(tx)
+	if err != nil {
+		return nil, err
+	}
+	return &App{
+		productcategorybus: productcategorybusTx,
+		auth:               a.auth,
+	}, nil
 }
 
 // Create adds a new product category to the system.

@@ -10,6 +10,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/hr/homebus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 )
 
 // App manages the set of app layer api functions for the home domain.
@@ -22,6 +23,19 @@ func NewApp(homeBus *homebus.Business) *App {
 	return &App{
 		homeBus: homeBus,
 	}
+}
+
+// NewWithTx returns a copy of App whose bus(es) run on the given transaction, so callers
+// (e.g. formdataapp.UpsertFormData via formdataregistry.TxBind) can enroll this app's writes
+// in a larger atomic unit of work.
+func (a *App) NewWithTx(tx sqldb.CommitRollbacker) (*App, error) {
+	homeBusTx, err := a.homeBus.NewWithTx(tx)
+	if err != nil {
+		return nil, err
+	}
+	return &App{
+		homeBus: homeBusTx,
+	}, nil
 }
 
 // Create adds a new home to the system.
