@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	enumspb "go.temporal.io/api/enums/v1"
+	"go.temporal.io/api/serviceerror"
 	"go.temporal.io/sdk/client"
 
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
@@ -57,10 +58,21 @@ func (m *mockEdgeStore) QueryEdgesByRule(_ context.Context, ruleID uuid.UUID) ([
 
 type mockExecutionStore struct {
 	createErr error
+	created   []uuid.UUID // ids of records inserted
+	deleted   []uuid.UUID // ids of records reclaimed via DeleteExecution
 }
 
-func (m *mockExecutionStore) CreateExecution(_ context.Context, _ workflow.AutomationExecution) error {
-	return m.createErr
+func (m *mockExecutionStore) CreateExecution(_ context.Context, exec workflow.AutomationExecution) error {
+	if m.createErr != nil {
+		return m.createErr
+	}
+	m.created = append(m.created, exec.ID)
+	return nil
+}
+
+func (m *mockExecutionStore) DeleteExecution(_ context.Context, id uuid.UUID) error {
+	m.deleted = append(m.deleted, id)
+	return nil
 }
 
 // =============================================================================
@@ -544,6 +556,60 @@ func TestOnEntityEvent_TemporalError(t *testing.T) {
 	// The starter was called but returned an error.
 	if len(starter.calls) != 1 {
 		t.Errorf("expected 1 attempt, got %d", len(starter.calls))
+	}
+}
+
+// TestOnEntityEvent_OrphanRecordDeletedOnStartFailure pins fast-follow #3: the execution
+// record is written BEFORE ExecuteWorkflow (so activities can reference its FK), so if the
+// start fails the record is left orphaned at StatusPending with no workflow. The trigger must
+// reclaim it — making execution-record dedup record-level, not just run-level (Temporal already
+// dedups the workflow run).
+//
+// Two start-failure shapes both reclaim the record:
+//   - a generic dispatch failure (e.g. Temporal unavailable), and
+//   - a duplicate rejection: WorkflowExecutionErrorWhenAlreadyStarted surfaces a relay
+//     re-delivery of the same outbox row as *serviceerror.WorkflowExecutionAlreadyStarted
+//     (the SDK otherwise swallows it and returns the existing run with a nil error).
+func TestOnEntityEvent_OrphanRecordDeletedOnStartFailure(t *testing.T) {
+	cases := []struct {
+		name     string
+		startErr error
+	}{
+		{"generic_start_failure", errors.New("temporal unavailable")},
+		{"duplicate_already_started", serviceerror.NewWorkflowExecutionAlreadyStarted("already started", "req-id", "run-id")},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			edgeStore := newMockEdgeStore()
+			ruleID := testRuleID()
+			actions, edges := testGraph(ruleID)
+			edgeStore.actions[ruleID] = actions
+			edgeStore.edges[ruleID] = edges
+
+			starter := newMockWorkflowStarter()
+			starter.err = tc.startErr
+			matcher := &mockRuleMatcher{result: matchedResult(ruleID, "test-rule")}
+			execStore := &mockExecutionStore{}
+
+			trigger := temporal.NewWorkflowTrigger(testLogger(), starter, matcher, edgeStore, execStore)
+			if err := trigger.OnEntityEvent(context.Background(), testEvent()); err != nil {
+				t.Fatalf("expected no error (fail-open per rule), got: %v", err)
+			}
+
+			// The record was created before the start...
+			if len(execStore.created) != 1 {
+				t.Fatalf("expected exactly 1 execution record created, got %d", len(execStore.created))
+			}
+			// ...and reclaimed when the start failed — no orphan StatusPending row left behind.
+			if len(execStore.deleted) != 1 {
+				t.Fatalf("orphan NOT reclaimed: expected 1 DeleteExecution, got %d", len(execStore.deleted))
+			}
+			if execStore.created[0] != execStore.deleted[0] {
+				t.Errorf("deleted id %s != created id %s — must reclaim the SAME record it wrote",
+					execStore.deleted[0], execStore.created[0])
+			}
+		})
 	}
 }
 

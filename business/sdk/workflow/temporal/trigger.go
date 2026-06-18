@@ -3,11 +3,13 @@ package temporal
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"maps"
 
 	"github.com/google/uuid"
 	enumspb "go.temporal.io/api/enums/v1"
+	"go.temporal.io/api/serviceerror"
 	"go.temporal.io/sdk/client"
 
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
@@ -22,6 +24,12 @@ import (
 // Implemented by stores/workflowdb.Store.
 type ExecutionStore interface {
 	CreateExecution(ctx context.Context, exec workflow.AutomationExecution) error
+
+	// DeleteExecution removes an execution record by id. The trigger writes the record
+	// before starting the workflow (so activities can reference its FK); if the start
+	// fails or is rejected as a duplicate, the orphaned record is reclaimed via this so
+	// execution-record dedup is record-level, not just run-level.
+	DeleteExecution(ctx context.Context, id uuid.UUID) error
 }
 
 // EdgeStore loads graph definitions (actions + edges) from the database.
@@ -242,10 +250,11 @@ func (t *WorkflowTrigger) startWorkflowForRule(
 		return fmt.Errorf("creating execution record: %w", err)
 	}
 
-	// TODO: If ExecuteWorkflow fails below, the execution row created above will
-	// remain permanently at StatusPending with no corresponding Temporal workflow.
-	// A future fix should either delete the orphaned row on failure or introduce
-	// an UpdateExecution path so the workflow can transition the status itself.
+	// If ExecuteWorkflow below fails — or is rejected as a duplicate (a relay re-delivery
+	// of the same outbox row, surfaced as an error by WorkflowExecutionErrorWhenAlreadyStarted
+	// + REJECT_DUPLICATE) — the record created above is an orphan at StatusPending with no
+	// corresponding workflow run. The error path reclaims it via DeleteExecution, making dedup
+	// RECORD-level, not just run-level (Temporal already dedups the workflow run itself).
 
 	// Build workflow input with trigger data from the event.
 	input := WorkflowInput{
@@ -263,6 +272,12 @@ func (t *WorkflowTrigger) startWorkflowForRule(
 		ID:                    workflowID,
 		TaskQueue:             t.taskQueue,
 		WorkflowIDReusePolicy: enumspb.WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE,
+		// Surface a duplicate start as an error instead of the SDK default (which silently
+		// returns a handle to the existing run). The trigger needs that signal to reclaim the
+		// execution record it wrote before the start; without it a relay re-delivery leaves a
+		// second orphaned StatusPending row. Run-level dedup is unaffected — no second workflow
+		// ever runs; only the client now learns of the rejection.
+		WorkflowExecutionErrorWhenAlreadyStarted: true,
 	}
 
 	we, err := t.starter.ExecuteWorkflow(ctx, workflowOptions,
@@ -270,6 +285,27 @@ func (t *WorkflowTrigger) startWorkflowForRule(
 		input,
 	)
 	if err != nil {
+		// The start produced no new workflow run, so the record written above is an orphan.
+		// Reclaim it (best-effort) — this is what makes execution-record dedup record-level.
+		if delErr := t.executionStore.DeleteExecution(ctx, executionID); delErr != nil {
+			t.log.Error(ctx, "failed to delete orphaned execution record after workflow start error",
+				"execution_id", executionID,
+				"workflow_id", workflowID,
+				"delete_error", delErr,
+			)
+		}
+
+		// A duplicate rejection is an expected, benign re-delivery: the original workflow is
+		// already running (or already ran), so once the orphan record is reclaimed this is an
+		// idempotent no-op. Any other error is a real dispatch failure.
+		var alreadyStarted *serviceerror.WorkflowExecutionAlreadyStarted
+		if errors.As(err, &alreadyStarted) {
+			t.log.Warn(ctx, "duplicate workflow start rejected (re-delivery); orphaned execution record reclaimed",
+				"rule_id", rm.Rule.ID,
+				"workflow_id", workflowID,
+			)
+			return nil
+		}
 		return fmt.Errorf("execute workflow: %w", err)
 	}
 
