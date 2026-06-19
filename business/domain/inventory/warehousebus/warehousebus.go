@@ -110,6 +110,13 @@ func (b *Business) Create(ctx context.Context, nw NewWarehouse) (Warehouse, erro
 	// OWN transaction via WriteAtomic: a unique violation rolls back that attempt's tx (rather
 	// than poisoning a single shared tx, which would make every later INSERT fail), so the next
 	// attempt with a regenerated code starts on a clean transaction.
+	//
+	// NOTE: this retry is only correct on the begin path (no caller tx). Under a caller-supplied
+	// tx, WriteAtomic JOINS that tx instead of owning it, so a unique violation would NOT roll
+	// back — it would poison the caller's tx and every later statement (including the retry's
+	// INSERT) would fail. There is no such call site today (warehousebus.Create is only invoked
+	// pool-bound, via warehouseapp). A future self-tx / workflow handler that creates a warehouse
+	// under its own tx must not rely on this retry.
 	const maxRetries = 3
 	for attempt := 1; attempt <= maxRetries; attempt++ {
 		w, err := outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
