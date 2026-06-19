@@ -68,12 +68,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	return &Business{
-		log:      b.log,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-		storer:   storer,
-	}, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create adds a new lot location to the system.
@@ -81,34 +78,37 @@ func (b *Business) Create(ctx context.Context, nll NewLotLocation) (LotLocation,
 	ctx, span := otel.AddSpan(ctx, "business.lotlocationbus.create")
 	defer span.End()
 
-	now := time.Now()
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (LotLocation, error) {
+			now := time.Now()
 
-	ll := LotLocation{
-		ID:          uuid.New(),
-		LotID:       nll.LotID,
-		LocationID:  nll.LocationID,
-		Quantity:    nll.Quantity,
-		CreatedDate: now,
-		UpdatedDate: now,
-	}
+			ll := LotLocation{
+				ID:          uuid.New(),
+				LotID:       nll.LotID,
+				LocationID:  nll.LocationID,
+				Quantity:    nll.Quantity,
+				CreatedDate: now,
+				UpdatedDate: now,
+			}
 
-	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
-		ll.ScenarioID = &sid
-	}
+			if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+				ll.ScenarioID = &sid
+			}
 
-	if err := b.storer.Create(ctx, ll); err != nil {
-		return LotLocation{}, fmt.Errorf("create: %w", err)
-	}
+			if err := b.storer.Create(ctx, ll); err != nil {
+				return LotLocation{}, fmt.Errorf("create: %w", err)
+			}
 
-	evtData := ActionCreatedData(ll)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return LotLocation{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(ll)); err != nil {
-		b.log.Error(ctx, "lotlocationbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			evtData := ActionCreatedData(ll)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return LotLocation{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(ll)); err != nil {
+				b.log.Error(ctx, "lotlocationbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return ll, nil
+			return ll, nil
+		})
 }
 
 // Update modifies a lot location in the system.
@@ -116,33 +116,36 @@ func (b *Business) Update(ctx context.Context, ll LotLocation, ull UpdateLotLoca
 	ctx, span := otel.AddSpan(ctx, "business.lotlocationbus.update")
 	defer span.End()
 
-	before := ll
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (LotLocation, error) {
+			before := ll
 
-	if ull.LotID != nil {
-		ll.LotID = *ull.LotID
-	}
-	if ull.LocationID != nil {
-		ll.LocationID = *ull.LocationID
-	}
-	if ull.Quantity != nil {
-		ll.Quantity = *ull.Quantity
-	}
+			if ull.LotID != nil {
+				ll.LotID = *ull.LotID
+			}
+			if ull.LocationID != nil {
+				ll.LocationID = *ull.LocationID
+			}
+			if ull.Quantity != nil {
+				ll.Quantity = *ull.Quantity
+			}
 
-	ll.UpdatedDate = time.Now()
+			ll.UpdatedDate = time.Now()
 
-	if err := b.storer.Update(ctx, ll); err != nil {
-		return LotLocation{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, ll); err != nil {
+				return LotLocation{}, fmt.Errorf("update: %w", err)
+			}
 
-	evtData := ActionUpdatedData(before, ll)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return LotLocation{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, ll)); err != nil {
-		b.log.Error(ctx, "lotlocationbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			evtData := ActionUpdatedData(before, ll)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return LotLocation{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, ll)); err != nil {
+				b.log.Error(ctx, "lotlocationbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return ll, nil
+			return ll, nil
+		})
 }
 
 // Delete removes a lot location from the system.
@@ -150,19 +153,22 @@ func (b *Business) Delete(ctx context.Context, ll LotLocation) error {
 	ctx, span := otel.AddSpan(ctx, "business.lotlocationbus.delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, ll); err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, ll); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	evtData := ActionDeletedData(ll)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(ll)); err != nil {
-		b.log.Error(ctx, "lotlocationbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			evtData := ActionDeletedData(ll)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(ll)); err != nil {
+				b.log.Error(ctx, "lotlocationbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of lot locations based on the provided query filter,

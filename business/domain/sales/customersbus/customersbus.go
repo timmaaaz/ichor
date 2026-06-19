@@ -68,12 +68,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	return &Business{
-		log:      b.log,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-		storer:   storer,
-	}, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create inserts a new customers into the database.
@@ -81,37 +78,40 @@ func (b *Business) Create(ctx context.Context, nci NewCustomers) (Customers, err
 	ctx, span := otel.AddSpan(ctx, "business.customersbus.create")
 	defer span.End()
 
-	now := time.Now().UTC()
-	if nci.CreatedDate != nil {
-		now = *nci.CreatedDate // Use provided date for seeding
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Customers, error) {
+			now := time.Now().UTC()
+			if nci.CreatedDate != nil {
+				now = *nci.CreatedDate // Use provided date for seeding
+			}
 
-	customers := Customers{
-		ID:                uuid.New(),
-		Name:              nci.Name,
-		ContactID:         nci.ContactID,
-		DeliveryAddressID: nci.DeliveryAddressID,
-		Notes:             nci.Notes,
-		CreatedBy:         nci.CreatedBy,
-		UpdatedBy:         nci.CreatedBy,
-		CreatedDate:       now,
-		UpdatedDate:       now,
-	}
+			customers := Customers{
+				ID:                uuid.New(),
+				Name:              nci.Name,
+				ContactID:         nci.ContactID,
+				DeliveryAddressID: nci.DeliveryAddressID,
+				Notes:             nci.Notes,
+				CreatedBy:         nci.CreatedBy,
+				UpdatedBy:         nci.CreatedBy,
+				CreatedDate:       now,
+				UpdatedDate:       now,
+			}
 
-	if err := b.storer.Create(ctx, customers); err != nil {
-		return Customers{}, fmt.Errorf("create: %w", err)
-	}
+			if err := b.storer.Create(ctx, customers); err != nil {
+				return Customers{}, fmt.Errorf("create: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(customers)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Customers{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(customers)); err != nil {
-		b.log.Error(ctx, "customersbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(customers)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Customers{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(customers)); err != nil {
+				b.log.Error(ctx, "customersbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return customers, nil
+			return customers, nil
+		})
 }
 
 // SeedCreate inserts a fully-formed Customers value with a caller-specified ID.
@@ -141,40 +141,43 @@ func (b *Business) Update(ctx context.Context, ci Customers, uci UpdateCustomers
 	ctx, span := otel.AddSpan(ctx, "business.customersbus.update")
 	defer span.End()
 
-	before := ci
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Customers, error) {
+			before := ci
 
-	if uci.Name != nil {
-		ci.Name = *uci.Name
-	}
-	if uci.ContactID != nil {
-		ci.ContactID = *uci.ContactID
-	}
-	if uci.DeliveryAddressID != nil {
-		ci.DeliveryAddressID = *uci.DeliveryAddressID
-	}
-	if uci.Notes != nil {
-		ci.Notes = *uci.Notes
-	}
-	if uci.UpdatedBy != nil {
-		ci.UpdatedBy = *uci.UpdatedBy
-	}
+			if uci.Name != nil {
+				ci.Name = *uci.Name
+			}
+			if uci.ContactID != nil {
+				ci.ContactID = *uci.ContactID
+			}
+			if uci.DeliveryAddressID != nil {
+				ci.DeliveryAddressID = *uci.DeliveryAddressID
+			}
+			if uci.Notes != nil {
+				ci.Notes = *uci.Notes
+			}
+			if uci.UpdatedBy != nil {
+				ci.UpdatedBy = *uci.UpdatedBy
+			}
 
-	ci.UpdatedDate = time.Now().UTC()
+			ci.UpdatedDate = time.Now().UTC()
 
-	if err := b.storer.Update(ctx, ci); err != nil {
-		return Customers{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, ci); err != nil {
+				return Customers{}, fmt.Errorf("update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, ci)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Customers{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, ci)); err != nil {
-		b.log.Error(ctx, "customersbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, ci)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Customers{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, ci)); err != nil {
+				b.log.Error(ctx, "customersbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return ci, nil
+			return ci, nil
+		})
 }
 
 // Delete removes the specified customers.
@@ -182,20 +185,23 @@ func (b *Business) Delete(ctx context.Context, ci Customers) error {
 	ctx, span := otel.AddSpan(ctx, "business.customersbus.delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, ci); err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, ci); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(ci)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(ci)); err != nil {
-		b.log.Error(ctx, "customersbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(ci)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(ci)); err != nil {
+				b.log.Error(ctx, "customersbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of customerss from the system.

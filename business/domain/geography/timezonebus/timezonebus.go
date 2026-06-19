@@ -68,14 +68,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	bus := Business{
-		log:      b.log,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-		storer:   storer,
-	}
-
-	return &bus, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create adds a new timezone to the system.
@@ -83,28 +78,31 @@ func (b *Business) Create(ctx context.Context, ntz NewTimezone) (Timezone, error
 	ctx, span := otel.AddSpan(ctx, "business.timezonebus.Create")
 	defer span.End()
 
-	tz := Timezone{
-		ID:          uuid.New(),
-		Name:        ntz.Name,
-		DisplayName: ntz.DisplayName,
-		UTCOffset:   ntz.UTCOffset,
-		IsActive:    ntz.IsActive,
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Timezone, error) {
+			tz := Timezone{
+				ID:          uuid.New(),
+				Name:        ntz.Name,
+				DisplayName: ntz.DisplayName,
+				UTCOffset:   ntz.UTCOffset,
+				IsActive:    ntz.IsActive,
+			}
 
-	if err := b.storer.Create(ctx, tz); err != nil {
-		return Timezone{}, fmt.Errorf("store create: %w", err)
-	}
+			if err := b.storer.Create(ctx, tz); err != nil {
+				return Timezone{}, fmt.Errorf("store create: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(tz)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Timezone{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(tz)); err != nil {
-		b.log.Error(ctx, "timezonebus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(tz)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Timezone{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(tz)); err != nil {
+				b.log.Error(ctx, "timezonebus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return tz, nil
+			return tz, nil
+		})
 }
 
 // Update modifies information about a timezone.
@@ -112,38 +110,41 @@ func (b *Business) Update(ctx context.Context, tz Timezone, utz UpdateTimezone) 
 	ctx, span := otel.AddSpan(ctx, "business.timezonebus.Update")
 	defer span.End()
 
-	before := tz
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Timezone, error) {
+			before := tz
 
-	if utz.Name != nil {
-		tz.Name = *utz.Name
-	}
+			if utz.Name != nil {
+				tz.Name = *utz.Name
+			}
 
-	if utz.DisplayName != nil {
-		tz.DisplayName = *utz.DisplayName
-	}
+			if utz.DisplayName != nil {
+				tz.DisplayName = *utz.DisplayName
+			}
 
-	if utz.UTCOffset != nil {
-		tz.UTCOffset = *utz.UTCOffset
-	}
+			if utz.UTCOffset != nil {
+				tz.UTCOffset = *utz.UTCOffset
+			}
 
-	if utz.IsActive != nil {
-		tz.IsActive = *utz.IsActive
-	}
+			if utz.IsActive != nil {
+				tz.IsActive = *utz.IsActive
+			}
 
-	if err := b.storer.Update(ctx, tz); err != nil {
-		return Timezone{}, fmt.Errorf("store update: %w", err)
-	}
+			if err := b.storer.Update(ctx, tz); err != nil {
+				return Timezone{}, fmt.Errorf("store update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, tz)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Timezone{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, tz)); err != nil {
-		b.log.Error(ctx, "timezonebus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, tz)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Timezone{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, tz)); err != nil {
+				b.log.Error(ctx, "timezonebus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return tz, nil
+			return tz, nil
+		})
 }
 
 // Delete removes a timezone from the system.
@@ -151,20 +152,23 @@ func (b *Business) Delete(ctx context.Context, tz Timezone) error {
 	ctx, span := otel.AddSpan(ctx, "business.timezonebus.Delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, tz); err != nil {
-		return fmt.Errorf("store delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, tz); err != nil {
+				return fmt.Errorf("store delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(tz)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(tz)); err != nil {
-		b.log.Error(ctx, "timezonebus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(tz)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(tz)); err != nil {
+				b.log.Error(ctx, "timezonebus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of existing timezones.

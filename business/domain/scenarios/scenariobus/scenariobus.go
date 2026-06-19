@@ -86,8 +86,6 @@ func NewBusiness(log *logger.Logger, d *delegate.Delegate, storer Storer, beginn
 	return &Business{log: log, delegate: d, storer: storer, beginner: beginner, scenariosRoot: scenariosRoot}
 }
 
-// NewWithTx constructs a new Business value replacing the Storer value with
-// a Storer value that is currently inside a transaction.
 // WithOutbox returns a copy of the Business wired to the cascade outbox Writer.
 // Inert until the Writer is injected at the F2 cutover (nil Writer -> Emit no-ops).
 func (b *Business) WithOutbox(w *outbox.Writer) *Business {
@@ -96,46 +94,48 @@ func (b *Business) WithOutbox(w *outbox.Writer) *Business {
 	return &nb
 }
 
+// NewWithTx constructs a new business value that will use the specified transaction
+// in any store-related calls. It copies the receiver and overrides only the storer,
+// so no field (delegate, outbox, log, beginner, scenariosRoot) is silently dropped
+// (cf. commit 63f6b034).
 func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 	storer, err := b.storer.NewWithTx(tx)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Business{
-		log:           b.log,
-		delegate:      b.delegate,
-		outbox:        b.outbox,
-		storer:        storer,
-		beginner:      b.beginner,
-		scenariosRoot: b.scenariosRoot,
-	}, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create inserts a new scenario.
 func (b *Business) Create(ctx context.Context, ns NewScenario) (Scenario, error) {
-	now := time.Now()
-	s := Scenario{
-		ID:          uuid.New(),
-		Name:        ns.Name,
-		Description: ns.Description,
-		CreatedDate: now,
-		UpdatedDate: now,
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Scenario, error) {
+			now := time.Now()
+			s := Scenario{
+				ID:          uuid.New(),
+				Name:        ns.Name,
+				Description: ns.Description,
+				CreatedDate: now,
+				UpdatedDate: now,
+			}
 
-	if err := b.storer.Create(ctx, s); err != nil {
-		return Scenario{}, fmt.Errorf("create: %w", err)
-	}
+			if err := b.storer.Create(ctx, s); err != nil {
+				return Scenario{}, fmt.Errorf("create: %w", err)
+			}
 
-	evtData := ActionCreatedData(s)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Scenario{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(s)); err != nil {
-		b.log.Error(ctx, "scenariobus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			evtData := ActionCreatedData(s)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Scenario{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(s)); err != nil {
+				b.log.Error(ctx, "scenariobus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return s, nil
+			return s, nil
+		})
 }
 
 // SeedCreate inserts a fully-formed Scenario (caller supplies the ID).
@@ -185,46 +185,52 @@ func (b *Business) SeedApplyLeverOverrides(ctx context.Context, scenarioID uuid.
 
 // Update applies a partial patch to an existing scenario.
 func (b *Business) Update(ctx context.Context, s Scenario, us UpdateScenario) (Scenario, error) {
-	before := s
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Scenario, error) {
+			before := s
 
-	if us.Name != nil {
-		s.Name = *us.Name
-	}
-	if us.Description != nil {
-		s.Description = *us.Description
-	}
-	s.UpdatedDate = time.Now()
+			if us.Name != nil {
+				s.Name = *us.Name
+			}
+			if us.Description != nil {
+				s.Description = *us.Description
+			}
+			s.UpdatedDate = time.Now()
 
-	if err := b.storer.Update(ctx, s); err != nil {
-		return Scenario{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, s); err != nil {
+				return Scenario{}, fmt.Errorf("update: %w", err)
+			}
 
-	evtData := ActionUpdatedData(before, s)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Scenario{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, s)); err != nil {
-		b.log.Error(ctx, "scenariobus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			evtData := ActionUpdatedData(before, s)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Scenario{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, s)); err != nil {
+				b.log.Error(ctx, "scenariobus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return s, nil
+			return s, nil
+		})
 }
 
 // Delete removes a scenario. ON DELETE CASCADE handles fixture rows.
 func (b *Business) Delete(ctx context.Context, s Scenario) error {
-	if err := b.storer.Delete(ctx, s); err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, s); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	evtData := ActionDeletedData(s)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(s)); err != nil {
-		b.log.Error(ctx, "scenariobus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			evtData := ActionDeletedData(s)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(s)); err != nil {
+				b.log.Error(ctx, "scenariobus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // QueryByID retrieves a scenario by its ID.

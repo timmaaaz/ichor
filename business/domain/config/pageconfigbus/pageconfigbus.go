@@ -89,16 +89,11 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	bus := Business{
-		log:            b.log,
-		storer:         storer,
-		del:            b.del,
-		outbox:         b.outbox,
-		pageContentBus: pageContentBus,
-		pageActionBus:  pageActionBus,
-	}
-
-	return &bus, nil
+	nb := *b
+	nb.storer = storer
+	nb.pageContentBus = pageContentBus
+	nb.pageActionBus = pageActionBus
+	return &nb, nil
 }
 
 // Create adds a new page configuration to the system.
@@ -106,33 +101,36 @@ func (b *Business) Create(ctx context.Context, nc NewPageConfig) (PageConfig, er
 	ctx, span := otel.AddSpan(ctx, "business.pageconfigbus.Create")
 	defer span.End()
 
-	// If is_default is true, ensure user_id is zero (will be NULL in database)
-	userID := nc.UserID
-	if nc.IsDefault {
-		userID = uuid.UUID{}
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (PageConfig, error) {
+			// If is_default is true, ensure user_id is zero (will be NULL in database)
+			userID := nc.UserID
+			if nc.IsDefault {
+				userID = uuid.UUID{}
+			}
 
-	config := PageConfig{
-		ID:        uuid.New(),
-		Name:      nc.Name,
-		UserID:    userID,
-		IsDefault: nc.IsDefault,
-	}
+			config := PageConfig{
+				ID:        uuid.New(),
+				Name:      nc.Name,
+				UserID:    userID,
+				IsDefault: nc.IsDefault,
+			}
 
-	if err := b.storer.Create(ctx, config); err != nil {
-		return PageConfig{}, fmt.Errorf("create: %w", err)
-	}
+			if err := b.storer.Create(ctx, config); err != nil {
+				return PageConfig{}, fmt.Errorf("create: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(config)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return PageConfig{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.del.Call(ctx, ActionCreatedData(config)); err != nil {
-		b.log.Error(ctx, "pageconfigbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(config)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return PageConfig{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.del.Call(ctx, ActionCreatedData(config)); err != nil {
+				b.log.Error(ctx, "pageconfigbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return config, nil
+			return config, nil
+		})
 }
 
 // Update modifies an existing page configuration.
@@ -140,44 +138,47 @@ func (b *Business) Update(ctx context.Context, uc UpdatePageConfig, configID uui
 	ctx, span := otel.AddSpan(ctx, "business.pageconfigbus.Update")
 	defer span.End()
 
-	// Fetch existing config
-	config, err := b.storer.QueryByID(ctx, configID)
-	if err != nil {
-		return PageConfig{}, fmt.Errorf("query: %w", err)
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (PageConfig, error) {
+			// Fetch existing config
+			config, err := b.storer.QueryByID(ctx, configID)
+			if err != nil {
+				return PageConfig{}, fmt.Errorf("query: %w", err)
+			}
 
-	before := config
+			before := config
 
-	// Apply updates
-	if uc.Name != nil {
-		config.Name = *uc.Name
-	}
-	if uc.UserID != nil {
-		config.UserID = *uc.UserID
-	}
-	if uc.IsDefault != nil {
-		config.IsDefault = *uc.IsDefault
-	}
+			// Apply updates
+			if uc.Name != nil {
+				config.Name = *uc.Name
+			}
+			if uc.UserID != nil {
+				config.UserID = *uc.UserID
+			}
+			if uc.IsDefault != nil {
+				config.IsDefault = *uc.IsDefault
+			}
 
-	// If is_default is true, ensure user_id is zero
-	if config.IsDefault {
-		config.UserID = uuid.UUID{}
-	}
+			// If is_default is true, ensure user_id is zero
+			if config.IsDefault {
+				config.UserID = uuid.UUID{}
+			}
 
-	if err := b.storer.Update(ctx, config); err != nil {
-		return PageConfig{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, config); err != nil {
+				return PageConfig{}, fmt.Errorf("update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, config)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return PageConfig{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.del.Call(ctx, ActionUpdatedData(before, config)); err != nil {
-		b.log.Error(ctx, "pageconfigbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, config)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return PageConfig{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.del.Call(ctx, ActionUpdatedData(before, config)); err != nil {
+				b.log.Error(ctx, "pageconfigbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return config, nil
+			return config, nil
+		})
 }
 
 // Delete removes a page configuration from the system.
@@ -185,26 +186,29 @@ func (b *Business) Delete(ctx context.Context, configID uuid.UUID) error {
 	ctx, span := otel.AddSpan(ctx, "business.pageconfigbus.Delete")
 	defer span.End()
 
-	// Query the config before deletion for the event
-	config, err := b.storer.QueryByID(ctx, configID)
-	if err != nil {
-		return fmt.Errorf("query: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			// Query the config before deletion for the event
+			config, err := b.storer.QueryByID(ctx, configID)
+			if err != nil {
+				return fmt.Errorf("query: %w", err)
+			}
 
-	if err := b.storer.Delete(ctx, configID); err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+			if err := b.storer.Delete(ctx, configID); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(config)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.del.Call(ctx, ActionDeletedData(config)); err != nil {
-		b.log.Error(ctx, "pageconfigbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(config)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.del.Call(ctx, ActionDeletedData(config)); err != nil {
+				b.log.Error(ctx, "pageconfigbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of page configurations based on filters.

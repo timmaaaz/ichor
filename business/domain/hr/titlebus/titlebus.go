@@ -66,14 +66,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	bus := Business{
-		log:      b.log,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-		storer:   storer,
-	}
-
-	return &bus, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create creates a new title to the system.
@@ -81,26 +76,29 @@ func (b *Business) Create(ctx context.Context, nt NewTitle) (Title, error) {
 	ctx, span := otel.AddSpan(ctx, "business.titlebus.Create")
 	defer span.End()
 
-	fs := Title{
-		ID:          uuid.New(),
-		Name:        nt.Name,
-		Description: nt.Description,
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Title, error) {
+			fs := Title{
+				ID:          uuid.New(),
+				Name:        nt.Name,
+				Description: nt.Description,
+			}
 
-	if err := b.storer.Create(ctx, fs); err != nil {
-		return Title{}, fmt.Errorf("store create: %w", err)
-	}
+			if err := b.storer.Create(ctx, fs); err != nil {
+				return Title{}, fmt.Errorf("store create: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(fs)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Title{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(fs)); err != nil {
-		b.log.Error(ctx, "titlebus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(fs)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Title{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(fs)); err != nil {
+				b.log.Error(ctx, "titlebus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return fs, nil
+			return fs, nil
+		})
 }
 
 // Update modifies information about an title.
@@ -108,30 +106,33 @@ func (b *Business) Update(ctx context.Context, fs Title, ut UpdateTitle) (Title,
 	ctx, span := otel.AddSpan(ctx, "business.titlebus.Update")
 	defer span.End()
 
-	before := fs
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Title, error) {
+			before := fs
 
-	if ut.Description != nil {
-		fs.Description = *ut.Description
-	}
+			if ut.Description != nil {
+				fs.Description = *ut.Description
+			}
 
-	if ut.Name != nil {
-		fs.Name = *ut.Name
-	}
+			if ut.Name != nil {
+				fs.Name = *ut.Name
+			}
 
-	if err := b.storer.Update(ctx, fs); err != nil {
-		return Title{}, fmt.Errorf("store update: %w", err)
-	}
+			if err := b.storer.Update(ctx, fs); err != nil {
+				return Title{}, fmt.Errorf("store update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, fs)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Title{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, fs)); err != nil {
-		b.log.Error(ctx, "titlebus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, fs)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Title{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, fs)); err != nil {
+				b.log.Error(ctx, "titlebus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return fs, nil
+			return fs, nil
+		})
 }
 
 // Delete removes an title from the system.
@@ -139,20 +140,23 @@ func (b *Business) Delete(ctx context.Context, fs Title) error {
 	ctx, span := otel.AddSpan(ctx, "business.titlebus.Delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, fs); err != nil {
-		return fmt.Errorf("store delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, fs); err != nil {
+				return fmt.Errorf("store delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(fs)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(fs)); err != nil {
-		b.log.Error(ctx, "titlebus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(fs)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(fs)); err != nil {
+				b.log.Error(ctx, "titlebus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query returns a list of titles

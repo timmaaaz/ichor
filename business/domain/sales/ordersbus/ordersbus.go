@@ -91,150 +91,155 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 }
 
 func (b *Business) Create(ctx context.Context, no NewOrder) (Order, error) {
-
 	ctx, span := otel.AddSpan(ctx, "business.ordersbus.create")
 	defer span.End()
 
-	now := time.Now().UTC()
-	if no.CreatedDate != nil {
-		now = *no.CreatedDate // Use provided date for seeding
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Order, error) {
+			now := time.Now().UTC()
+			if no.CreatedDate != nil {
+				now = *no.CreatedDate // Use provided date for seeding
+			}
 
-	priority := no.Priority
-	if priority == "" {
-		priority = "medium"
-	}
-	if _, ok := validPriorities[priority]; !ok {
-		return Order{}, fmt.Errorf("create: %w: %q", ErrInvalidPriority, priority)
-	}
+			priority := no.Priority
+			if priority == "" {
+				priority = "medium"
+			}
+			if _, ok := validPriorities[priority]; !ok {
+				return Order{}, fmt.Errorf("create: %w: %q", ErrInvalidPriority, priority)
+			}
 
-	order := Order{
-		ID:                  uuid.New(),
-		Number:              no.Number,
-		CustomerID:          no.CustomerID,
-		DueDate:             no.DueDate,
-		FulfillmentStatusID: no.FulfillmentStatusID,
-		OrderDate:           no.OrderDate,
-		BillingAddressID:    no.BillingAddressID,
-		ShippingAddressID:   no.ShippingAddressID,
-		AssignedTo:          no.AssignedTo,
-		Subtotal:            no.Subtotal,
-		TaxRate:             no.TaxRate,
-		TaxAmount:           no.TaxAmount,
-		ShippingCost:        no.ShippingCost,
-		TotalAmount:         no.TotalAmount,
-		CurrencyID:          no.CurrencyID,
-		PaymentTermID:       no.PaymentTermID,
-		Notes:               no.Notes,
-		Priority:            priority,
-		CreatedBy:           no.CreatedBy,
-		UpdatedBy:           no.CreatedBy,
-		CreatedDate:         now,
-		UpdatedDate:         now,
-	}
+			order := Order{
+				ID:                  uuid.New(),
+				Number:              no.Number,
+				CustomerID:          no.CustomerID,
+				DueDate:             no.DueDate,
+				FulfillmentStatusID: no.FulfillmentStatusID,
+				OrderDate:           no.OrderDate,
+				BillingAddressID:    no.BillingAddressID,
+				ShippingAddressID:   no.ShippingAddressID,
+				AssignedTo:          no.AssignedTo,
+				Subtotal:            no.Subtotal,
+				TaxRate:             no.TaxRate,
+				TaxAmount:           no.TaxAmount,
+				ShippingCost:        no.ShippingCost,
+				TotalAmount:         no.TotalAmount,
+				CurrencyID:          no.CurrencyID,
+				PaymentTermID:       no.PaymentTermID,
+				Notes:               no.Notes,
+				Priority:            priority,
+				CreatedBy:           no.CreatedBy,
+				UpdatedBy:           no.CreatedBy,
+				CreatedDate:         now,
+				UpdatedDate:         now,
+			}
 
-	// Phase 0d: tag the row with the active scenario (if any) so scenario
-	// Reset can later undo this row while leaving baseline rows intact.
-	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
-		order.ScenarioID = &sid
-	}
+			// Phase 0d: tag the row with the active scenario (if any) so scenario
+			// Reset can later undo this row while leaving baseline rows intact.
+			if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+				order.ScenarioID = &sid
+			}
 
-	if err := b.storer.Create(ctx, order); err != nil {
-		return Order{}, err
-	}
+			if err := b.storer.Create(ctx, order); err != nil {
+				return Order{}, err
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(order)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Order{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(order)); err != nil {
-		b.log.Error(ctx, "ordersbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(order)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Order{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(order)); err != nil {
+				b.log.Error(ctx, "ordersbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return order, nil
+			return order, nil
+		})
 }
 
 func (b *Business) Update(ctx context.Context, order Order, uo UpdateOrder) (Order, error) {
 	ctx, span := otel.AddSpan(ctx, "business.ordersbus.update")
 	defer span.End()
 
-	before := order
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Order, error) {
+			before := order
 
-	if uo.Number != nil {
-		order.Number = *uo.Number
-	}
-	if uo.CustomerID != nil {
-		order.CustomerID = *uo.CustomerID
-	}
-	if uo.DueDate != nil {
-		order.DueDate = *uo.DueDate
-	}
-	if uo.FulfillmentStatusID != nil {
-		order.FulfillmentStatusID = *uo.FulfillmentStatusID
-	}
-	if uo.OrderDate != nil {
-		order.OrderDate = *uo.OrderDate
-	}
-	if uo.BillingAddressID != nil {
-		order.BillingAddressID = uo.BillingAddressID
-	}
-	if uo.ShippingAddressID != nil {
-		order.ShippingAddressID = uo.ShippingAddressID
-	}
-	if uo.AssignedTo != nil {
-		order.AssignedTo = uo.AssignedTo
-	}
-	if uo.Subtotal != nil {
-		order.Subtotal = *uo.Subtotal
-	}
-	if uo.TaxRate != nil {
-		order.TaxRate = *uo.TaxRate
-	}
-	if uo.TaxAmount != nil {
-		order.TaxAmount = *uo.TaxAmount
-	}
-	if uo.ShippingCost != nil {
-		order.ShippingCost = *uo.ShippingCost
-	}
-	if uo.TotalAmount != nil {
-		order.TotalAmount = *uo.TotalAmount
-	}
-	if uo.CurrencyID != nil {
-		order.CurrencyID = *uo.CurrencyID
-	}
-	if uo.PaymentTermID != nil {
-		order.PaymentTermID = uo.PaymentTermID
-	}
-	if uo.Notes != nil {
-		order.Notes = *uo.Notes
-	}
-	if uo.Priority != nil {
-		if _, ok := validPriorities[*uo.Priority]; !ok {
-			return Order{}, fmt.Errorf("update: %w: %q", ErrInvalidPriority, *uo.Priority)
-		}
-		order.Priority = *uo.Priority
-	}
-	if uo.UpdatedBy != nil {
-		order.UpdatedBy = *uo.UpdatedBy
-	}
+			if uo.Number != nil {
+				order.Number = *uo.Number
+			}
+			if uo.CustomerID != nil {
+				order.CustomerID = *uo.CustomerID
+			}
+			if uo.DueDate != nil {
+				order.DueDate = *uo.DueDate
+			}
+			if uo.FulfillmentStatusID != nil {
+				order.FulfillmentStatusID = *uo.FulfillmentStatusID
+			}
+			if uo.OrderDate != nil {
+				order.OrderDate = *uo.OrderDate
+			}
+			if uo.BillingAddressID != nil {
+				order.BillingAddressID = uo.BillingAddressID
+			}
+			if uo.ShippingAddressID != nil {
+				order.ShippingAddressID = uo.ShippingAddressID
+			}
+			if uo.AssignedTo != nil {
+				order.AssignedTo = uo.AssignedTo
+			}
+			if uo.Subtotal != nil {
+				order.Subtotal = *uo.Subtotal
+			}
+			if uo.TaxRate != nil {
+				order.TaxRate = *uo.TaxRate
+			}
+			if uo.TaxAmount != nil {
+				order.TaxAmount = *uo.TaxAmount
+			}
+			if uo.ShippingCost != nil {
+				order.ShippingCost = *uo.ShippingCost
+			}
+			if uo.TotalAmount != nil {
+				order.TotalAmount = *uo.TotalAmount
+			}
+			if uo.CurrencyID != nil {
+				order.CurrencyID = *uo.CurrencyID
+			}
+			if uo.PaymentTermID != nil {
+				order.PaymentTermID = uo.PaymentTermID
+			}
+			if uo.Notes != nil {
+				order.Notes = *uo.Notes
+			}
+			if uo.Priority != nil {
+				if _, ok := validPriorities[*uo.Priority]; !ok {
+					return Order{}, fmt.Errorf("update: %w: %q", ErrInvalidPriority, *uo.Priority)
+				}
+				order.Priority = *uo.Priority
+			}
+			if uo.UpdatedBy != nil {
+				order.UpdatedBy = *uo.UpdatedBy
+			}
 
-	order.UpdatedDate = time.Now().UTC()
+			order.UpdatedDate = time.Now().UTC()
 
-	if err := b.storer.Update(ctx, order); err != nil {
-		return Order{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, order); err != nil {
+				return Order{}, fmt.Errorf("update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, order)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Order{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, order)); err != nil {
-		b.log.Error(ctx, "ordersbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, order)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Order{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, order)); err != nil {
+				b.log.Error(ctx, "ordersbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return order, nil
+			return order, nil
+		})
 }
 func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]Order, error) {
 	ctx, span := otel.AddSpan(ctx, "business.ordersbus.query")
@@ -252,20 +257,23 @@ func (b *Business) Delete(ctx context.Context, order Order) error {
 	ctx, span := otel.AddSpan(ctx, "business.ordersbus.delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, order); err != nil {
-		return err
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, order); err != nil {
+				return err
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(order)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(order)); err != nil {
-		b.log.Error(ctx, "ordersbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(order)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(order)); err != nil {
+				b.log.Error(ctx, "ordersbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Count returns the total number of Orders.
@@ -319,33 +327,36 @@ func (b *Business) BindContainer(ctx context.Context, nb NewOrderContainerBindin
 	ctx, span := otel.AddSpan(ctx, "business.ordersbus.bindcontainer")
 	defer span.End()
 
-	binding := OrderContainerBinding{
-		ID:               uuid.New(),
-		OrderID:          nb.OrderID,
-		ContainerLabelID: nb.ContainerLabelID,
-		ScenarioID:       nb.ScenarioID,
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (OrderContainerBinding, error) {
+			binding := OrderContainerBinding{
+				ID:               uuid.New(),
+				OrderID:          nb.OrderID,
+				ContainerLabelID: nb.ContainerLabelID,
+				ScenarioID:       nb.ScenarioID,
+			}
 
-	// Phase 0d: tag the row with the active scenario (if any) so scenario
-	// Reset can later undo this row while leaving baseline rows intact.
-	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
-		binding.ScenarioID = &sid
-	}
+			// Phase 0d: tag the row with the active scenario (if any) so scenario
+			// Reset can later undo this row while leaving baseline rows intact.
+			if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+				binding.ScenarioID = &sid
+			}
 
-	result, err := b.storer.BindContainer(ctx, binding)
-	if err != nil {
-		return OrderContainerBinding{}, fmt.Errorf("bindcontainer: %w", err)
-	}
+			result, err := b.storer.BindContainer(ctx, binding)
+			if err != nil {
+				return OrderContainerBinding{}, fmt.Errorf("bindcontainer: %w", err)
+			}
 
-	evtData := ActionBindingCreatedData(result)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return OrderContainerBinding{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionBindingCreatedData(result)); err != nil {
-		b.log.Error(ctx, "ordersbus: delegate call failed", "action", ActionBindingCreated, "err", err)
-	}
+			evtData := ActionBindingCreatedData(result)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return OrderContainerBinding{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionBindingCreatedData(result)); err != nil {
+				b.log.Error(ctx, "ordersbus: delegate call failed", "action", ActionBindingCreated, "err", err)
+			}
 
-	return result, nil
+			return result, nil
+		})
 }
 
 // UnbindContainer marks an active binding as released. Idempotent — calling
@@ -356,23 +367,26 @@ func (b *Business) UnbindContainer(ctx context.Context, bindingID uuid.UUID) err
 	ctx, span := otel.AddSpan(ctx, "business.ordersbus.unbindcontainer")
 	defer span.End()
 
-	after, err := b.storer.UnbindContainer(ctx, bindingID)
-	if err != nil {
-		if errors.Is(err, ErrAlreadyUnbound) {
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			after, err := b.storer.UnbindContainer(ctx, bindingID)
+			if err != nil {
+				if errors.Is(err, ErrAlreadyUnbound) {
+					return nil
+				}
+				return fmt.Errorf("unbindcontainer: %w", err)
+			}
+
+			evtData := ActionBindingUpdatedData(OrderContainerBinding{ID: bindingID}, after)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionBindingUpdatedData(OrderContainerBinding{ID: bindingID}, after)); err != nil {
+				b.log.Error(ctx, "ordersbus: delegate call failed", "action", ActionBindingUpdated, "err", err)
+			}
+
 			return nil
-		}
-		return fmt.Errorf("unbindcontainer: %w", err)
-	}
-
-	evtData := ActionBindingUpdatedData(OrderContainerBinding{ID: bindingID}, after)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionBindingUpdatedData(OrderContainerBinding{ID: bindingID}, after)); err != nil {
-		b.log.Error(ctx, "ordersbus: delegate call failed", "action", ActionBindingUpdated, "err", err)
-	}
-
-	return nil
+		})
 }
 
 // QueryActiveBindingsByOrder returns all currently-active container bindings

@@ -53,8 +53,6 @@ func NewBusiness(log *logger.Logger, delegate *delegate.Delegate, storer Storer)
 	}
 }
 
-// NewWithTx constructs a new Business value replacing the Storer
-// value with a Storer value that is currently inside a transaction.
 // WithOutbox returns a copy of the Business wired to the cascade outbox Writer.
 // Inert until the Writer is injected at the F2 cutover (nil Writer -> Emit no-ops).
 func (b *Business) WithOutbox(w *outbox.Writer) *Business {
@@ -63,18 +61,18 @@ func (b *Business) WithOutbox(w *outbox.Writer) *Business {
 	return &nb
 }
 
+// NewWithTx constructs a new business value that will use the specified transaction
+// in any store-related calls. It copies the receiver and overrides only the storer,
+// so no field (delegate, outbox, log) is silently dropped (cf. commit 63f6b034).
 func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 	storer, err := b.storer.NewWithTx(tx)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Business{
-		log:      b.log,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-		storer:   storer,
-	}, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create inserts a new cost history
@@ -82,37 +80,40 @@ func (b *Business) Create(ctx context.Context, nch NewCostHistory) (CostHistory,
 	ctx, span := otel.AddSpan(ctx, "business.costhistorybus.create")
 	defer span.End()
 
-	now := time.Now().UTC()
-	if nch.CreatedDate != nil {
-		now = *nch.CreatedDate
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (CostHistory, error) {
+			now := time.Now().UTC()
+			if nch.CreatedDate != nil {
+				now = *nch.CreatedDate
+			}
 
-	ch := CostHistory{
-		CostHistoryID: uuid.New(),
-		ProductID:     nch.ProductID,
-		CostType:      nch.CostType,
-		Amount:        nch.Amount,
-		CurrencyID:    nch.CurrencyID,
-		EffectiveDate: nch.EffectiveDate,
-		EndDate:       nch.EndDate,
-		CreatedDate:   now,
-		UpdatedDate:   now,
-	}
+			ch := CostHistory{
+				CostHistoryID: uuid.New(),
+				ProductID:     nch.ProductID,
+				CostType:      nch.CostType,
+				Amount:        nch.Amount,
+				CurrencyID:    nch.CurrencyID,
+				EffectiveDate: nch.EffectiveDate,
+				EndDate:       nch.EndDate,
+				CreatedDate:   now,
+				UpdatedDate:   now,
+			}
 
-	if err := b.storer.Create(ctx, ch); err != nil {
-		return CostHistory{}, fmt.Errorf("create: %w", err)
-	}
+			if err := b.storer.Create(ctx, ch); err != nil {
+				return CostHistory{}, fmt.Errorf("create: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(ch)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return CostHistory{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(ch)); err != nil {
-		b.log.Error(ctx, "costhistorybus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(ch)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return CostHistory{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(ch)); err != nil {
+				b.log.Error(ctx, "costhistorybus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return ch, nil
+			return ch, nil
+		})
 }
 
 // Update replaces a cost history document
@@ -120,43 +121,46 @@ func (b *Business) Update(ctx context.Context, ch CostHistory, uch UpdateCostHis
 	ctx, span := otel.AddSpan(ctx, "business.costhistorybus.update")
 	defer span.End()
 
-	before := ch
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (CostHistory, error) {
+			before := ch
 
-	if uch.ProductID != nil {
-		ch.ProductID = *uch.ProductID
-	}
-	if uch.CostType != nil {
-		ch.CostType = *uch.CostType
-	}
-	if uch.Amount != nil {
-		ch.Amount = *uch.Amount
-	}
-	if uch.CurrencyID != nil {
-		ch.CurrencyID = *uch.CurrencyID
-	}
-	if uch.EffectiveDate != nil {
-		ch.EffectiveDate = *uch.EffectiveDate
-	}
-	if uch.EndDate != nil {
-		ch.EndDate = *uch.EndDate
-	}
+			if uch.ProductID != nil {
+				ch.ProductID = *uch.ProductID
+			}
+			if uch.CostType != nil {
+				ch.CostType = *uch.CostType
+			}
+			if uch.Amount != nil {
+				ch.Amount = *uch.Amount
+			}
+			if uch.CurrencyID != nil {
+				ch.CurrencyID = *uch.CurrencyID
+			}
+			if uch.EffectiveDate != nil {
+				ch.EffectiveDate = *uch.EffectiveDate
+			}
+			if uch.EndDate != nil {
+				ch.EndDate = *uch.EndDate
+			}
 
-	ch.UpdatedDate = time.Now()
+			ch.UpdatedDate = time.Now()
 
-	if err := b.storer.Update(ctx, ch); err != nil {
-		return CostHistory{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, ch); err != nil {
+				return CostHistory{}, fmt.Errorf("update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, ch)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return CostHistory{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, ch)); err != nil {
-		b.log.Error(ctx, "costhistorybus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, ch)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return CostHistory{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, ch)); err != nil {
+				b.log.Error(ctx, "costhistorybus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return ch, nil
+			return ch, nil
+		})
 }
 
 // Delete removes a cost history from the database
@@ -164,20 +168,23 @@ func (b *Business) Delete(ctx context.Context, ch CostHistory) error {
 	ctx, span := otel.AddSpan(ctx, "business.costhistorybus.delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, ch); err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, ch); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(ch)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(ch)); err != nil {
-		b.log.Error(ctx, "costhistorybus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(ch)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(ch)); err != nil {
+				b.log.Error(ctx, "costhistorybus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of product costs from the system.

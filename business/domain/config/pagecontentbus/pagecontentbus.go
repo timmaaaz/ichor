@@ -70,14 +70,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	bus := Business{
-		log:    b.log,
-		storer: storer,
-		del:    b.del,
-		outbox: b.outbox,
-	}
-
-	return &bus, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create adds a new page content block to the system.
@@ -95,35 +90,38 @@ func (b *Business) Create(ctx context.Context, nc NewPageContent) (PageContent, 
 		return PageContent{}, err
 	}
 
-	content := PageContent{
-		ID:            uuid.New(),
-		PageConfigID:  nc.PageConfigID,
-		ContentType:   nc.ContentType,
-		Label:         nc.Label,
-		TableConfigID: nc.TableConfigID,
-		FormID:        nc.FormID,
-		ChartConfigID: nc.ChartConfigID,
-		OrderIndex:    nc.OrderIndex,
-		ParentID:      nc.ParentID,
-		Layout:        nc.Layout,
-		IsVisible:     nc.IsVisible,
-		IsDefault:     nc.IsDefault,
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (PageContent, error) {
+			content := PageContent{
+				ID:            uuid.New(),
+				PageConfigID:  nc.PageConfigID,
+				ContentType:   nc.ContentType,
+				Label:         nc.Label,
+				TableConfigID: nc.TableConfigID,
+				FormID:        nc.FormID,
+				ChartConfigID: nc.ChartConfigID,
+				OrderIndex:    nc.OrderIndex,
+				ParentID:      nc.ParentID,
+				Layout:        nc.Layout,
+				IsVisible:     nc.IsVisible,
+				IsDefault:     nc.IsDefault,
+			}
 
-	if err := b.storer.Create(ctx, content); err != nil {
-		return PageContent{}, fmt.Errorf("create: %w", err)
-	}
+			if err := b.storer.Create(ctx, content); err != nil {
+				return PageContent{}, fmt.Errorf("create: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(content)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return PageContent{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.del.Call(ctx, ActionCreatedData(content)); err != nil {
-		b.log.Error(ctx, "pagecontentbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(content)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return PageContent{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.del.Call(ctx, ActionCreatedData(content)); err != nil {
+				b.log.Error(ctx, "pagecontentbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return content, nil
+			return content, nil
+		})
 }
 
 // Update modifies an existing page content block.
@@ -131,45 +129,48 @@ func (b *Business) Update(ctx context.Context, uc UpdatePageContent, contentID u
 	ctx, span := otel.AddSpan(ctx, "business.pagecontentbus.Update")
 	defer span.End()
 
-	// Fetch existing content
-	content, err := b.storer.QueryByID(ctx, contentID)
-	if err != nil {
-		return PageContent{}, fmt.Errorf("query: %w", err)
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (PageContent, error) {
+			// Fetch existing content
+			content, err := b.storer.QueryByID(ctx, contentID)
+			if err != nil {
+				return PageContent{}, fmt.Errorf("query: %w", err)
+			}
 
-	before := content
+			before := content
 
-	// Apply updates
-	if uc.Label != nil {
-		content.Label = *uc.Label
-	}
-	if uc.OrderIndex != nil {
-		content.OrderIndex = *uc.OrderIndex
-	}
-	if uc.Layout != nil {
-		content.Layout = *uc.Layout
-	}
-	if uc.IsVisible != nil {
-		content.IsVisible = *uc.IsVisible
-	}
-	if uc.IsDefault != nil {
-		content.IsDefault = *uc.IsDefault
-	}
+			// Apply updates
+			if uc.Label != nil {
+				content.Label = *uc.Label
+			}
+			if uc.OrderIndex != nil {
+				content.OrderIndex = *uc.OrderIndex
+			}
+			if uc.Layout != nil {
+				content.Layout = *uc.Layout
+			}
+			if uc.IsVisible != nil {
+				content.IsVisible = *uc.IsVisible
+			}
+			if uc.IsDefault != nil {
+				content.IsDefault = *uc.IsDefault
+			}
 
-	if err := b.storer.Update(ctx, content); err != nil {
-		return PageContent{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, content); err != nil {
+				return PageContent{}, fmt.Errorf("update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, content)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return PageContent{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.del.Call(ctx, ActionUpdatedData(before, content)); err != nil {
-		b.log.Error(ctx, "pagecontentbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, content)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return PageContent{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.del.Call(ctx, ActionUpdatedData(before, content)); err != nil {
+				b.log.Error(ctx, "pagecontentbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return content, nil
+			return content, nil
+		})
 }
 
 // Delete removes a page content block from the system.
@@ -177,26 +178,29 @@ func (b *Business) Delete(ctx context.Context, contentID uuid.UUID) error {
 	ctx, span := otel.AddSpan(ctx, "business.pagecontentbus.Delete")
 	defer span.End()
 
-	// Query the content before deletion for the event
-	content, err := b.storer.QueryByID(ctx, contentID)
-	if err != nil {
-		return fmt.Errorf("query: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			// Query the content before deletion for the event
+			content, err := b.storer.QueryByID(ctx, contentID)
+			if err != nil {
+				return fmt.Errorf("query: %w", err)
+			}
 
-	if err := b.storer.Delete(ctx, contentID); err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+			if err := b.storer.Delete(ctx, contentID); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(content)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.del.Call(ctx, ActionDeletedData(content)); err != nil {
-		b.log.Error(ctx, "pagecontentbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(content)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.del.Call(ctx, ActionDeletedData(content)); err != nil {
+				b.log.Error(ctx, "pagecontentbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of page content blocks based on filters.

@@ -68,86 +68,88 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	return &Business{
-		log:      b.log,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-		storer:   storer,
-	}, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 func (b *Business) Create(ctx context.Context, newStatus NewOrderFulfillmentStatus) (OrderFulfillmentStatus, error) {
-
 	ctx, span := otel.AddSpan(ctx, "business.orderfulfillmentstatusbus.create")
 	defer span.End()
 
-	status := OrderFulfillmentStatus{
-		ID:             uuid.New(),
-		Name:           newStatus.Name,
-		Description:    newStatus.Description,
-		PrimaryColor:   newStatus.PrimaryColor,
-		SecondaryColor: newStatus.SecondaryColor,
-		Icon:           newStatus.Icon,
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (OrderFulfillmentStatus, error) {
+			status := OrderFulfillmentStatus{
+				ID:             uuid.New(),
+				Name:           newStatus.Name,
+				Description:    newStatus.Description,
+				PrimaryColor:   newStatus.PrimaryColor,
+				SecondaryColor: newStatus.SecondaryColor,
+				Icon:           newStatus.Icon,
+			}
 
-	// Phase 0d: tag the row with the active scenario (if any) so scenario
-	// Reset can later undo this row while leaving baseline rows intact.
-	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
-		status.ScenarioID = &sid
-	}
+			// Phase 0d: tag the row with the active scenario (if any) so scenario
+			// Reset can later undo this row while leaving baseline rows intact.
+			if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+				status.ScenarioID = &sid
+			}
 
-	if err := b.storer.Create(ctx, status); err != nil {
-		return OrderFulfillmentStatus{}, err
-	}
+			if err := b.storer.Create(ctx, status); err != nil {
+				return OrderFulfillmentStatus{}, err
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(status)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return OrderFulfillmentStatus{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(status)); err != nil {
-		b.log.Error(ctx, "orderfulfillmentstatusbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(status)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return OrderFulfillmentStatus{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(status)); err != nil {
+				b.log.Error(ctx, "orderfulfillmentstatusbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return status, nil
+			return status, nil
+		})
 }
 
 func (b *Business) Update(ctx context.Context, status OrderFulfillmentStatus, uStatus UpdateOrderFulfillmentStatus) (OrderFulfillmentStatus, error) {
 	ctx, span := otel.AddSpan(ctx, "business.orderfulfillmentstatusbus.update")
 	defer span.End()
 
-	before := status
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (OrderFulfillmentStatus, error) {
+			before := status
 
-	if uStatus.Name != nil {
-		status.Name = *uStatus.Name
-	}
-	if uStatus.Description != nil {
-		status.Description = *uStatus.Description
-	}
-	if uStatus.PrimaryColor != nil {
-		status.PrimaryColor = *uStatus.PrimaryColor
-	}
-	if uStatus.SecondaryColor != nil {
-		status.SecondaryColor = *uStatus.SecondaryColor
-	}
-	if uStatus.Icon != nil {
-		status.Icon = *uStatus.Icon
-	}
+			if uStatus.Name != nil {
+				status.Name = *uStatus.Name
+			}
+			if uStatus.Description != nil {
+				status.Description = *uStatus.Description
+			}
+			if uStatus.PrimaryColor != nil {
+				status.PrimaryColor = *uStatus.PrimaryColor
+			}
+			if uStatus.SecondaryColor != nil {
+				status.SecondaryColor = *uStatus.SecondaryColor
+			}
+			if uStatus.Icon != nil {
+				status.Icon = *uStatus.Icon
+			}
 
-	if err := b.storer.Update(ctx, status); err != nil {
-		return OrderFulfillmentStatus{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, status); err != nil {
+				return OrderFulfillmentStatus{}, fmt.Errorf("update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, status)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return OrderFulfillmentStatus{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, status)); err != nil {
-		b.log.Error(ctx, "orderfulfillmentstatusbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, status)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return OrderFulfillmentStatus{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, status)); err != nil {
+				b.log.Error(ctx, "orderfulfillmentstatusbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return status, nil
+			return status, nil
+		})
 }
 
 func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]OrderFulfillmentStatus, error) {
@@ -166,20 +168,23 @@ func (b *Business) Delete(ctx context.Context, status OrderFulfillmentStatus) er
 	ctx, span := otel.AddSpan(ctx, "business.orderfulfillmentstatusbus.delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, status); err != nil {
-		return err
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, status); err != nil {
+				return err
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(status)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(status)); err != nil {
-		b.log.Error(ctx, "orderfulfillmentstatusbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(status)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(status)); err != nil {
+				b.log.Error(ctx, "orderfulfillmentstatusbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Count returns the total number of order fulfillment statuses.

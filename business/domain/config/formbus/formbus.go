@@ -77,13 +77,10 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	return &Business{
-		log:          b.log,
-		delegate:     b.delegate,
-		outbox:       b.outbox,
-		storer:       storer,
-		formFieldBus: formFieldBus,
-	}, nil
+	nb := *b
+	nb.storer = storer
+	nb.formFieldBus = formFieldBus
+	return &nb, nil
 }
 
 // Create inserts a new form into the database.
@@ -91,27 +88,30 @@ func (b *Business) Create(ctx context.Context, nf NewForm) (Form, error) {
 	ctx, span := otel.AddSpan(ctx, "business.formbus.create")
 	defer span.End()
 
-	form := Form{
-		ID:                uuid.New(),
-		Name:              nf.Name,
-		IsReferenceData:   nf.IsReferenceData,
-		AllowInlineCreate: nf.AllowInlineCreate,
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Form, error) {
+			form := Form{
+				ID:                uuid.New(),
+				Name:              nf.Name,
+				IsReferenceData:   nf.IsReferenceData,
+				AllowInlineCreate: nf.AllowInlineCreate,
+			}
 
-	if err := b.storer.Create(ctx, form); err != nil {
-		return Form{}, fmt.Errorf("create: %w", err)
-	}
+			if err := b.storer.Create(ctx, form); err != nil {
+				return Form{}, fmt.Errorf("create: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(form)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Form{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(form)); err != nil {
-		b.log.Error(ctx, "formbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(form)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Form{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(form)); err != nil {
+				b.log.Error(ctx, "formbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return form, nil
+			return form, nil
+		})
 }
 
 // Update replaces a form document in the database.
@@ -119,26 +119,29 @@ func (b *Business) Update(ctx context.Context, form Form, uf UpdateForm) (Form, 
 	ctx, span := otel.AddSpan(ctx, "business.formbus.update")
 	defer span.End()
 
-	before := form
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Form, error) {
+			before := form
 
-	if uf.Name != nil {
-		form.Name = *uf.Name
-	}
+			if uf.Name != nil {
+				form.Name = *uf.Name
+			}
 
-	if err := b.storer.Update(ctx, form); err != nil {
-		return Form{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, form); err != nil {
+				return Form{}, fmt.Errorf("update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, form)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Form{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, form)); err != nil {
-		b.log.Error(ctx, "formbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, form)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Form{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, form)); err != nil {
+				b.log.Error(ctx, "formbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return form, nil
+			return form, nil
+		})
 }
 
 // Delete removes the specified form.
@@ -146,20 +149,23 @@ func (b *Business) Delete(ctx context.Context, form Form) error {
 	ctx, span := otel.AddSpan(ctx, "business.formbus.delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, form); err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, form); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(form)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(form)); err != nil {
-		b.log.Error(ctx, "formbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(form)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(form)); err != nil {
+				b.log.Error(ctx, "formbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of forms from the system.

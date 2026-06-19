@@ -67,14 +67,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	bus := Business{
-		log:      b.log,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-		storer:   storer,
-	}
-
-	return &bus, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create adds a new asset tag in the system.
@@ -82,29 +77,32 @@ func (b *Business) Create(ctx context.Context, nrt NewReportsTo) (ReportsTo, err
 	ctx, span := otel.AddSpan(ctx, "business.reportstobus.Create")
 	defer span.End()
 
-	rt := ReportsTo{
-		ID:         uuid.New(),
-		ReporterID: nrt.ReporterID,
-		BossID:     nrt.BossID,
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (ReportsTo, error) {
+			rt := ReportsTo{
+				ID:         uuid.New(),
+				ReporterID: nrt.ReporterID,
+				BossID:     nrt.BossID,
+			}
 
-	if err := b.storer.Create(ctx, rt); err != nil {
-		if errors.Is(err, ErrUniqueEntry) {
-			return ReportsTo{}, fmt.Errorf("create: %w", ErrUniqueEntry)
-		}
-		return ReportsTo{}, err
-	}
+			if err := b.storer.Create(ctx, rt); err != nil {
+				if errors.Is(err, ErrUniqueEntry) {
+					return ReportsTo{}, fmt.Errorf("create: %w", ErrUniqueEntry)
+				}
+				return ReportsTo{}, err
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(rt)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return ReportsTo{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(rt)); err != nil {
-		b.log.Error(ctx, "reportstobus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(rt)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return ReportsTo{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(rt)); err != nil {
+				b.log.Error(ctx, "reportstobus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return rt, nil
+			return rt, nil
+		})
 }
 
 // Update updates an existing asset tag.
@@ -112,33 +110,36 @@ func (b *Business) Update(ctx context.Context, rt ReportsTo, urt UpdateReportsTo
 	ctx, span := otel.AddSpan(ctx, "business.reportstobus.Update")
 	defer span.End()
 
-	before := rt
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (ReportsTo, error) {
+			before := rt
 
-	if urt.BossID != nil {
-		rt.BossID = *urt.BossID
-	}
+			if urt.BossID != nil {
+				rt.BossID = *urt.BossID
+			}
 
-	if urt.ReporterID != nil {
-		rt.ReporterID = *urt.ReporterID
-	}
+			if urt.ReporterID != nil {
+				rt.ReporterID = *urt.ReporterID
+			}
 
-	if err := b.storer.Update(ctx, rt); err != nil {
-		if errors.Is(err, ErrUniqueEntry) {
-			return ReportsTo{}, fmt.Errorf("update: %w", ErrUniqueEntry)
-		}
-		return ReportsTo{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, rt); err != nil {
+				if errors.Is(err, ErrUniqueEntry) {
+					return ReportsTo{}, fmt.Errorf("update: %w", ErrUniqueEntry)
+				}
+				return ReportsTo{}, fmt.Errorf("update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, rt)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return ReportsTo{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, rt)); err != nil {
-		b.log.Error(ctx, "reportstobus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, rt)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return ReportsTo{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, rt)); err != nil {
+				b.log.Error(ctx, "reportstobus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return rt, nil
+			return rt, nil
+		})
 }
 
 // Delete removes an asset tag from the system.
@@ -146,20 +147,23 @@ func (b *Business) Delete(ctx context.Context, at ReportsTo) error {
 	ctx, span := otel.AddSpan(ctx, "business.reportstobus.Delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, at); err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, at); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(at)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(at)); err != nil {
-		b.log.Error(ctx, "reportstobus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(at)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(at)); err != nil {
+				b.log.Error(ctx, "reportstobus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of existing asset tags from the system.

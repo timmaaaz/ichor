@@ -68,14 +68,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	bus := Business{
-		log:    b.log,
-		storer: storer,
-		del:    b.del,
-		outbox: b.outbox,
-	}
-
-	return &bus, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create adds a new purchase order status to the system.
@@ -83,27 +78,30 @@ func (b *Business) Create(ctx context.Context, npos NewPurchaseOrderStatus) (Pur
 	ctx, span := otel.AddSpan(ctx, "business.purchase_order_statusbus.create")
 	defer span.End()
 
-	pos := PurchaseOrderStatus{
-		ID:          uuid.New(),
-		Name:        npos.Name,
-		Description: npos.Description,
-		SortOrder:   npos.SortOrder,
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (PurchaseOrderStatus, error) {
+			pos := PurchaseOrderStatus{
+				ID:          uuid.New(),
+				Name:        npos.Name,
+				Description: npos.Description,
+				SortOrder:   npos.SortOrder,
+			}
 
-	if err := b.storer.Create(ctx, pos); err != nil {
-		return PurchaseOrderStatus{}, fmt.Errorf("create: %w", err)
-	}
+			if err := b.storer.Create(ctx, pos); err != nil {
+				return PurchaseOrderStatus{}, fmt.Errorf("create: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(pos)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return PurchaseOrderStatus{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.del.Call(ctx, ActionCreatedData(pos)); err != nil {
-		b.log.Error(ctx, "purchaseorderstatusbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(pos)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return PurchaseOrderStatus{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.del.Call(ctx, ActionCreatedData(pos)); err != nil {
+				b.log.Error(ctx, "purchaseorderstatusbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return pos, nil
+			return pos, nil
+		})
 }
 
 // Update modifies a purchase order status in the system.
@@ -111,32 +109,35 @@ func (b *Business) Update(ctx context.Context, pos PurchaseOrderStatus, upos Upd
 	ctx, span := otel.AddSpan(ctx, "business.purchase_order_statusbus.update")
 	defer span.End()
 
-	before := pos
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (PurchaseOrderStatus, error) {
+			before := pos
 
-	if upos.Name != nil {
-		pos.Name = *upos.Name
-	}
-	if upos.Description != nil {
-		pos.Description = *upos.Description
-	}
-	if upos.SortOrder != nil {
-		pos.SortOrder = *upos.SortOrder
-	}
+			if upos.Name != nil {
+				pos.Name = *upos.Name
+			}
+			if upos.Description != nil {
+				pos.Description = *upos.Description
+			}
+			if upos.SortOrder != nil {
+				pos.SortOrder = *upos.SortOrder
+			}
 
-	if err := b.storer.Update(ctx, pos); err != nil {
-		return PurchaseOrderStatus{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, pos); err != nil {
+				return PurchaseOrderStatus{}, fmt.Errorf("update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, pos)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return PurchaseOrderStatus{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.del.Call(ctx, ActionUpdatedData(before, pos)); err != nil {
-		b.log.Error(ctx, "purchaseorderstatusbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, pos)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return PurchaseOrderStatus{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.del.Call(ctx, ActionUpdatedData(before, pos)); err != nil {
+				b.log.Error(ctx, "purchaseorderstatusbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return pos, nil
+			return pos, nil
+		})
 }
 
 // Delete removes a purchase order status from the system.
@@ -144,20 +145,23 @@ func (b *Business) Delete(ctx context.Context, pos PurchaseOrderStatus) error {
 	ctx, span := otel.AddSpan(ctx, "business.purchase_order_statusbus.delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, pos); err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, pos); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(pos)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.del.Call(ctx, ActionDeletedData(pos)); err != nil {
-		b.log.Error(ctx, "purchaseorderstatusbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(pos)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.del.Call(ctx, ActionDeletedData(pos)); err != nil {
+				b.log.Error(ctx, "purchaseorderstatusbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of purchase order statuses from the system.

@@ -79,14 +79,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	bus := Business{
-		log:    b.log,
-		storer: storer,
-		del:    b.del,
-		outbox: b.outbox,
-	}
-
-	return &bus, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create adds a new purchase order to the system.
@@ -94,64 +89,67 @@ func (b *Business) Create(ctx context.Context, npo NewPurchaseOrder) (PurchaseOr
 	ctx, span := otel.AddSpan(ctx, "business.purchaseorderbus.create")
 	defer span.End()
 
-	now := time.Now().UTC()
-	if npo.CreatedDate != nil {
-		now = *npo.CreatedDate // Use provided date for seeding
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (PurchaseOrder, error) {
+			now := time.Now().UTC()
+			if npo.CreatedDate != nil {
+				now = *npo.CreatedDate // Use provided date for seeding
+			}
 
-	priority := npo.Priority
-	if priority == "" {
-		priority = "medium"
-	}
-	if _, ok := validPriorities[priority]; !ok {
-		return PurchaseOrder{}, fmt.Errorf("create: %w: %q", ErrInvalidPriority, priority)
-	}
+			priority := npo.Priority
+			if priority == "" {
+				priority = "medium"
+			}
+			if _, ok := validPriorities[priority]; !ok {
+				return PurchaseOrder{}, fmt.Errorf("create: %w: %q", ErrInvalidPriority, priority)
+			}
 
-	po := PurchaseOrder{
-		ID:                      uuid.New(),
-		OrderNumber:             npo.OrderNumber,
-		SupplierID:              npo.SupplierID,
-		PurchaseOrderStatusID:   npo.PurchaseOrderStatusID,
-		DeliveryWarehouseID:     npo.DeliveryWarehouseID,
-		DeliveryLocationID:      npo.DeliveryLocationID,
-		DeliveryStreetID:        npo.DeliveryStreetID,
-		OrderDate:               npo.OrderDate,
-		ExpectedDeliveryDate:    npo.ExpectedDeliveryDate,
-		Subtotal:                npo.Subtotal,
-		TaxAmount:               npo.TaxAmount,
-		ShippingCost:            npo.ShippingCost,
-		TotalAmount:             npo.TotalAmount,
-		CurrencyID:              npo.CurrencyID,
-		RequestedBy:             npo.RequestedBy,
-		Notes:                   npo.Notes,
-		SupplierReferenceNumber: npo.SupplierReferenceNumber,
-		Priority:                priority,
-		CreatedBy:               npo.CreatedBy,
-		UpdatedBy:               npo.CreatedBy,
-		CreatedDate:             now,
-		UpdatedDate:             now,
-	}
+			po := PurchaseOrder{
+				ID:                      uuid.New(),
+				OrderNumber:             npo.OrderNumber,
+				SupplierID:              npo.SupplierID,
+				PurchaseOrderStatusID:   npo.PurchaseOrderStatusID,
+				DeliveryWarehouseID:     npo.DeliveryWarehouseID,
+				DeliveryLocationID:      npo.DeliveryLocationID,
+				DeliveryStreetID:        npo.DeliveryStreetID,
+				OrderDate:               npo.OrderDate,
+				ExpectedDeliveryDate:    npo.ExpectedDeliveryDate,
+				Subtotal:                npo.Subtotal,
+				TaxAmount:               npo.TaxAmount,
+				ShippingCost:            npo.ShippingCost,
+				TotalAmount:             npo.TotalAmount,
+				CurrencyID:              npo.CurrencyID,
+				RequestedBy:             npo.RequestedBy,
+				Notes:                   npo.Notes,
+				SupplierReferenceNumber: npo.SupplierReferenceNumber,
+				Priority:                priority,
+				CreatedBy:               npo.CreatedBy,
+				UpdatedBy:               npo.CreatedBy,
+				CreatedDate:             now,
+				UpdatedDate:             now,
+			}
 
-	// Phase 0d: tag the row with the active scenario (if any) so scenario
-	// Reset can later undo this row while leaving baseline rows intact.
-	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
-		po.ScenarioID = &sid
-	}
+			// Phase 0d: tag the row with the active scenario (if any) so scenario
+			// Reset can later undo this row while leaving baseline rows intact.
+			if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+				po.ScenarioID = &sid
+			}
 
-	if err := b.storer.Create(ctx, po); err != nil {
-		return PurchaseOrder{}, fmt.Errorf("create: %w", err)
-	}
+			if err := b.storer.Create(ctx, po); err != nil {
+				return PurchaseOrder{}, fmt.Errorf("create: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(po)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return PurchaseOrder{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.del.Call(ctx, ActionCreatedData(po)); err != nil {
-		b.log.Error(ctx, "purchaseorderbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(po)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return PurchaseOrder{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.del.Call(ctx, ActionCreatedData(po)); err != nil {
+				b.log.Error(ctx, "purchaseorderbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return po, nil
+			return po, nil
+		})
 }
 
 // Update modifies a purchase order in the system.
@@ -159,88 +157,91 @@ func (b *Business) Update(ctx context.Context, po PurchaseOrder, upo UpdatePurch
 	ctx, span := otel.AddSpan(ctx, "business.purchaseorderbus.update")
 	defer span.End()
 
-	before := po
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (PurchaseOrder, error) {
+			before := po
 
-	if upo.OrderNumber != nil {
-		po.OrderNumber = *upo.OrderNumber
-	}
-	if upo.SupplierID != nil {
-		po.SupplierID = *upo.SupplierID
-	}
-	if upo.PurchaseOrderStatusID != nil {
-		po.PurchaseOrderStatusID = *upo.PurchaseOrderStatusID
-	}
-	if upo.DeliveryWarehouseID != nil {
-		po.DeliveryWarehouseID = *upo.DeliveryWarehouseID
-	}
-	if upo.DeliveryLocationID != nil {
-		po.DeliveryLocationID = *upo.DeliveryLocationID
-	}
-	if upo.DeliveryStreetID != nil {
-		po.DeliveryStreetID = *upo.DeliveryStreetID
-	}
-	if upo.OrderDate != nil {
-		po.OrderDate = *upo.OrderDate
-	}
-	if upo.ExpectedDeliveryDate != nil {
-		po.ExpectedDeliveryDate = *upo.ExpectedDeliveryDate
-	}
-	if upo.ActualDeliveryDate != nil {
-		po.ActualDeliveryDate = *upo.ActualDeliveryDate
-	}
-	if upo.Subtotal != nil {
-		po.Subtotal = *upo.Subtotal
-	}
-	if upo.TaxAmount != nil {
-		po.TaxAmount = *upo.TaxAmount
-	}
-	if upo.ShippingCost != nil {
-		po.ShippingCost = *upo.ShippingCost
-	}
-	if upo.TotalAmount != nil {
-		po.TotalAmount = *upo.TotalAmount
-	}
-	if upo.CurrencyID != nil {
-		po.CurrencyID = *upo.CurrencyID
-	}
-	if upo.ApprovedBy != nil {
-		po.ApprovedBy = upo.ApprovedBy
-	}
-	if upo.ApprovedDate != nil {
-		po.ApprovedDate = *upo.ApprovedDate
-	}
-	if upo.Notes != nil {
-		po.Notes = *upo.Notes
-	}
-	if upo.SupplierReferenceNumber != nil {
-		po.SupplierReferenceNumber = *upo.SupplierReferenceNumber
-	}
-	if upo.Priority != nil {
-		if _, ok := validPriorities[*upo.Priority]; !ok {
-			return PurchaseOrder{}, fmt.Errorf("update: %w: %q", ErrInvalidPriority, *upo.Priority)
-		}
-		po.Priority = *upo.Priority
-	}
-	if upo.UpdatedBy != nil {
-		po.UpdatedBy = *upo.UpdatedBy
-	}
+			if upo.OrderNumber != nil {
+				po.OrderNumber = *upo.OrderNumber
+			}
+			if upo.SupplierID != nil {
+				po.SupplierID = *upo.SupplierID
+			}
+			if upo.PurchaseOrderStatusID != nil {
+				po.PurchaseOrderStatusID = *upo.PurchaseOrderStatusID
+			}
+			if upo.DeliveryWarehouseID != nil {
+				po.DeliveryWarehouseID = *upo.DeliveryWarehouseID
+			}
+			if upo.DeliveryLocationID != nil {
+				po.DeliveryLocationID = *upo.DeliveryLocationID
+			}
+			if upo.DeliveryStreetID != nil {
+				po.DeliveryStreetID = *upo.DeliveryStreetID
+			}
+			if upo.OrderDate != nil {
+				po.OrderDate = *upo.OrderDate
+			}
+			if upo.ExpectedDeliveryDate != nil {
+				po.ExpectedDeliveryDate = *upo.ExpectedDeliveryDate
+			}
+			if upo.ActualDeliveryDate != nil {
+				po.ActualDeliveryDate = *upo.ActualDeliveryDate
+			}
+			if upo.Subtotal != nil {
+				po.Subtotal = *upo.Subtotal
+			}
+			if upo.TaxAmount != nil {
+				po.TaxAmount = *upo.TaxAmount
+			}
+			if upo.ShippingCost != nil {
+				po.ShippingCost = *upo.ShippingCost
+			}
+			if upo.TotalAmount != nil {
+				po.TotalAmount = *upo.TotalAmount
+			}
+			if upo.CurrencyID != nil {
+				po.CurrencyID = *upo.CurrencyID
+			}
+			if upo.ApprovedBy != nil {
+				po.ApprovedBy = upo.ApprovedBy
+			}
+			if upo.ApprovedDate != nil {
+				po.ApprovedDate = *upo.ApprovedDate
+			}
+			if upo.Notes != nil {
+				po.Notes = *upo.Notes
+			}
+			if upo.SupplierReferenceNumber != nil {
+				po.SupplierReferenceNumber = *upo.SupplierReferenceNumber
+			}
+			if upo.Priority != nil {
+				if _, ok := validPriorities[*upo.Priority]; !ok {
+					return PurchaseOrder{}, fmt.Errorf("update: %w: %q", ErrInvalidPriority, *upo.Priority)
+				}
+				po.Priority = *upo.Priority
+			}
+			if upo.UpdatedBy != nil {
+				po.UpdatedBy = *upo.UpdatedBy
+			}
 
-	po.UpdatedDate = time.Now().UTC()
+			po.UpdatedDate = time.Now().UTC()
 
-	if err := b.storer.Update(ctx, po); err != nil {
-		return PurchaseOrder{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, po); err != nil {
+				return PurchaseOrder{}, fmt.Errorf("update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, po)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return PurchaseOrder{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.del.Call(ctx, ActionUpdatedData(before, po)); err != nil {
-		b.log.Error(ctx, "purchaseorderbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, po)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return PurchaseOrder{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.del.Call(ctx, ActionUpdatedData(before, po)); err != nil {
+				b.log.Error(ctx, "purchaseorderbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return po, nil
+			return po, nil
+		})
 }
 
 // Delete removes a purchase order from the system.
@@ -248,20 +249,23 @@ func (b *Business) Delete(ctx context.Context, po PurchaseOrder) error {
 	ctx, span := otel.AddSpan(ctx, "business.purchaseorderbus.delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, po); err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, po); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(po)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.del.Call(ctx, ActionDeletedData(po)); err != nil {
-		b.log.Error(ctx, "purchaseorderbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(po)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.del.Call(ctx, ActionDeletedData(po)); err != nil {
+				b.log.Error(ctx, "purchaseorderbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of purchase orders from the system.
@@ -323,29 +327,32 @@ func (b *Business) Approve(ctx context.Context, po PurchaseOrder, approvedBy uui
 		return PurchaseOrder{}, fmt.Errorf("approve: %w", ErrAlreadyRejected)
 	}
 
-	before := po
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (PurchaseOrder, error) {
+			before := po
 
-	now := time.Now().UTC()
-	po.ApprovedBy = &approvedBy
-	po.ApprovedDate = now
-	po.ApprovalReason = reason
-	po.UpdatedBy = approvedBy
-	po.UpdatedDate = now
+			now := time.Now().UTC()
+			po.ApprovedBy = &approvedBy
+			po.ApprovedDate = now
+			po.ApprovalReason = reason
+			po.UpdatedBy = approvedBy
+			po.UpdatedDate = now
 
-	if err := b.storer.Update(ctx, po); err != nil {
-		return PurchaseOrder{}, fmt.Errorf("approve: %w", err)
-	}
+			if err := b.storer.Update(ctx, po); err != nil {
+				return PurchaseOrder{}, fmt.Errorf("approve: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, po)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return PurchaseOrder{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.del.Call(ctx, ActionUpdatedData(before, po)); err != nil {
-		b.log.Error(ctx, "purchaseorderbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, po)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return PurchaseOrder{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.del.Call(ctx, ActionUpdatedData(before, po)); err != nil {
+				b.log.Error(ctx, "purchaseorderbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return po, nil
+			return po, nil
+		})
 }
 
 // Reject rejects a purchase order.
@@ -360,27 +367,30 @@ func (b *Business) Reject(ctx context.Context, po PurchaseOrder, rejectedBy uuid
 		return PurchaseOrder{}, fmt.Errorf("reject: %w", ErrAlreadyRejected)
 	}
 
-	before := po
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (PurchaseOrder, error) {
+			before := po
 
-	now := time.Now().UTC()
-	po.RejectedBy = &rejectedBy
-	po.RejectedDate = now
-	po.RejectionReason = reason
-	po.UpdatedBy = rejectedBy
-	po.UpdatedDate = now
+			now := time.Now().UTC()
+			po.RejectedBy = &rejectedBy
+			po.RejectedDate = now
+			po.RejectionReason = reason
+			po.UpdatedBy = rejectedBy
+			po.UpdatedDate = now
 
-	if err := b.storer.Update(ctx, po); err != nil {
-		return PurchaseOrder{}, fmt.Errorf("reject: %w", err)
-	}
+			if err := b.storer.Update(ctx, po); err != nil {
+				return PurchaseOrder{}, fmt.Errorf("reject: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, po)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return PurchaseOrder{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.del.Call(ctx, ActionUpdatedData(before, po)); err != nil {
-		b.log.Error(ctx, "purchaseorderbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, po)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return PurchaseOrder{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.del.Call(ctx, ActionUpdatedData(before, po)); err != nil {
+				b.log.Error(ctx, "purchaseorderbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return po, nil
+			return po, nil
+		})
 }

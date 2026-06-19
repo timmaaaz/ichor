@@ -68,12 +68,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	return &Business{
-		log:      b.log,
-		storer:   storer,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-	}, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create adds a new cycle count item to the system.
@@ -81,37 +78,40 @@ func (b *Business) Create(ctx context.Context, ncci NewCycleCountItem) (CycleCou
 	ctx, span := otel.AddSpan(ctx, "business.cyclecountitembus.create")
 	defer span.End()
 
-	now := time.Now()
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (CycleCountItem, error) {
+			now := time.Now()
 
-	item := CycleCountItem{
-		ID:             uuid.New(),
-		ItemCode:       ncci.ItemCode,
-		SessionID:      ncci.SessionID,
-		ProductID:      ncci.ProductID,
-		LocationID:     ncci.LocationID,
-		SystemQuantity: ncci.SystemQuantity,
-		Status:         Statuses.Pending,
-		CreatedDate:    now,
-		UpdatedDate:    now,
-	}
+			item := CycleCountItem{
+				ID:             uuid.New(),
+				ItemCode:       ncci.ItemCode,
+				SessionID:      ncci.SessionID,
+				ProductID:      ncci.ProductID,
+				LocationID:     ncci.LocationID,
+				SystemQuantity: ncci.SystemQuantity,
+				Status:         Statuses.Pending,
+				CreatedDate:    now,
+				UpdatedDate:    now,
+			}
 
-	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
-		item.ScenarioID = &sid
-	}
+			if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+				item.ScenarioID = &sid
+			}
 
-	if err := b.storer.Create(ctx, item); err != nil {
-		return CycleCountItem{}, fmt.Errorf("create: %w", err)
-	}
+			if err := b.storer.Create(ctx, item); err != nil {
+				return CycleCountItem{}, fmt.Errorf("create: %w", err)
+			}
 
-	evtData := ActionCreatedData(item)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return CycleCountItem{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(item)); err != nil {
-		b.log.Error(ctx, "cyclecountitembus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			evtData := ActionCreatedData(item)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return CycleCountItem{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(item)); err != nil {
+				b.log.Error(ctx, "cyclecountitembus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return item, nil
+			return item, nil
+		})
 }
 
 // Update modifies an existing cycle count item in the system.
@@ -120,41 +120,44 @@ func (b *Business) Update(ctx context.Context, item CycleCountItem, ucci UpdateC
 	ctx, span := otel.AddSpan(ctx, "business.cyclecountitembus.update")
 	defer span.End()
 
-	before := item
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (CycleCountItem, error) {
+			before := item
 
-	if ucci.ItemCode != nil {
-		item.ItemCode = ucci.ItemCode
-	}
-	if ucci.CountedQuantity != nil {
-		item.CountedQuantity = ucci.CountedQuantity
-		variance := *ucci.CountedQuantity - item.SystemQuantity
-		item.Variance = &variance
-	}
-	if ucci.Status != nil {
-		item.Status = *ucci.Status
-	}
-	if ucci.CountedBy != nil {
-		item.CountedBy = *ucci.CountedBy
-	}
-	if ucci.CountedDate != nil {
-		item.CountedDate = *ucci.CountedDate
-	}
+			if ucci.ItemCode != nil {
+				item.ItemCode = ucci.ItemCode
+			}
+			if ucci.CountedQuantity != nil {
+				item.CountedQuantity = ucci.CountedQuantity
+				variance := *ucci.CountedQuantity - item.SystemQuantity
+				item.Variance = &variance
+			}
+			if ucci.Status != nil {
+				item.Status = *ucci.Status
+			}
+			if ucci.CountedBy != nil {
+				item.CountedBy = *ucci.CountedBy
+			}
+			if ucci.CountedDate != nil {
+				item.CountedDate = *ucci.CountedDate
+			}
 
-	item.UpdatedDate = time.Now()
+			item.UpdatedDate = time.Now()
 
-	if err := b.storer.Update(ctx, item); err != nil {
-		return CycleCountItem{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, item); err != nil {
+				return CycleCountItem{}, fmt.Errorf("update: %w", err)
+			}
 
-	evtData := ActionUpdatedData(before, item)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return CycleCountItem{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, item)); err != nil {
-		b.log.Error(ctx, "cyclecountitembus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			evtData := ActionUpdatedData(before, item)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return CycleCountItem{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, item)); err != nil {
+				b.log.Error(ctx, "cyclecountitembus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return item, nil
+			return item, nil
+		})
 }
 
 // Delete removes a cycle count item from the system.
@@ -162,19 +165,22 @@ func (b *Business) Delete(ctx context.Context, item CycleCountItem) error {
 	ctx, span := otel.AddSpan(ctx, "business.cyclecountitembus.delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, item); err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, item); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	evtData := ActionDeletedData(item)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(item)); err != nil {
-		b.log.Error(ctx, "cyclecountitembus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			evtData := ActionDeletedData(item)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(item)); err != nil {
+				b.log.Error(ctx, "cyclecountitembus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of cycle count items from the system.

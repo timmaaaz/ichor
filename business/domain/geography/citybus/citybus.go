@@ -67,14 +67,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	bus := Business{
-		log:      b.log,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-		storer:   storer,
-	}
-
-	return &bus, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create adds a new city to the system.
@@ -82,26 +77,29 @@ func (b *Business) Create(ctx context.Context, nc NewCity) (City, error) {
 	ctx, span := otel.AddSpan(ctx, "business.citybus.Create")
 	defer span.End()
 
-	cty := City{
-		ID:       uuid.New(),
-		RegionID: nc.RegionID,
-		Name:     nc.Name,
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (City, error) {
+			cty := City{
+				ID:       uuid.New(),
+				RegionID: nc.RegionID,
+				Name:     nc.Name,
+			}
 
-	if err := b.storer.Create(ctx, cty); err != nil {
-		return City{}, fmt.Errorf("store create: %w", err)
-	}
+			if err := b.storer.Create(ctx, cty); err != nil {
+				return City{}, fmt.Errorf("store create: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(cty)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return City{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(cty)); err != nil {
-		b.log.Error(ctx, "citybus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(cty)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return City{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(cty)); err != nil {
+				b.log.Error(ctx, "citybus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return cty, nil
+			return cty, nil
+		})
 }
 
 // Update modifies information about a city.
@@ -109,30 +107,33 @@ func (b *Business) Update(ctx context.Context, cty City, uc UpdateCity) (City, e
 	ctx, span := otel.AddSpan(ctx, "business.citybus.Update")
 	defer span.End()
 
-	before := cty
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (City, error) {
+			before := cty
 
-	if uc.RegionID != nil {
-		cty.RegionID = *uc.RegionID
-	}
+			if uc.RegionID != nil {
+				cty.RegionID = *uc.RegionID
+			}
 
-	if uc.Name != nil {
-		cty.Name = *uc.Name
-	}
+			if uc.Name != nil {
+				cty.Name = *uc.Name
+			}
 
-	if err := b.storer.Update(ctx, cty); err != nil {
-		return City{}, fmt.Errorf("store update: %w", err)
-	}
+			if err := b.storer.Update(ctx, cty); err != nil {
+				return City{}, fmt.Errorf("store update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, cty)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return City{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, cty)); err != nil {
-		b.log.Error(ctx, "citybus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, cty)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return City{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, cty)); err != nil {
+				b.log.Error(ctx, "citybus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return cty, nil
+			return cty, nil
+		})
 }
 
 // Delete removes a city from the system.
@@ -140,20 +141,23 @@ func (b *Business) Delete(ctx context.Context, cty City) error {
 	ctx, span := otel.AddSpan(ctx, "business.citybus.Delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, cty); err != nil {
-		return fmt.Errorf("store delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, cty); err != nil {
+				return fmt.Errorf("store delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(cty)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(cty)); err != nil {
-		b.log.Error(ctx, "citybus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(cty)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(cty)); err != nil {
+				b.log.Error(ctx, "citybus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of existing cities.

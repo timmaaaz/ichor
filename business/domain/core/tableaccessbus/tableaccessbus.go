@@ -77,13 +77,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	bus := Business{
-		log:    b.log,
-		storer: storer,
-		outbox: b.outbox,
-	}
-
-	return &bus, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create adds a new table access to the system
@@ -91,30 +87,33 @@ func (b *Business) Create(ctx context.Context, nta NewTableAccess) (TableAccess,
 	ctx, span := otel.AddSpan(ctx, "business.tableaccess.create")
 	defer span.End()
 
-	ta := TableAccess{
-		ID:        uuid.New(),
-		RoleID:    nta.RoleID,
-		TableName: nta.TableName,
-		CanCreate: nta.CanCreate,
-		CanRead:   nta.CanRead,
-		CanUpdate: nta.CanUpdate,
-		CanDelete: nta.CanDelete,
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (TableAccess, error) {
+			ta := TableAccess{
+				ID:        uuid.New(),
+				RoleID:    nta.RoleID,
+				TableName: nta.TableName,
+				CanCreate: nta.CanCreate,
+				CanRead:   nta.CanRead,
+				CanUpdate: nta.CanUpdate,
+				CanDelete: nta.CanDelete,
+			}
 
-	if err := b.storer.Create(ctx, ta); err != nil {
-		return TableAccess{}, fmt.Errorf("creating table access: %w", err)
-	}
+			if err := b.storer.Create(ctx, ta); err != nil {
+				return TableAccess{}, fmt.Errorf("creating table access: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(ta)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return TableAccess{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.del.Call(ctx, ActionCreatedData(ta)); err != nil {
-		b.log.Error(ctx, "tableaccessbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(ta)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return TableAccess{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.del.Call(ctx, ActionCreatedData(ta)); err != nil {
+				b.log.Error(ctx, "tableaccessbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return ta, nil
+			return ta, nil
+		})
 }
 
 // Update modifies a table access in the system
@@ -122,41 +121,44 @@ func (b *Business) Update(ctx context.Context, ta TableAccess, uta UpdateTableAc
 	ctx, span := otel.AddSpan(ctx, "business.tableaccess.update")
 	defer span.End()
 
-	before := ta
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (TableAccess, error) {
+			before := ta
 
-	if uta.RoleID != nil {
-		ta.RoleID = *uta.RoleID
-	}
-	if uta.TableName != nil {
-		ta.TableName = *uta.TableName
-	}
-	if uta.CanCreate != nil {
-		ta.CanCreate = *uta.CanCreate
-	}
-	if uta.CanRead != nil {
-		ta.CanRead = *uta.CanRead
-	}
-	if uta.CanUpdate != nil {
-		ta.CanUpdate = *uta.CanUpdate
-	}
-	if uta.CanDelete != nil {
-		ta.CanDelete = *uta.CanDelete
-	}
+			if uta.RoleID != nil {
+				ta.RoleID = *uta.RoleID
+			}
+			if uta.TableName != nil {
+				ta.TableName = *uta.TableName
+			}
+			if uta.CanCreate != nil {
+				ta.CanCreate = *uta.CanCreate
+			}
+			if uta.CanRead != nil {
+				ta.CanRead = *uta.CanRead
+			}
+			if uta.CanUpdate != nil {
+				ta.CanUpdate = *uta.CanUpdate
+			}
+			if uta.CanDelete != nil {
+				ta.CanDelete = *uta.CanDelete
+			}
 
-	if err := b.storer.Update(ctx, ta); err != nil {
-		return TableAccess{}, fmt.Errorf("updating table access: %w", err)
-	}
+			if err := b.storer.Update(ctx, ta); err != nil {
+				return TableAccess{}, fmt.Errorf("updating table access: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, ta)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return TableAccess{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.del.Call(ctx, ActionUpdatedData(before, ta)); err != nil {
-		b.log.Error(ctx, "tableaccessbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, ta)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return TableAccess{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.del.Call(ctx, ActionUpdatedData(before, ta)); err != nil {
+				b.log.Error(ctx, "tableaccessbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return ta, nil
+			return ta, nil
+		})
 }
 
 // Delete removes a table access from the system
@@ -164,20 +166,23 @@ func (b *Business) Delete(ctx context.Context, ta TableAccess) error {
 	ctx, span := otel.AddSpan(ctx, "business.tableaccess.delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, ta); err != nil {
-		return fmt.Errorf("deleting table access: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, ta); err != nil {
+				return fmt.Errorf("deleting table access: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(ta)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.del.Call(ctx, ActionDeletedData(ta)); err != nil {
-		b.log.Error(ctx, "tableaccessbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(ta)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.del.Call(ctx, ActionDeletedData(ta)); err != nil {
+				b.log.Error(ctx, "tableaccessbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of table accesses from the system

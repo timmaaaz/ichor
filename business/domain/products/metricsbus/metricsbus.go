@@ -53,8 +53,6 @@ func NewBusiness(log *logger.Logger, delegate *delegate.Delegate, storer Storer)
 	}
 }
 
-// NewWithTx constructs a new Business value replacing the Storer
-// value with a Storer value that is currently inside a transaction.
 // WithOutbox returns a copy of the Business wired to the cascade outbox Writer.
 // Inert until the Writer is injected at the F2 cutover (nil Writer -> Emit no-ops).
 func (b *Business) WithOutbox(w *outbox.Writer) *Business {
@@ -63,18 +61,18 @@ func (b *Business) WithOutbox(w *outbox.Writer) *Business {
 	return &nb
 }
 
+// NewWithTx constructs a new business value that will use the specified transaction
+// in any store-related calls. It copies the receiver and overrides only the storer,
+// so no field (delegate, outbox, log) is silently dropped (cf. commit 63f6b034).
 func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 	storer, err := b.storer.NewWithTx(tx)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Business{
-		log:      b.log,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-		storer:   storer,
-	}, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create inserts a new metric into the database.
@@ -82,33 +80,35 @@ func (b *Business) Create(ctx context.Context, nm NewMetric) (Metric, error) {
 	ctx, span := otel.AddSpan(ctx, "business.metricsbus.create")
 	defer span.End()
 
-	now := time.Now()
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Metric, error) {
+			now := time.Now()
 
-	metric := Metric{
-		MetricID:          uuid.New(),
-		ProductID:         nm.ProductID,
-		ReturnRate:        nm.ReturnRate,
-		DefectRate:        nm.DefectRate,
-		MeasurementPeriod: nm.MeasurementPeriod,
-		CreatedDate:       now,
-		UpdatedDate:       now,
-	}
+			metric := Metric{
+				MetricID:          uuid.New(),
+				ProductID:         nm.ProductID,
+				ReturnRate:        nm.ReturnRate,
+				DefectRate:        nm.DefectRate,
+				MeasurementPeriod: nm.MeasurementPeriod,
+				CreatedDate:       now,
+				UpdatedDate:       now,
+			}
 
-	err := b.storer.Create(ctx, metric)
-	if err != nil {
-		return Metric{}, fmt.Errorf("create: %w", err)
-	}
+			if err := b.storer.Create(ctx, metric); err != nil {
+				return Metric{}, fmt.Errorf("create: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(metric)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Metric{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(metric)); err != nil {
-		b.log.Error(ctx, "metricsbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(metric)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Metric{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(metric)); err != nil {
+				b.log.Error(ctx, "metricsbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return metric, nil
+			return metric, nil
+		})
 }
 
 // Update modifies a metric in the system.
@@ -116,37 +116,40 @@ func (b *Business) Update(ctx context.Context, metric Metric, um UpdateMetric) (
 	ctx, span := otel.AddSpan(ctx, "business.metricsbus.update")
 	defer span.End()
 
-	before := metric
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Metric, error) {
+			before := metric
 
-	if um.ProductID != nil {
-		metric.ProductID = *um.ProductID
-	}
-	if um.ReturnRate != nil {
-		metric.ReturnRate = *um.ReturnRate
-	}
-	if um.DefectRate != nil {
-		metric.DefectRate = *um.DefectRate
-	}
-	if um.MeasurementPeriod != nil {
-		metric.MeasurementPeriod = *um.MeasurementPeriod
-	}
+			if um.ProductID != nil {
+				metric.ProductID = *um.ProductID
+			}
+			if um.ReturnRate != nil {
+				metric.ReturnRate = *um.ReturnRate
+			}
+			if um.DefectRate != nil {
+				metric.DefectRate = *um.DefectRate
+			}
+			if um.MeasurementPeriod != nil {
+				metric.MeasurementPeriod = *um.MeasurementPeriod
+			}
 
-	metric.UpdatedDate = time.Now()
+			metric.UpdatedDate = time.Now()
 
-	if err := b.storer.Update(ctx, metric); err != nil {
-		return Metric{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, metric); err != nil {
+				return Metric{}, fmt.Errorf("update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, metric)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Metric{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, metric)); err != nil {
-		b.log.Error(ctx, "metricsbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, metric)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Metric{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, metric)); err != nil {
+				b.log.Error(ctx, "metricsbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return metric, nil
+			return metric, nil
+		})
 }
 
 // Delete removes a metric from the system.
@@ -154,21 +157,23 @@ func (b *Business) Delete(ctx context.Context, metric Metric) error {
 	ctx, span := otel.AddSpan(ctx, "business.metricsbus.delete")
 	defer span.End()
 
-	err := b.storer.Delete(ctx, metric)
-	if err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, metric); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(metric)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(metric)); err != nil {
-		b.log.Error(ctx, "metricsbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(metric)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(metric)); err != nil {
+				b.log.Error(ctx, "metricsbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves metrics based on the given filter, order, and pagination parameters.

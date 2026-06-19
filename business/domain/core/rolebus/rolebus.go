@@ -69,13 +69,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	bus := Business{
-		log:    b.log,
-		storer: storer,
-		outbox: b.outbox,
-	}
-
-	return &bus, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create adds a new role to the system.
@@ -83,26 +79,29 @@ func (b *Business) Create(ctx context.Context, nr NewRole) (Role, error) {
 	ctx, span := otel.AddSpan(ctx, "business.rolebus.create")
 	defer span.End()
 
-	role := Role{
-		ID:          uuid.New(),
-		Name:        nr.Name,
-		Description: nr.Description,
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Role, error) {
+			role := Role{
+				ID:          uuid.New(),
+				Name:        nr.Name,
+				Description: nr.Description,
+			}
 
-	if err := b.storer.Create(ctx, role); err != nil {
-		return Role{}, fmt.Errorf("creating role: %w", err)
-	}
+			if err := b.storer.Create(ctx, role); err != nil {
+				return Role{}, fmt.Errorf("creating role: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(role)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Role{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.del.Call(ctx, ActionCreatedData(role)); err != nil {
-		b.log.Error(ctx, "rolebus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(role)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Role{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.del.Call(ctx, ActionCreatedData(role)); err != nil {
+				b.log.Error(ctx, "rolebus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return role, nil
+			return role, nil
+		})
 }
 
 // Update modifies a role in the system.
@@ -110,29 +109,32 @@ func (b *Business) Update(ctx context.Context, role Role, ur UpdateRole) (Role, 
 	ctx, span := otel.AddSpan(ctx, "business.userbus.update")
 	defer span.End()
 
-	before := role
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Role, error) {
+			before := role
 
-	if ur.Name != nil {
-		role.Name = *ur.Name
-	}
-	if ur.Description != nil {
-		role.Description = *ur.Description
-	}
+			if ur.Name != nil {
+				role.Name = *ur.Name
+			}
+			if ur.Description != nil {
+				role.Description = *ur.Description
+			}
 
-	if err := b.storer.Update(ctx, role); err != nil {
-		return Role{}, fmt.Errorf("updating role: %w", err)
-	}
+			if err := b.storer.Update(ctx, role); err != nil {
+				return Role{}, fmt.Errorf("updating role: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, role)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Role{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.del.Call(ctx, ActionUpdatedData(before, role)); err != nil {
-		b.log.Error(ctx, "rolebus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, role)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Role{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.del.Call(ctx, ActionUpdatedData(before, role)); err != nil {
+				b.log.Error(ctx, "rolebus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return role, nil
+			return role, nil
+		})
 }
 
 // Delete removes a role from the system.
@@ -140,20 +142,23 @@ func (b *Business) Delete(ctx context.Context, role Role) error {
 	ctx, span := otel.AddSpan(ctx, "business.rolebus.delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, role); err != nil {
-		return fmt.Errorf("deleting role: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, role); err != nil {
+				return fmt.Errorf("deleting role: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(role)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.del.Call(ctx, ActionDeletedData(role)); err != nil {
-		b.log.Error(ctx, "rolebus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(role)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.del.Call(ctx, ActionDeletedData(role)); err != nil {
+				b.log.Error(ctx, "rolebus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of roles from the system.

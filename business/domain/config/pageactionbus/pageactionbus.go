@@ -111,12 +111,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	return &Business{
-		log:      b.log,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-		storer:   storer,
-	}, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // CreateButton inserts a new button action into the database.
@@ -124,47 +121,50 @@ func (b *Business) CreateButton(ctx context.Context, nba NewButtonAction) (PageA
 	ctx, span := otel.AddSpan(ctx, "business.pageactionbus.createbutton")
 	defer span.End()
 
-	action := PageAction{
-		ID:           uuid.New(),
-		PageConfigID: nba.PageConfigID,
-		ActionType:   ActionTypeButton,
-		ActionOrder:  nba.ActionOrder,
-		IsActive:     nba.IsActive,
-		Button: &ButtonAction{
-			Label:              nba.Label,
-			Icon:               nba.Icon,
-			TargetPath:         nba.TargetPath,
-			Variant:            nba.Variant,
-			Alignment:          nba.Alignment,
-			ConfirmationPrompt: nba.ConfirmationPrompt,
-			Behavior:           nba.Behavior,
-			ActionType:         nba.ActionType,
-			ActionConfig:       nba.ActionConfig,
-		},
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (PageAction, error) {
+			action := PageAction{
+				ID:           uuid.New(),
+				PageConfigID: nba.PageConfigID,
+				ActionType:   ActionTypeButton,
+				ActionOrder:  nba.ActionOrder,
+				IsActive:     nba.IsActive,
+				Button: &ButtonAction{
+					Label:              nba.Label,
+					Icon:               nba.Icon,
+					TargetPath:         nba.TargetPath,
+					Variant:            nba.Variant,
+					Alignment:          nba.Alignment,
+					ConfirmationPrompt: nba.ConfirmationPrompt,
+					Behavior:           nba.Behavior,
+					ActionType:         nba.ActionType,
+					ActionConfig:       nba.ActionConfig,
+				},
+			}
 
-	if err := validateButtonBehavior(*action.Button); err != nil {
-		return PageAction{}, err
-	}
+			if err := validateButtonBehavior(*action.Button); err != nil {
+				return PageAction{}, err
+			}
 
-	if err := b.storer.CreateBaseAction(ctx, action); err != nil {
-		return PageAction{}, fmt.Errorf("create base: %w", err)
-	}
+			if err := b.storer.CreateBaseAction(ctx, action); err != nil {
+				return PageAction{}, fmt.Errorf("create base: %w", err)
+			}
 
-	if err := b.storer.CreateButtonData(ctx, action.ID, *action.Button); err != nil {
-		return PageAction{}, fmt.Errorf("create button data: %w", err)
-	}
+			if err := b.storer.CreateButtonData(ctx, action.ID, *action.Button); err != nil {
+				return PageAction{}, fmt.Errorf("create button data: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(action)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return PageAction{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(action)); err != nil {
-		b.log.Error(ctx, "pageactionbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(action)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return PageAction{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(action)); err != nil {
+				b.log.Error(ctx, "pageactionbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return action, nil
+			return action, nil
+		})
 }
 
 // CreateDropdown inserts a new dropdown action with items into the database.
@@ -172,47 +172,50 @@ func (b *Business) CreateDropdown(ctx context.Context, nda NewDropdownAction) (P
 	ctx, span := otel.AddSpan(ctx, "business.pageactionbus.createdropdown")
 	defer span.End()
 
-	action := PageAction{
-		ID:           uuid.New(),
-		PageConfigID: nda.PageConfigID,
-		ActionType:   ActionTypeDropdown,
-		ActionOrder:  nda.ActionOrder,
-		IsActive:     nda.IsActive,
-		Dropdown: &DropdownAction{
-			Label: nda.Label,
-			Icon:  nda.Icon,
-		},
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (PageAction, error) {
+			action := PageAction{
+				ID:           uuid.New(),
+				PageConfigID: nda.PageConfigID,
+				ActionType:   ActionTypeDropdown,
+				ActionOrder:  nda.ActionOrder,
+				IsActive:     nda.IsActive,
+				Dropdown: &DropdownAction{
+					Label: nda.Label,
+					Icon:  nda.Icon,
+				},
+			}
 
-	if err := b.storer.CreateBaseAction(ctx, action); err != nil {
-		return PageAction{}, fmt.Errorf("create base: %w", err)
-	}
+			if err := b.storer.CreateBaseAction(ctx, action); err != nil {
+				return PageAction{}, fmt.Errorf("create base: %w", err)
+			}
 
-	if err := b.storer.CreateDropdownData(ctx, action.ID, *action.Dropdown); err != nil {
-		return PageAction{}, fmt.Errorf("create dropdown data: %w", err)
-	}
+			if err := b.storer.CreateDropdownData(ctx, action.ID, *action.Dropdown); err != nil {
+				return PageAction{}, fmt.Errorf("create dropdown data: %w", err)
+			}
 
-	for _, item := range nda.Items {
-		if err := b.storer.CreateDropdownItem(ctx, action.ID, item); err != nil {
-			return PageAction{}, fmt.Errorf("create dropdown item: %w", err)
-		}
-	}
+			for _, item := range nda.Items {
+				if err := b.storer.CreateDropdownItem(ctx, action.ID, item); err != nil {
+					return PageAction{}, fmt.Errorf("create dropdown item: %w", err)
+				}
+			}
 
-	createdAction, err := b.storer.QueryByID(ctx, action.ID)
-	if err != nil {
-		return PageAction{}, fmt.Errorf("querybyid: %w", err)
-	}
+			createdAction, err := b.storer.QueryByID(ctx, action.ID)
+			if err != nil {
+				return PageAction{}, fmt.Errorf("querybyid: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(createdAction)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return PageAction{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(createdAction)); err != nil {
-		b.log.Error(ctx, "pageactionbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(createdAction)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return PageAction{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(createdAction)); err != nil {
+				b.log.Error(ctx, "pageactionbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return createdAction, nil
+			return createdAction, nil
+		})
 }
 
 // CreateSeparator inserts a new separator action into the database.
@@ -220,28 +223,31 @@ func (b *Business) CreateSeparator(ctx context.Context, nsa NewSeparatorAction) 
 	ctx, span := otel.AddSpan(ctx, "business.pageactionbus.createseparator")
 	defer span.End()
 
-	action := PageAction{
-		ID:           uuid.New(),
-		PageConfigID: nsa.PageConfigID,
-		ActionType:   ActionTypeSeparator,
-		ActionOrder:  nsa.ActionOrder,
-		IsActive:     nsa.IsActive,
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (PageAction, error) {
+			action := PageAction{
+				ID:           uuid.New(),
+				PageConfigID: nsa.PageConfigID,
+				ActionType:   ActionTypeSeparator,
+				ActionOrder:  nsa.ActionOrder,
+				IsActive:     nsa.IsActive,
+			}
 
-	if err := b.storer.CreateBaseAction(ctx, action); err != nil {
-		return PageAction{}, fmt.Errorf("create base: %w", err)
-	}
+			if err := b.storer.CreateBaseAction(ctx, action); err != nil {
+				return PageAction{}, fmt.Errorf("create base: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(action)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return PageAction{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(action)); err != nil {
-		b.log.Error(ctx, "pageactionbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(action)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return PageAction{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(action)); err != nil {
+				b.log.Error(ctx, "pageactionbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return action, nil
+			return action, nil
+		})
 }
 
 // UpdateButton replaces a button action in the database.
@@ -249,85 +255,88 @@ func (b *Business) UpdateButton(ctx context.Context, action PageAction, uba Upda
 	ctx, span := otel.AddSpan(ctx, "business.pageactionbus.updatebutton")
 	defer span.End()
 
-	before := action
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (PageAction, error) {
+			before := action
 
-	if action.Button == nil {
-		return PageAction{}, fmt.Errorf("action is not a button")
-	}
+			if action.Button == nil {
+				return PageAction{}, fmt.Errorf("action is not a button")
+			}
 
-	if uba.PageConfigID != nil {
-		action.PageConfigID = *uba.PageConfigID
-	}
+			if uba.PageConfigID != nil {
+				action.PageConfigID = *uba.PageConfigID
+			}
 
-	if uba.ActionOrder != nil {
-		action.ActionOrder = *uba.ActionOrder
-	}
+			if uba.ActionOrder != nil {
+				action.ActionOrder = *uba.ActionOrder
+			}
 
-	if uba.IsActive != nil {
-		action.IsActive = *uba.IsActive
-	}
+			if uba.IsActive != nil {
+				action.IsActive = *uba.IsActive
+			}
 
-	if uba.Label != nil {
-		action.Button.Label = *uba.Label
-	}
+			if uba.Label != nil {
+				action.Button.Label = *uba.Label
+			}
 
-	if uba.Icon != nil {
-		action.Button.Icon = *uba.Icon
-	}
+			if uba.Icon != nil {
+				action.Button.Icon = *uba.Icon
+			}
 
-	if uba.TargetPath != nil {
-		action.Button.TargetPath = *uba.TargetPath
-	}
+			if uba.TargetPath != nil {
+				action.Button.TargetPath = *uba.TargetPath
+			}
 
-	if uba.Variant != nil {
-		action.Button.Variant = *uba.Variant
-	}
+			if uba.Variant != nil {
+				action.Button.Variant = *uba.Variant
+			}
 
-	if uba.Alignment != nil {
-		action.Button.Alignment = *uba.Alignment
-	}
+			if uba.Alignment != nil {
+				action.Button.Alignment = *uba.Alignment
+			}
 
-	if uba.ConfirmationPrompt != nil {
-		action.Button.ConfirmationPrompt = *uba.ConfirmationPrompt
-	}
+			if uba.ConfirmationPrompt != nil {
+				action.Button.ConfirmationPrompt = *uba.ConfirmationPrompt
+			}
 
-	if uba.Behavior != nil {
-		action.Button.Behavior = *uba.Behavior
-	}
+			if uba.Behavior != nil {
+				action.Button.Behavior = *uba.Behavior
+			}
 
-	if uba.ActionType != nil {
-		action.Button.ActionType = *uba.ActionType
-	}
+			if uba.ActionType != nil {
+				action.Button.ActionType = *uba.ActionType
+			}
 
-	if uba.ActionConfig != nil {
-		action.Button.ActionConfig = *uba.ActionConfig
-	}
+			if uba.ActionConfig != nil {
+				action.Button.ActionConfig = *uba.ActionConfig
+			}
 
-	// Validate the merged result up front: a partial update that flips Behavior
-	// (or clears the field the current behavior requires) must not be allowed to
-	// reach the DB and trip the behavior CHECK constraint as an opaque 500.
-	if err := validateButtonBehavior(*action.Button); err != nil {
-		return PageAction{}, err
-	}
+			// Validate the merged result up front: a partial update that flips Behavior
+			// (or clears the field the current behavior requires) must not be allowed to
+			// reach the DB and trip the behavior CHECK constraint as an opaque 500.
+			if err := validateButtonBehavior(*action.Button); err != nil {
+				return PageAction{}, err
+			}
 
-	if err := b.storer.UpdateBaseAction(ctx, action); err != nil {
-		return PageAction{}, fmt.Errorf("update base: %w", err)
-	}
+			if err := b.storer.UpdateBaseAction(ctx, action); err != nil {
+				return PageAction{}, fmt.Errorf("update base: %w", err)
+			}
 
-	if err := b.storer.UpdateButtonData(ctx, action.ID, *action.Button); err != nil {
-		return PageAction{}, fmt.Errorf("update button data: %w", err)
-	}
+			if err := b.storer.UpdateButtonData(ctx, action.ID, *action.Button); err != nil {
+				return PageAction{}, fmt.Errorf("update button data: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, action)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return PageAction{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, action)); err != nil {
-		b.log.Error(ctx, "pageactionbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, action)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return PageAction{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, action)); err != nil {
+				b.log.Error(ctx, "pageactionbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return action, nil
+			return action, nil
+		})
 }
 
 // UpdateDropdown replaces a dropdown action and its items in the database.
@@ -335,80 +344,83 @@ func (b *Business) UpdateDropdown(ctx context.Context, action PageAction, uda Up
 	ctx, span := otel.AddSpan(ctx, "business.pageactionbus.updatedropdown")
 	defer span.End()
 
-	before := action
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (PageAction, error) {
+			before := action
 
-	if action.Dropdown == nil {
-		return PageAction{}, fmt.Errorf("action is not a dropdown")
-	}
-
-	if uda.PageConfigID != nil {
-		action.PageConfigID = *uda.PageConfigID
-	}
-
-	if uda.ActionOrder != nil {
-		action.ActionOrder = *uda.ActionOrder
-	}
-
-	if uda.IsActive != nil {
-		action.IsActive = *uda.IsActive
-	}
-
-	if uda.Label != nil {
-		action.Dropdown.Label = *uda.Label
-	}
-
-	if uda.Icon != nil {
-		action.Dropdown.Icon = *uda.Icon
-	}
-
-	var items []NewDropdownItem
-	if uda.Items != nil {
-		items = *uda.Items
-	} else {
-		// Keep existing items
-		items = make([]NewDropdownItem, len(action.Dropdown.Items))
-		for i, item := range action.Dropdown.Items {
-			items[i] = NewDropdownItem{
-				Label:      item.Label,
-				TargetPath: item.TargetPath,
-				ItemOrder:  item.ItemOrder,
+			if action.Dropdown == nil {
+				return PageAction{}, fmt.Errorf("action is not a dropdown")
 			}
-		}
-	}
 
-	if err := b.storer.UpdateBaseAction(ctx, action); err != nil {
-		return PageAction{}, fmt.Errorf("update base: %w", err)
-	}
+			if uda.PageConfigID != nil {
+				action.PageConfigID = *uda.PageConfigID
+			}
 
-	if err := b.storer.UpdateDropdownData(ctx, action.ID, *action.Dropdown); err != nil {
-		return PageAction{}, fmt.Errorf("update dropdown data: %w", err)
-	}
+			if uda.ActionOrder != nil {
+				action.ActionOrder = *uda.ActionOrder
+			}
 
-	if err := b.storer.DeleteDropdownItems(ctx, action.ID); err != nil {
-		return PageAction{}, fmt.Errorf("delete dropdown items: %w", err)
-	}
+			if uda.IsActive != nil {
+				action.IsActive = *uda.IsActive
+			}
 
-	for _, item := range items {
-		if err := b.storer.CreateDropdownItem(ctx, action.ID, item); err != nil {
-			return PageAction{}, fmt.Errorf("create dropdown item: %w", err)
-		}
-	}
+			if uda.Label != nil {
+				action.Dropdown.Label = *uda.Label
+			}
 
-	updatedAction, err := b.storer.QueryByID(ctx, action.ID)
-	if err != nil {
-		return PageAction{}, fmt.Errorf("querybyid: %w", err)
-	}
+			if uda.Icon != nil {
+				action.Dropdown.Icon = *uda.Icon
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, updatedAction)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return PageAction{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, updatedAction)); err != nil {
-		b.log.Error(ctx, "pageactionbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			var items []NewDropdownItem
+			if uda.Items != nil {
+				items = *uda.Items
+			} else {
+				// Keep existing items
+				items = make([]NewDropdownItem, len(action.Dropdown.Items))
+				for i, item := range action.Dropdown.Items {
+					items[i] = NewDropdownItem{
+						Label:      item.Label,
+						TargetPath: item.TargetPath,
+						ItemOrder:  item.ItemOrder,
+					}
+				}
+			}
 
-	return updatedAction, nil
+			if err := b.storer.UpdateBaseAction(ctx, action); err != nil {
+				return PageAction{}, fmt.Errorf("update base: %w", err)
+			}
+
+			if err := b.storer.UpdateDropdownData(ctx, action.ID, *action.Dropdown); err != nil {
+				return PageAction{}, fmt.Errorf("update dropdown data: %w", err)
+			}
+
+			if err := b.storer.DeleteDropdownItems(ctx, action.ID); err != nil {
+				return PageAction{}, fmt.Errorf("delete dropdown items: %w", err)
+			}
+
+			for _, item := range items {
+				if err := b.storer.CreateDropdownItem(ctx, action.ID, item); err != nil {
+					return PageAction{}, fmt.Errorf("create dropdown item: %w", err)
+				}
+			}
+
+			updatedAction, err := b.storer.QueryByID(ctx, action.ID)
+			if err != nil {
+				return PageAction{}, fmt.Errorf("querybyid: %w", err)
+			}
+
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, updatedAction)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return PageAction{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, updatedAction)); err != nil {
+				b.log.Error(ctx, "pageactionbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
+
+			return updatedAction, nil
+		})
 }
 
 // UpdateSeparator replaces a separator action in the database.
@@ -416,38 +428,41 @@ func (b *Business) UpdateSeparator(ctx context.Context, action PageAction, usa U
 	ctx, span := otel.AddSpan(ctx, "business.pageactionbus.updateseparator")
 	defer span.End()
 
-	before := action
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (PageAction, error) {
+			before := action
 
-	if action.ActionType != ActionTypeSeparator {
-		return PageAction{}, fmt.Errorf("action is not a separator")
-	}
+			if action.ActionType != ActionTypeSeparator {
+				return PageAction{}, fmt.Errorf("action is not a separator")
+			}
 
-	if usa.PageConfigID != nil {
-		action.PageConfigID = *usa.PageConfigID
-	}
+			if usa.PageConfigID != nil {
+				action.PageConfigID = *usa.PageConfigID
+			}
 
-	if usa.ActionOrder != nil {
-		action.ActionOrder = *usa.ActionOrder
-	}
+			if usa.ActionOrder != nil {
+				action.ActionOrder = *usa.ActionOrder
+			}
 
-	if usa.IsActive != nil {
-		action.IsActive = *usa.IsActive
-	}
+			if usa.IsActive != nil {
+				action.IsActive = *usa.IsActive
+			}
 
-	if err := b.storer.UpdateBaseAction(ctx, action); err != nil {
-		return PageAction{}, fmt.Errorf("update base: %w", err)
-	}
+			if err := b.storer.UpdateBaseAction(ctx, action); err != nil {
+				return PageAction{}, fmt.Errorf("update base: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, action)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return PageAction{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, action)); err != nil {
-		b.log.Error(ctx, "pageactionbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, action)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return PageAction{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, action)); err != nil {
+				b.log.Error(ctx, "pageactionbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return action, nil
+			return action, nil
+		})
 }
 
 // Delete removes the specified page action.
@@ -455,20 +470,23 @@ func (b *Business) Delete(ctx context.Context, action PageAction) error {
 	ctx, span := otel.AddSpan(ctx, "business.pageactionbus.delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, action); err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, action); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(action)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(action)); err != nil {
-		b.log.Error(ctx, "pageactionbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(action)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(action)); err != nil {
+				b.log.Error(ctx, "pageactionbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of page actions from the system.

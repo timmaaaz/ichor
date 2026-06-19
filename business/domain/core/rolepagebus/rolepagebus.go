@@ -67,13 +67,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	bus := Business{
-		log:    b.log,
-		storer: storer,
-		outbox: b.outbox,
-	}
-
-	return &bus, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create adds a new role page mapping to the system.
@@ -81,27 +77,30 @@ func (b *Business) Create(ctx context.Context, nrp NewRolePage) (RolePage, error
 	ctx, span := otel.AddSpan(ctx, "business.rolepagebus.create")
 	defer span.End()
 
-	rolePage := RolePage{
-		ID:        uuid.New(),
-		RoleID:    nrp.RoleID,
-		PageID:    nrp.PageID,
-		CanAccess: nrp.CanAccess,
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (RolePage, error) {
+			rolePage := RolePage{
+				ID:        uuid.New(),
+				RoleID:    nrp.RoleID,
+				PageID:    nrp.PageID,
+				CanAccess: nrp.CanAccess,
+			}
 
-	if err := b.storer.Create(ctx, rolePage); err != nil {
-		return RolePage{}, fmt.Errorf("creating role page: %w", err)
-	}
+			if err := b.storer.Create(ctx, rolePage); err != nil {
+				return RolePage{}, fmt.Errorf("creating role page: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(rolePage)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return RolePage{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.del.Call(ctx, ActionCreatedData(rolePage)); err != nil {
-		b.log.Error(ctx, "rolepagebus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(rolePage)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return RolePage{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.del.Call(ctx, ActionCreatedData(rolePage)); err != nil {
+				b.log.Error(ctx, "rolepagebus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return rolePage, nil
+			return rolePage, nil
+		})
 }
 
 // Update modifies a role page mapping in the system.
@@ -109,26 +108,29 @@ func (b *Business) Update(ctx context.Context, rolePage RolePage, urp UpdateRole
 	ctx, span := otel.AddSpan(ctx, "business.rolepagebus.update")
 	defer span.End()
 
-	before := rolePage
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (RolePage, error) {
+			before := rolePage
 
-	if urp.CanAccess != nil {
-		rolePage.CanAccess = *urp.CanAccess
-	}
+			if urp.CanAccess != nil {
+				rolePage.CanAccess = *urp.CanAccess
+			}
 
-	if err := b.storer.Update(ctx, rolePage); err != nil {
-		return RolePage{}, fmt.Errorf("updating role page: %w", err)
-	}
+			if err := b.storer.Update(ctx, rolePage); err != nil {
+				return RolePage{}, fmt.Errorf("updating role page: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, rolePage)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return RolePage{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.del.Call(ctx, ActionUpdatedData(before, rolePage)); err != nil {
-		b.log.Error(ctx, "rolepagebus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, rolePage)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return RolePage{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.del.Call(ctx, ActionUpdatedData(before, rolePage)); err != nil {
+				b.log.Error(ctx, "rolepagebus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return rolePage, nil
+			return rolePage, nil
+		})
 }
 
 // Delete removes a role page mapping from the system.
@@ -136,20 +138,23 @@ func (b *Business) Delete(ctx context.Context, rolePage RolePage) error {
 	ctx, span := otel.AddSpan(ctx, "business.rolepagebus.delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, rolePage); err != nil {
-		return fmt.Errorf("deleting role page: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, rolePage); err != nil {
+				return fmt.Errorf("deleting role page: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(rolePage)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.del.Call(ctx, ActionDeletedData(rolePage)); err != nil {
-		b.log.Error(ctx, "rolepagebus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(rolePage)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.del.Call(ctx, ActionDeletedData(rolePage)); err != nil {
+				b.log.Error(ctx, "rolepagebus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of role page mappings from the system.

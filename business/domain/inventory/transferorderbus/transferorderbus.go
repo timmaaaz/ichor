@@ -83,55 +83,54 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	return &Business{
-		log:      b.log,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-		storer:   storer,
-	}, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create creates a new transferOrder.
 func (b *Business) Create(ctx context.Context, nto NewTransferOrder) (TransferOrder, error) {
-
 	ctx, span := otel.AddSpan(ctx, "business.transferorderbus.create")
 	defer span.End()
 
-	now := time.Now()
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (TransferOrder, error) {
+			now := time.Now()
 
-	transferOrder := TransferOrder{
-		TransferID:     uuid.New(),
-		TransferNumber: nto.TransferNumber,
-		ProductID:      nto.ProductID,
-		FromLocationID: nto.FromLocationID,
-		ToLocationID:   nto.ToLocationID,
-		RequestedByID:  nto.RequestedByID,
-		ApprovedByID:   nto.ApprovedByID,
-		Quantity:       nto.Quantity,
-		Status:         nto.Status,
-		TransferDate:   nto.TransferDate,
-		CreatedDate:    now,
-		UpdatedDate:    now,
-	}
+			transferOrder := TransferOrder{
+				TransferID:     uuid.New(),
+				TransferNumber: nto.TransferNumber,
+				ProductID:      nto.ProductID,
+				FromLocationID: nto.FromLocationID,
+				ToLocationID:   nto.ToLocationID,
+				RequestedByID:  nto.RequestedByID,
+				ApprovedByID:   nto.ApprovedByID,
+				Quantity:       nto.Quantity,
+				Status:         nto.Status,
+				TransferDate:   nto.TransferDate,
+				CreatedDate:    now,
+				UpdatedDate:    now,
+			}
 
-	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
-		transferOrder.ScenarioID = &sid
-	}
+			if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+				transferOrder.ScenarioID = &sid
+			}
 
-	if err := b.storer.Create(ctx, transferOrder); err != nil {
-		return TransferOrder{}, fmt.Errorf("create: %w", err)
-	}
+			if err := b.storer.Create(ctx, transferOrder); err != nil {
+				return TransferOrder{}, fmt.Errorf("create: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(transferOrder)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return TransferOrder{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(transferOrder)); err != nil {
-		b.log.Error(ctx, "transferorderbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(transferOrder)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return TransferOrder{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(transferOrder)); err != nil {
+				b.log.Error(ctx, "transferorderbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return transferOrder, nil
+			return transferOrder, nil
+		})
 }
 
 // Update updates an existing transferOrder.
@@ -139,64 +138,67 @@ func (b *Business) Update(ctx context.Context, to TransferOrder, ut UpdateTransf
 	ctx, span := otel.AddSpan(ctx, "business.transferorderbus.update")
 	defer span.End()
 
-	before := to
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (TransferOrder, error) {
+			before := to
 
-	if ut.TransferNumber != nil {
-		to.TransferNumber = ut.TransferNumber
-	}
-	if ut.ProductID != nil {
-		to.ProductID = *ut.ProductID
-	}
-	if ut.FromLocationID != nil {
-		to.FromLocationID = *ut.FromLocationID
-	}
-	if ut.ToLocationID != nil {
-		to.ToLocationID = *ut.ToLocationID
-	}
-	if ut.RequestedByID != nil {
-		to.RequestedByID = *ut.RequestedByID
-	}
-	if ut.ApprovedByID != nil {
-		to.ApprovedByID = ut.ApprovedByID
-	}
-	if ut.Quantity != nil {
-		to.Quantity = *ut.Quantity
-	}
-	if ut.Status != nil {
-		to.Status = *ut.Status
-	}
-	if ut.TransferDate != nil {
-		to.TransferDate = *ut.TransferDate
-	}
-	if ut.ClaimedByID != nil {
-		to.ClaimedByID = ut.ClaimedByID
-	}
-	if ut.ClaimedAt != nil {
-		to.ClaimedAt = ut.ClaimedAt
-	}
-	if ut.CompletedByID != nil {
-		to.CompletedByID = ut.CompletedByID
-	}
-	if ut.CompletedAt != nil {
-		to.CompletedAt = ut.CompletedAt
-	}
+			if ut.TransferNumber != nil {
+				to.TransferNumber = ut.TransferNumber
+			}
+			if ut.ProductID != nil {
+				to.ProductID = *ut.ProductID
+			}
+			if ut.FromLocationID != nil {
+				to.FromLocationID = *ut.FromLocationID
+			}
+			if ut.ToLocationID != nil {
+				to.ToLocationID = *ut.ToLocationID
+			}
+			if ut.RequestedByID != nil {
+				to.RequestedByID = *ut.RequestedByID
+			}
+			if ut.ApprovedByID != nil {
+				to.ApprovedByID = ut.ApprovedByID
+			}
+			if ut.Quantity != nil {
+				to.Quantity = *ut.Quantity
+			}
+			if ut.Status != nil {
+				to.Status = *ut.Status
+			}
+			if ut.TransferDate != nil {
+				to.TransferDate = *ut.TransferDate
+			}
+			if ut.ClaimedByID != nil {
+				to.ClaimedByID = ut.ClaimedByID
+			}
+			if ut.ClaimedAt != nil {
+				to.ClaimedAt = ut.ClaimedAt
+			}
+			if ut.CompletedByID != nil {
+				to.CompletedByID = ut.CompletedByID
+			}
+			if ut.CompletedAt != nil {
+				to.CompletedAt = ut.CompletedAt
+			}
 
-	to.UpdatedDate = time.Now()
+			to.UpdatedDate = time.Now()
 
-	if err := b.storer.Update(ctx, to); err != nil {
-		return TransferOrder{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, to); err != nil {
+				return TransferOrder{}, fmt.Errorf("update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, to)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return TransferOrder{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, to)); err != nil {
-		b.log.Error(ctx, "transferorderbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, to)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return TransferOrder{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, to)); err != nil {
+				b.log.Error(ctx, "transferorderbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return to, nil
+			return to, nil
+		})
 }
 
 // Delete removes a transferOrder from the system.
@@ -204,20 +206,23 @@ func (b *Business) Delete(ctx context.Context, to TransferOrder) error {
 	ctx, span := otel.AddSpan(ctx, "business.transferorderbus.delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, to); err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, to); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(to)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(to)); err != nil {
-		b.log.Error(ctx, "transferorderbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(to)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(to)); err != nil {
+				b.log.Error(ctx, "transferorderbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of transferOrders based on the given query filter, order by, and pagination.
@@ -263,27 +268,30 @@ func (b *Business) Approve(ctx context.Context, to TransferOrder, approvedBy uui
 		return TransferOrder{}, fmt.Errorf("approve: %w: must be pending, got %s", ErrInvalidTransferStatus, to.Status)
 	}
 
-	before := to
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (TransferOrder, error) {
+			before := to
 
-	now := time.Now()
-	to.ApprovedByID = &approvedBy
-	to.Status = StatusApproved
-	to.ApprovalReason = reason
-	to.UpdatedDate = now
+			now := time.Now()
+			to.ApprovedByID = &approvedBy
+			to.Status = StatusApproved
+			to.ApprovalReason = reason
+			to.UpdatedDate = now
 
-	if err := b.storer.Update(ctx, to); err != nil {
-		return TransferOrder{}, fmt.Errorf("approve: %w", err)
-	}
+			if err := b.storer.Update(ctx, to); err != nil {
+				return TransferOrder{}, fmt.Errorf("approve: %w", err)
+			}
 
-	evtData := ActionUpdatedData(before, to)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return TransferOrder{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, to)); err != nil {
-		b.log.Error(ctx, "transferorderbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			evtData := ActionUpdatedData(before, to)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return TransferOrder{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, to)); err != nil {
+				b.log.Error(ctx, "transferorderbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return to, nil
+			return to, nil
+		})
 }
 
 // Claim marks an approved transfer order as in_transit, recording who claimed it.
@@ -295,34 +303,37 @@ func (b *Business) Claim(ctx context.Context, to TransferOrder, claimedBy uuid.U
 		return TransferOrder{}, fmt.Errorf("claim: %w: must be approved, got %s", ErrInvalidTransferStatus, to.Status)
 	}
 
-	before := to
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (TransferOrder, error) {
+			before := to
 
-	now := time.Now()
-	to.ClaimedByID = &claimedBy
-	to.ClaimedAt = &now
-	to.Status = StatusInTransit
-	to.UpdatedDate = now
+			now := time.Now()
+			to.ClaimedByID = &claimedBy
+			to.ClaimedAt = &now
+			to.Status = StatusInTransit
+			to.UpdatedDate = now
 
-	// Guard on the still-approved DB state to close the read-check-write race: if a
-	// concurrent claim already moved the row to in_transit, 0 rows match and we reject
-	// rather than silently overwriting the winner's claimed_by.
-	rows, err := b.storer.UpdateWithStatusGuard(ctx, to, StatusApproved)
-	if err != nil {
-		return TransferOrder{}, fmt.Errorf("claim: %w", err)
-	}
-	if rows == 0 {
-		return TransferOrder{}, fmt.Errorf("claim: %w: status changed concurrently", ErrInvalidTransferStatus)
-	}
+			// Guard on the still-approved DB state to close the read-check-write race: if a
+			// concurrent claim already moved the row to in_transit, 0 rows match and we reject
+			// rather than silently overwriting the winner's claimed_by.
+			rows, err := b.storer.UpdateWithStatusGuard(ctx, to, StatusApproved)
+			if err != nil {
+				return TransferOrder{}, fmt.Errorf("claim: %w", err)
+			}
+			if rows == 0 {
+				return TransferOrder{}, fmt.Errorf("claim: %w: status changed concurrently", ErrInvalidTransferStatus)
+			}
 
-	evtData := ActionUpdatedData(before, to)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return TransferOrder{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, to)); err != nil {
-		b.log.Error(ctx, "transferorderbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			evtData := ActionUpdatedData(before, to)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return TransferOrder{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, to)); err != nil {
+				b.log.Error(ctx, "transferorderbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return to, nil
+			return to, nil
+		})
 }
 
 // Execute marks an in_transit transfer order as completed, recording who completed it.
@@ -335,34 +346,37 @@ func (b *Business) Execute(ctx context.Context, to TransferOrder, completedBy uu
 		return TransferOrder{}, fmt.Errorf("execute: %w: must be in_transit, got %s", ErrInvalidTransferStatus, to.Status)
 	}
 
-	before := to
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (TransferOrder, error) {
+			before := to
 
-	now := time.Now()
-	to.CompletedByID = &completedBy
-	to.CompletedAt = &now
-	to.Status = StatusCompleted
-	to.UpdatedDate = now
+			now := time.Now()
+			to.CompletedByID = &completedBy
+			to.CompletedAt = &now
+			to.Status = StatusCompleted
+			to.UpdatedDate = now
 
-	// Guard on the still-in_transit DB state to close the read-check-write race: if a
-	// concurrent execute already completed the row, 0 rows match and we reject rather
-	// than silently overwriting the winner's completed_by.
-	rows, err := b.storer.UpdateWithStatusGuard(ctx, to, StatusInTransit)
-	if err != nil {
-		return TransferOrder{}, fmt.Errorf("execute: %w", err)
-	}
-	if rows == 0 {
-		return TransferOrder{}, fmt.Errorf("execute: %w: status changed concurrently", ErrInvalidTransferStatus)
-	}
+			// Guard on the still-in_transit DB state to close the read-check-write race: if a
+			// concurrent execute already completed the row, 0 rows match and we reject rather
+			// than silently overwriting the winner's completed_by.
+			rows, err := b.storer.UpdateWithStatusGuard(ctx, to, StatusInTransit)
+			if err != nil {
+				return TransferOrder{}, fmt.Errorf("execute: %w", err)
+			}
+			if rows == 0 {
+				return TransferOrder{}, fmt.Errorf("execute: %w: status changed concurrently", ErrInvalidTransferStatus)
+			}
 
-	evtData := ActionUpdatedData(before, to)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return TransferOrder{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, to)); err != nil {
-		b.log.Error(ctx, "transferorderbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			evtData := ActionUpdatedData(before, to)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return TransferOrder{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, to)); err != nil {
+				b.log.Error(ctx, "transferorderbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return to, nil
+			return to, nil
+		})
 }
 
 // Reject sets the rejector and marks the transfer order as rejected.
@@ -374,25 +388,28 @@ func (b *Business) Reject(ctx context.Context, to TransferOrder, rejectedBy uuid
 		return TransferOrder{}, fmt.Errorf("reject: %w: must be pending, got %s", ErrInvalidTransferStatus, to.Status)
 	}
 
-	before := to
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (TransferOrder, error) {
+			before := to
 
-	now := time.Now()
-	to.RejectedByID = &rejectedBy
-	to.Status = StatusRejected
-	to.RejectionReason = reason
-	to.UpdatedDate = now
+			now := time.Now()
+			to.RejectedByID = &rejectedBy
+			to.Status = StatusRejected
+			to.RejectionReason = reason
+			to.UpdatedDate = now
 
-	if err := b.storer.Update(ctx, to); err != nil {
-		return TransferOrder{}, fmt.Errorf("reject: %w", err)
-	}
+			if err := b.storer.Update(ctx, to); err != nil {
+				return TransferOrder{}, fmt.Errorf("reject: %w", err)
+			}
 
-	evtData := ActionUpdatedData(before, to)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return TransferOrder{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, to)); err != nil {
-		b.log.Error(ctx, "transferorderbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			evtData := ActionUpdatedData(before, to)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return TransferOrder{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, to)); err != nil {
+				b.log.Error(ctx, "transferorderbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return to, nil
+			return to, nil
+		})
 }

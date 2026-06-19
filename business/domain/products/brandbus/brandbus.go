@@ -69,12 +69,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	return &Business{
-		log:      b.log,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-		storer:   storer,
-	}, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create inserts a new brand into the database.
@@ -82,30 +79,33 @@ func (b *Business) Create(ctx context.Context, na NewBrand) (Brand, error) {
 	ctx, span := otel.AddSpan(ctx, "business.brandbus.create")
 	defer span.End()
 
-	now := time.Now()
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Brand, error) {
+			now := time.Now()
 
-	brand := Brand{
-		BrandID:        uuid.New(),
-		Name:           na.Name,
-		ContactInfosID: na.ContactInfosID,
-		CreatedDate:    now,
-		UpdatedDate:    now,
-	}
+			brand := Brand{
+				BrandID:        uuid.New(),
+				Name:           na.Name,
+				ContactInfosID: na.ContactInfosID,
+				CreatedDate:    now,
+				UpdatedDate:    now,
+			}
 
-	if err := b.storer.Create(ctx, brand); err != nil {
-		return Brand{}, fmt.Errorf("create: %w", err)
-	}
+			if err := b.storer.Create(ctx, brand); err != nil {
+				return Brand{}, fmt.Errorf("create: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(brand)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Brand{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(brand)); err != nil {
-		b.log.Error(ctx, "brandbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(brand)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Brand{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(brand)); err != nil {
+				b.log.Error(ctx, "brandbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return brand, nil
+			return brand, nil
+		})
 }
 
 // Update replaces an brand document in the database.
@@ -113,32 +113,35 @@ func (b *Business) Update(ctx context.Context, brand Brand, ub UpdateBrand) (Bra
 	ctx, span := otel.AddSpan(ctx, "business.brandbus.update")
 	defer span.End()
 
-	before := brand
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Brand, error) {
+			before := brand
 
-	if ub.ContactInfosID != nil {
-		brand.ContactInfosID = *ub.ContactInfosID
-	}
+			if ub.ContactInfosID != nil {
+				brand.ContactInfosID = *ub.ContactInfosID
+			}
 
-	if ub.Name != nil {
-		brand.Name = *ub.Name
-	}
+			if ub.Name != nil {
+				brand.Name = *ub.Name
+			}
 
-	brand.UpdatedDate = time.Now()
+			brand.UpdatedDate = time.Now()
 
-	if err := b.storer.Update(ctx, brand); err != nil {
-		return Brand{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, brand); err != nil {
+				return Brand{}, fmt.Errorf("update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, brand)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Brand{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, brand)); err != nil {
-		b.log.Error(ctx, "brandbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, brand)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Brand{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, brand)); err != nil {
+				b.log.Error(ctx, "brandbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return brand, nil
+			return brand, nil
+		})
 }
 
 // Delete removes the specified brand.
@@ -146,20 +149,23 @@ func (b *Business) Delete(ctx context.Context, ass Brand) error {
 	ctx, span := otel.AddSpan(ctx, "business.brandbus.delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, ass); err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, ass); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(ass)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(ass)); err != nil {
-		b.log.Error(ctx, "brandbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(ass)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(ass)); err != nil {
+				b.log.Error(ctx, "brandbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of brands from the system.

@@ -68,14 +68,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	bus := Business{
-		log:      b.log,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-		storer:   storer,
-	}
-
-	return &bus, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create creates a new approval status to the system.
@@ -83,29 +78,32 @@ func (b *Business) Create(ctx context.Context, nas NewApprovalStatus) (ApprovalS
 	ctx, span := otel.AddSpan(ctx, "business.approvalstatusbus.Create")
 	defer span.End()
 
-	as := ApprovalStatus{
-		ID:             uuid.New(),
-		Name:           nas.Name,
-		IconID:         nas.IconID,
-		PrimaryColor:   nas.PrimaryColor,
-		SecondaryColor: nas.SecondaryColor,
-		Icon:           nas.Icon,
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (ApprovalStatus, error) {
+			as := ApprovalStatus{
+				ID:             uuid.New(),
+				Name:           nas.Name,
+				IconID:         nas.IconID,
+				PrimaryColor:   nas.PrimaryColor,
+				SecondaryColor: nas.SecondaryColor,
+				Icon:           nas.Icon,
+			}
 
-	if err := b.storer.Create(ctx, as); err != nil {
-		return ApprovalStatus{}, fmt.Errorf("store create: %w", err)
-	}
+			if err := b.storer.Create(ctx, as); err != nil {
+				return ApprovalStatus{}, fmt.Errorf("store create: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(as)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return ApprovalStatus{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(as)); err != nil {
-		b.log.Error(ctx, "approvalstatusbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(as)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return ApprovalStatus{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(as)); err != nil {
+				b.log.Error(ctx, "approvalstatusbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return as, nil
+			return as, nil
+		})
 }
 
 // Update modifies information about an approval status.
@@ -113,38 +111,41 @@ func (b *Business) Update(ctx context.Context, as ApprovalStatus, uas UpdateAppr
 	ctx, span := otel.AddSpan(ctx, "business.approvalstatusbus.Update")
 	defer span.End()
 
-	before := as
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (ApprovalStatus, error) {
+			before := as
 
-	if uas.Name != nil {
-		as.Name = *uas.Name
-	}
-	if uas.IconID != nil {
-		as.IconID = *uas.IconID
-	}
-	if uas.PrimaryColor != nil {
-		as.PrimaryColor = *uas.PrimaryColor
-	}
-	if uas.SecondaryColor != nil {
-		as.SecondaryColor = *uas.SecondaryColor
-	}
-	if uas.Icon != nil {
-		as.Icon = *uas.Icon
-	}
+			if uas.Name != nil {
+				as.Name = *uas.Name
+			}
+			if uas.IconID != nil {
+				as.IconID = *uas.IconID
+			}
+			if uas.PrimaryColor != nil {
+				as.PrimaryColor = *uas.PrimaryColor
+			}
+			if uas.SecondaryColor != nil {
+				as.SecondaryColor = *uas.SecondaryColor
+			}
+			if uas.Icon != nil {
+				as.Icon = *uas.Icon
+			}
 
-	if err := b.storer.Update(ctx, as); err != nil {
-		return ApprovalStatus{}, fmt.Errorf("store update: %w", err)
-	}
+			if err := b.storer.Update(ctx, as); err != nil {
+				return ApprovalStatus{}, fmt.Errorf("store update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, as)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return ApprovalStatus{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, as)); err != nil {
-		b.log.Error(ctx, "approvalstatusbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, as)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return ApprovalStatus{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, as)); err != nil {
+				b.log.Error(ctx, "approvalstatusbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return as, nil
+			return as, nil
+		})
 }
 
 // Delete removes an approval status from the system.
@@ -152,20 +153,23 @@ func (b *Business) Delete(ctx context.Context, as ApprovalStatus) error {
 	ctx, span := otel.AddSpan(ctx, "business.approvalstatusbus.Delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, as); err != nil {
-		return fmt.Errorf("store delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, as); err != nil {
+				return fmt.Errorf("store delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(as)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(as)); err != nil {
-		b.log.Error(ctx, "approvalstatusbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(as)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(as)); err != nil {
+				b.log.Error(ctx, "approvalstatusbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query returns a list of approval statuses
