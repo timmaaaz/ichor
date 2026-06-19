@@ -1243,7 +1243,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		ConfigStore:    configStore,
 		TableStore:     tableStore,
 		PageActionApp:  pageactionapp.NewApp(pageActionBus),
-		PageConfigApp:  pageconfigapp.NewApp(pageConfigBus),
+		PageConfigApp:  pageconfigapp.NewApp(pageConfigBus, cfg.DB),
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,
 	})
@@ -1251,6 +1251,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	// config
 	formapi.Routes(app, formapi.Config{
 		Log:            cfg.Log,
+		DB:             cfg.DB,
 		FormBus:        formBus,
 		FormFieldBus:   formFieldBus,
 		AuthClient:     cfg.AuthClient,
@@ -1361,6 +1362,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 
 	pageconfigapi.Routes(app, pageconfigapi.Config{
 		Log:            cfg.Log,
+		DB:             cfg.DB,
 		PageConfigBus:  pageConfigBus,
 		AuthClient:     cfg.AuthClient,
 		PermissionsBus: permissionsBus,

@@ -3,6 +3,7 @@ package formapi
 import (
 	"net/http"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/timmaaaz/ichor/api/sdk/http/mid"
 	"github.com/timmaaaz/ichor/app/domain/config/formapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
@@ -17,6 +18,7 @@ import (
 // Config contains all the mandatory systems required by handlers.
 type Config struct {
 	Log            *logger.Logger
+	DB             *sqlx.DB
 	FormBus        *formbus.Business
 	FormFieldBus   *formfieldbus.Business
 	AuthClient     *authclient.Client
@@ -32,7 +34,7 @@ func Routes(app *web.App, cfg Config) {
 	const version = "v1"
 
 	authen := mid.Authenticate(cfg.AuthClient)
-	api := newAPI(formapp.NewAppWithFormFields(cfg.FormBus, cfg.FormFieldBus))
+	api := newAPI(formapp.NewAppWithFormFields(cfg.FormBus, cfg.FormFieldBus, cfg.DB))
 
 	app.HandlerFunc(http.MethodGet, version, "/config/forms", api.query, authen,
 		mid.Authorize(cfg.AuthClient, cfg.PermissionsBus, RouteTable, permissionsbus.Actions.Read, auth.RuleAny))
