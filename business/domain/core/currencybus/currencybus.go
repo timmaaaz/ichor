@@ -64,19 +64,18 @@ func (b *Business) WithOutbox(w *outbox.Writer) *Business {
 	return &nb
 }
 
+// NewWithTx constructs a new business value that will use the specified transaction
+// in any store-related calls. It copies the receiver and overrides only the storer,
+// so no field (delegate, outbox, log) is silently dropped (cf. commit 63f6b034).
 func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 	storer, err := b.storer.NewWithTx(tx)
 	if err != nil {
 		return nil, err
 	}
 
-	bus := Business{
-		log:    b.log,
-		storer: storer,
-		outbox: b.outbox,
-	}
-
-	return &bus, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create adds a new currency to the system.
@@ -84,37 +83,40 @@ func (b *Business) Create(ctx context.Context, nc NewCurrency) (Currency, error)
 	ctx, span := otel.AddSpan(ctx, "business.currencybus.create")
 	defer span.End()
 
-	now := time.Now()
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Currency, error) {
+			now := time.Now()
 
-	currency := Currency{
-		ID:            uuid.New(),
-		Code:          nc.Code,
-		Name:          nc.Name,
-		Symbol:        nc.Symbol,
-		Locale:        nc.Locale,
-		DecimalPlaces: nc.DecimalPlaces,
-		IsActive:      nc.IsActive,
-		SortOrder:     nc.SortOrder,
-		CreatedBy:     nc.CreatedBy,
-		CreatedDate:   now,
-		UpdatedBy:     nc.CreatedBy,
-		UpdatedDate:   now,
-	}
+			currency := Currency{
+				ID:            uuid.New(),
+				Code:          nc.Code,
+				Name:          nc.Name,
+				Symbol:        nc.Symbol,
+				Locale:        nc.Locale,
+				DecimalPlaces: nc.DecimalPlaces,
+				IsActive:      nc.IsActive,
+				SortOrder:     nc.SortOrder,
+				CreatedBy:     nc.CreatedBy,
+				CreatedDate:   now,
+				UpdatedBy:     nc.CreatedBy,
+				UpdatedDate:   now,
+			}
 
-	if err := b.storer.Create(ctx, currency); err != nil {
-		return Currency{}, fmt.Errorf("creating currency: %w", err)
-	}
+			if err := b.storer.Create(ctx, currency); err != nil {
+				return Currency{}, fmt.Errorf("creating currency: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(currency)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Currency{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.del.Call(ctx, ActionCreatedData(currency)); err != nil {
-		b.log.Error(ctx, "currencybus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(currency)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Currency{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.del.Call(ctx, ActionCreatedData(currency)); err != nil {
+				b.log.Error(ctx, "currencybus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return currency, nil
+			return currency, nil
+		})
 }
 
 // Update modifies a currency in the system.
@@ -122,47 +124,50 @@ func (b *Business) Update(ctx context.Context, currency Currency, uc UpdateCurre
 	ctx, span := otel.AddSpan(ctx, "business.currencybus.update")
 	defer span.End()
 
-	before := currency
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Currency, error) {
+			before := currency
 
-	if uc.Code != nil {
-		currency.Code = *uc.Code
-	}
-	if uc.Name != nil {
-		currency.Name = *uc.Name
-	}
-	if uc.Symbol != nil {
-		currency.Symbol = *uc.Symbol
-	}
-	if uc.Locale != nil {
-		currency.Locale = *uc.Locale
-	}
-	if uc.DecimalPlaces != nil {
-		currency.DecimalPlaces = *uc.DecimalPlaces
-	}
-	if uc.IsActive != nil {
-		currency.IsActive = *uc.IsActive
-	}
-	if uc.SortOrder != nil {
-		currency.SortOrder = *uc.SortOrder
-	}
+			if uc.Code != nil {
+				currency.Code = *uc.Code
+			}
+			if uc.Name != nil {
+				currency.Name = *uc.Name
+			}
+			if uc.Symbol != nil {
+				currency.Symbol = *uc.Symbol
+			}
+			if uc.Locale != nil {
+				currency.Locale = *uc.Locale
+			}
+			if uc.DecimalPlaces != nil {
+				currency.DecimalPlaces = *uc.DecimalPlaces
+			}
+			if uc.IsActive != nil {
+				currency.IsActive = *uc.IsActive
+			}
+			if uc.SortOrder != nil {
+				currency.SortOrder = *uc.SortOrder
+			}
 
-	currency.UpdatedBy = uc.UpdatedBy
-	currency.UpdatedDate = time.Now()
+			currency.UpdatedBy = uc.UpdatedBy
+			currency.UpdatedDate = time.Now()
 
-	if err := b.storer.Update(ctx, currency); err != nil {
-		return Currency{}, fmt.Errorf("updating currency: %w", err)
-	}
+			if err := b.storer.Update(ctx, currency); err != nil {
+				return Currency{}, fmt.Errorf("updating currency: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, currency)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Currency{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.del.Call(ctx, ActionUpdatedData(before, currency)); err != nil {
-		b.log.Error(ctx, "currencybus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, currency)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Currency{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.del.Call(ctx, ActionUpdatedData(before, currency)); err != nil {
+				b.log.Error(ctx, "currencybus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return currency, nil
+			return currency, nil
+		})
 }
 
 // Delete removes a currency from the system.
@@ -170,20 +175,23 @@ func (b *Business) Delete(ctx context.Context, currency Currency) error {
 	ctx, span := otel.AddSpan(ctx, "business.currencybus.delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, currency); err != nil {
-		return fmt.Errorf("deleting currency: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, currency); err != nil {
+				return fmt.Errorf("deleting currency: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(currency)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.del.Call(ctx, ActionDeletedData(currency)); err != nil {
-		b.log.Error(ctx, "currencybus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(currency)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.del.Call(ctx, ActionDeletedData(currency)); err != nil {
+				b.log.Error(ctx, "currencybus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of currencies from the system.
