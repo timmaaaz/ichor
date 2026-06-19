@@ -14,6 +14,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventoryitembus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/inventorytransactionbus"
 	"github.com/timmaaaz/ichor/business/domain/inventory/transferorderbus"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
@@ -159,6 +160,11 @@ func (h *ExecuteTransferOrderHandler) Execute(ctx context.Context, config json.R
 		return nil, fmt.Errorf("begin tx: %w", err)
 	}
 	defer tx.Rollback()
+
+	// Carry the tx on ctx so each cascade bus's WriteAtomic JOINs THIS transaction
+	// instead of opening its own — the status flip, the TRANSFER_OUT/IN ledger writes,
+	// and their outbox.Emit rows all commit or roll back atomically with the stock move.
+	ctx = sqldb.WithTx(ctx, tx)
 
 	txTransferBus, err := h.transferOrderBus.NewWithTx(tx)
 	if err != nil {

@@ -58,9 +58,11 @@ func NewWriter(
 }
 
 // Emit persists one cascade event in the originating write's transaction and
-// returns any error so the bus can propagate it (return err) and let
-// mid.BeginCommitRollback roll back both the entity row and the outbox row
-// together (DESIGN §4). A nil *Writer no-ops (inert until cutover).
+// returns any error so the bus can propagate it (return err) and let the
+// transaction owner roll back both the entity row and the outbox row together
+// (DESIGN §4). The owner is mid.BeginCommitRollback for a JOINed caller tx, or
+// outbox.WriteAtomic on the begin path (a simple write with no caller tx). A nil
+// *Writer no-ops (inert until cutover).
 func (w *Writer) Emit(ctx context.Context, data delegate.Data) error {
 	if w == nil {
 		return nil

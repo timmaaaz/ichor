@@ -16,6 +16,7 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/sales/orderlineitemsbus"
 	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
 	"github.com/timmaaaz/ichor/business/sdk/page"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
@@ -198,9 +199,9 @@ func (h *ReleaseToPickingHandler) Execute(ctx context.Context, config json.RawMe
 	// Step 5: validate current status — only PENDING/PROCESSING may be released.
 	if order.FulfillmentStatusID != pendingID && order.FulfillmentStatusID != processingID {
 		return map[string]any{
-			"output":          "invalid_status",
-			"order_id":        orderID.String(),
-			"current_status":  order.FulfillmentStatusID.String(),
+			"output":         "invalid_status",
+			"order_id":       orderID.String(),
+			"current_status": order.FulfillmentStatusID.String(),
 		}, nil
 	}
 
@@ -301,6 +302,11 @@ func (h *ReleaseToPickingHandler) Execute(ctx context.Context, config json.RawMe
 		return nil, fmt.Errorf("begin tx: %w", err)
 	}
 	defer tx.Rollback()
+
+	// Carry the tx on ctx so each cascade bus's WriteAtomic JOINs THIS transaction
+	// instead of opening its own — the order status flip and the pick-task writes plus
+	// their outbox.Emit rows all commit or roll back together (Step 10's invariant).
+	ctx = sqldb.WithTx(ctx, tx)
 
 	txOrdersBus, err := h.ordersBus.NewWithTx(tx)
 	if err != nil {
