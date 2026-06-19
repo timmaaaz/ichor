@@ -377,3 +377,25 @@ Original open questions (now answered):
 the buses (parallelizable by package), GREEN the suite, `go build ./...` clean, run only changed
 packages. Ship via the dual-remote flow (github PR → rebase-merge → `git fetch github && git push origin
 github/master:master` → ff local master + `/merge-worktree`). **No push until you confirm.**
+
+---
+
+## 11. Known limitations / follow-ups (surfaced during implementation — NOT FF#2 regressions)
+
+Both predate FF#2 or are out of its stated scope (single-bus "state + its own event" atomicity). FF#2
+made each entity's write+cascade atomic; neither item below is introduced by it. Tracked here so they're
+not rediscovered.
+
+1. **`formbus.ImportForms` / `pageconfigbus.ImportPageConfigs` are non-atomic ACROSS entities.** These
+   orchestration methods call the public `b.Create` (its own begin+commit tx) then loop
+   `b.formFieldBus.Create` / sub-entity creates (each its own separate tx) — so a form commits, then its
+   fields land in separate transactions; a mid-loop failure leaves the form orphaned. This is the same
+   *multi-entity orchestration* class deliberately excluded from FF#2 (cf. `formdataapp` in F9), reachable
+   only from their own CRUD route (no caller tx). Fix = an app-layer self-tx around the whole import (mirror
+   the F9 self-tx handlers / FF#1 `formdataapp.UpsertFormData` `TxBind` pattern). Deferred.
+
+2. **`warehousebus.Create` retry is begin-path-only.** Its unique-violation retry runs each attempt in its
+   own `WriteAtomic` tx — correct today (no caller-tx call site; only `warehouseapp`, pool-bound). Under a
+   future caller tx it would JOIN, and a unique violation would poison the caller's tx instead of rolling
+   back. Flagged with an in-code comment at the retry loop; a future self-tx/workflow handler that creates a
+   warehouse under its tx must not rely on the retry.
