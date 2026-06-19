@@ -3,6 +3,7 @@ package pageconfigapi
 import (
 	"net/http"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/timmaaaz/ichor/api/sdk/http/mid"
 	"github.com/timmaaaz/ichor/app/domain/config/pageconfigapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
@@ -16,6 +17,7 @@ import (
 // Config contains all the mandatory systems required by handlers.
 type Config struct {
 	Log            *logger.Logger
+	DB             *sqlx.DB
 	PageConfigBus  *pageconfigbus.Business
 	AuthClient     *authclient.Client
 	PermissionsBus *permissionsbus.Business
@@ -29,7 +31,7 @@ const (
 func Routes(app *web.App, cfg Config) {
 	const version = "v1"
 
-	api := newAPI(pageconfigapp.NewApp(cfg.PageConfigBus))
+	api := newAPI(pageconfigapp.NewApp(cfg.PageConfigBus, cfg.DB))
 	authen := mid.Authenticate(cfg.AuthClient)
 
 	// Public routes (read-only, authenticated users)

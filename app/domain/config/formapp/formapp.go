@@ -2,10 +2,12 @@ package formapp
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 	"github.com/timmaaaz/ichor/app/domain/config/formfieldapp"
 	"github.com/timmaaaz/ichor/app/sdk/auth"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
@@ -22,6 +24,7 @@ type App struct {
 	formbus      *formbus.Business
 	formfieldbus *formfieldbus.Business
 	auth         *auth.Auth
+	db           *sqlx.DB
 }
 
 // NewApp constructs a form app API for use.
@@ -32,10 +35,12 @@ func NewApp(formbus *formbus.Business) *App {
 }
 
 // NewAppWithFormFields constructs a form app API with form field business support.
-func NewAppWithFormFields(formbus *formbus.Business, formfieldbus *formfieldbus.Business) *App {
+// db backs the self-transaction that makes ImportForms atomic across the form + its fields.
+func NewAppWithFormFields(formbus *formbus.Business, formfieldbus *formfieldbus.Business, db *sqlx.DB) *App {
 	return &App{
 		formbus:      formbus,
 		formfieldbus: formfieldbus,
+		db:           db,
 	}
 }
 
@@ -260,6 +265,10 @@ func (a *App) ExportByIDs(ctx context.Context, formIDs []string) (ExportPackage,
 
 // ImportForms imports forms from a JSON package.
 func (a *App) ImportForms(ctx context.Context, pkg ImportPackage) (ImportResult, error) {
+	if a.db == nil {
+		return ImportResult{}, errs.Newf(errs.Internal, "database not configured for import")
+	}
+
 	// Validate package
 	if err := pkg.Validate(); err != nil {
 		return ImportResult{}, err
@@ -277,12 +286,34 @@ func (a *App) ImportForms(ctx context.Context, pkg ImportPackage) (ImportResult,
 		busPackages = append(busPackages, busPkg)
 	}
 
+	// Wrap the whole multi-entity import (each form + all its fields) in ONE transaction so a
+	// mid-import failure leaves no partial structure. Enrolling the tx on ctx makes every
+	// formbus/formfieldbus write JOIN it (via outbox.WriteAtomic's begin-or-join) instead of
+	// autocommitting independently; the single Commit makes the import atomic and the deferred
+	// Rollback discards a half-built form on any error.
+	tx, err := a.db.BeginTxx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+	if err != nil {
+		return ImportResult{}, errs.Newf(errs.Internal, "begin transaction: %s", err)
+	}
+	defer tx.Rollback()
+
+	ctx = sqldb.WithTx(ctx, tx)
+
+	formBusTx, err := a.formbus.NewWithTx(tx)
+	if err != nil {
+		return ImportResult{}, errs.Newf(errs.Internal, "bind tx: %s", err)
+	}
+
 	// Import via business layer
-	stats, err := a.formbus.ImportForms(ctx, busPackages, pkg.Mode)
+	stats, err := formBusTx.ImportForms(ctx, busPackages, pkg.Mode)
 	if err != nil {
 		return ImportResult{
 			Errors: []string{err.Error()},
 		}, errs.Newf(errs.Internal, "import: %s", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return ImportResult{}, errs.Newf(errs.Internal, "commit: %s", err)
 	}
 
 	return ImportResult{

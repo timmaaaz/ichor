@@ -2,23 +2,30 @@ package pageconfigapp
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/business/domain/config/pageconfigbus"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb"
 )
 
 // App manages the set of app layer APIs for page configuration.
 type App struct {
 	pageConfigBus *pageconfigbus.Business
+	db            *sqlx.DB
 }
 
 // NewApp constructs a page config app API for use.
-func NewApp(pageConfigBus *pageconfigbus.Business) *App {
+// db backs the self-transaction that makes ImportPageConfigs atomic across the page config
+// and all of its contents and actions.
+func NewApp(pageConfigBus *pageconfigbus.Business, db *sqlx.DB) *App {
 	return &App{
 		pageConfigBus: pageConfigBus,
+		db:            db,
 	}
 }
 
@@ -153,6 +160,10 @@ func (a *App) ExportByIDs(ctx context.Context, configIDs []string) (ExportPackag
 
 // ImportPageConfigs imports page configs from a JSON package.
 func (a *App) ImportPageConfigs(ctx context.Context, pkg ImportPackage) (ImportResult, error) {
+	if a.db == nil {
+		return ImportResult{}, errs.Newf(errs.Internal, "database not configured for import")
+	}
+
 	// Validate package
 	if err := pkg.Validate(); err != nil {
 		return ImportResult{}, err
@@ -170,12 +181,34 @@ func (a *App) ImportPageConfigs(ctx context.Context, pkg ImportPackage) (ImportR
 		busPackages = append(busPackages, busPkg)
 	}
 
+	// Wrap the whole multi-entity import (each config + all its contents and actions) in ONE
+	// transaction so a mid-import failure leaves no partial structure. Enrolling the tx on ctx
+	// makes every pageconfig/pagecontent/pageaction write JOIN it (via outbox.WriteAtomic's
+	// begin-or-join) instead of autocommitting independently; the single Commit makes the import
+	// atomic and the deferred Rollback discards a half-built config on any error.
+	tx, err := a.db.BeginTxx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+	if err != nil {
+		return ImportResult{}, errs.Newf(errs.Internal, "begin transaction: %s", err)
+	}
+	defer tx.Rollback()
+
+	ctx = sqldb.WithTx(ctx, tx)
+
+	busTx, err := a.pageConfigBus.NewWithTx(tx)
+	if err != nil {
+		return ImportResult{}, errs.Newf(errs.Internal, "bind tx: %s", err)
+	}
+
 	// Import via business layer
-	stats, err := a.pageConfigBus.ImportPageConfigs(ctx, busPackages, pkg.Mode)
+	stats, err := busTx.ImportPageConfigs(ctx, busPackages, pkg.Mode)
 	if err != nil {
 		return ImportResult{
 			Errors: []string{err.Error()},
 		}, errs.Newf(errs.Internal, "import: %s", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return ImportResult{}, errs.Newf(errs.Internal, "commit: %s", err)
 	}
 
 	return ImportResult{
