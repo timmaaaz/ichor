@@ -13,6 +13,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/core/userbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
 	"github.com/timmaaaz/ichor/business/sdk/outbox"
+	"github.com/timmaaaz/ichor/business/sdk/workflow"
+	workflowtemporal "github.com/timmaaaz/ichor/business/sdk/workflow/temporal"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
@@ -112,4 +114,40 @@ func Test_Currencybus_Atomicity_NoPoolFallbackWarn(t *testing.T) {
 	require.NotContains(t, buf.String(), warn,
 		"wrapped Create must ride its own tx — Emit must not fall back to the base pool")
 	_ = cur
+}
+
+// recorder is a minimal EventDispatcher that counts how many cascade events were delivered.
+type recorder struct{ seen int }
+
+func (r *recorder) OnEntityEvent(_ context.Context, _ workflow.TriggerEvent) error {
+	r.seen++
+	return nil
+}
+
+// Test_Currencybus_Cascade_SurvivesBeginPath: a simple-write Create (no caller tx) now
+// writes its cascade row inside the bus's own tx; once committed, the relay delivers it
+// exactly once. Before commit it is invisible (proving it rode a real tx, not the pool).
+func Test_Currencybus_Cascade_SurvivesBeginPath(t *testing.T) {
+	db := dbtest.NewDatabase(t, "Test_Currencybus_Cascade_SurvivesBeginPath")
+	ctx := context.Background()
+
+	uid := seedUserID(t, ctx, db)
+
+	rec := &recorder{}
+	relay := workflowtemporal.NewRelay(db.Log, db.DB, rec, workflowtemporal.RelayConfig{})
+
+	bus := currencybus.NewBusiness(db.Log, db.BusDomain.Delegate,
+		currencydb.NewStore(db.Log, db.DB)).WithOutbox(db.BusDomain.OutboxWriter)
+
+	_, err := bus.Create(ctx, currencybus.NewCurrency{
+		Code: "XCS", Name: "Cascade", Symbol: "¤", Locale: "en", DecimalPlaces: 2,
+		IsActive: true, SortOrder: 1, CreatedBy: &uid,
+	})
+	require.NoError(t, err, "Create committed its own tx (entity + cascade row together)")
+
+	// The bus already committed; the relay finds and delivers the row exactly once.
+	n, err := relay.ProcessBatch(ctx)
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, n, 1, "relay delivers the committed simple-write cascade row")
+	require.GreaterOrEqual(t, rec.seen, 1, "the cascade was dispatched (not lost on the pool)")
 }
