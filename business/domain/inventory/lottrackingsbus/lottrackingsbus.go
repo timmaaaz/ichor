@@ -70,52 +70,51 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	return &Business{
-		log:      b.log,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-		storer:   storer,
-	}, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 func (b *Business) Create(ctx context.Context, nlt NewLotTrackings) (LotTrackings, error) {
 	ctx, span := otel.AddSpan(ctx, "business.lottrackingsbus.create")
 	defer span.End()
 
-	now := time.Now()
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (LotTrackings, error) {
+			now := time.Now()
 
-	lt := LotTrackings{
-		LotID:             uuid.New(),
-		SupplierProductID: nlt.SupplierProductID,
-		LotNumber:         nlt.LotNumber,
-		ManufactureDate:   nlt.ManufactureDate,
-		ExpirationDate:    nlt.ExpirationDate,
-		ReceivedDate:      nlt.ReceivedDate,
-		Quantity:          nlt.Quantity,
-		QualityStatus:     nlt.QualityStatus,
-		CreatedDate:       now,
-		UpdatedDate:       now,
-	}
+			lt := LotTrackings{
+				LotID:             uuid.New(),
+				SupplierProductID: nlt.SupplierProductID,
+				LotNumber:         nlt.LotNumber,
+				ManufactureDate:   nlt.ManufactureDate,
+				ExpirationDate:    nlt.ExpirationDate,
+				ReceivedDate:      nlt.ReceivedDate,
+				Quantity:          nlt.Quantity,
+				QualityStatus:     nlt.QualityStatus,
+				CreatedDate:       now,
+				UpdatedDate:       now,
+			}
 
-	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
-		lt.ScenarioID = &sid
-	}
+			if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+				lt.ScenarioID = &sid
+			}
 
-	err := b.storer.Create(ctx, lt)
-	if err != nil {
-		return LotTrackings{}, fmt.Errorf("create: %w", err)
-	}
+			if err := b.storer.Create(ctx, lt); err != nil {
+				return LotTrackings{}, fmt.Errorf("create: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(lt)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return LotTrackings{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(lt)); err != nil {
-		b.log.Error(ctx, "lottrackingsbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(lt)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return LotTrackings{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(lt)); err != nil {
+				b.log.Error(ctx, "lottrackingsbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return lt, nil
+			return lt, nil
+		})
 }
 
 // Update modifies a lot tracking in the system.
@@ -123,46 +122,49 @@ func (b *Business) Update(ctx context.Context, lt LotTrackings, ul UpdateLotTrac
 	ctx, span := otel.AddSpan(ctx, "business.lottrackingsbus.update")
 	defer span.End()
 
-	before := lt
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (LotTrackings, error) {
+			before := lt
 
-	if ul.SupplierProductID != nil {
-		lt.SupplierProductID = *ul.SupplierProductID
-	}
-	if ul.LotNumber != nil {
-		lt.LotNumber = *ul.LotNumber
-	}
-	if ul.ManufactureDate != nil {
-		lt.ManufactureDate = *ul.ManufactureDate
-	}
-	if ul.ExpirationDate != nil {
-		lt.ExpirationDate = *ul.ExpirationDate
-	}
-	if ul.ReceivedDate != nil {
-		lt.ReceivedDate = *ul.ReceivedDate
-	}
-	if ul.Quantity != nil {
-		lt.Quantity = *ul.Quantity
-	}
-	if ul.QualityStatus != nil {
-		lt.QualityStatus = *ul.QualityStatus
-	}
+			if ul.SupplierProductID != nil {
+				lt.SupplierProductID = *ul.SupplierProductID
+			}
+			if ul.LotNumber != nil {
+				lt.LotNumber = *ul.LotNumber
+			}
+			if ul.ManufactureDate != nil {
+				lt.ManufactureDate = *ul.ManufactureDate
+			}
+			if ul.ExpirationDate != nil {
+				lt.ExpirationDate = *ul.ExpirationDate
+			}
+			if ul.ReceivedDate != nil {
+				lt.ReceivedDate = *ul.ReceivedDate
+			}
+			if ul.Quantity != nil {
+				lt.Quantity = *ul.Quantity
+			}
+			if ul.QualityStatus != nil {
+				lt.QualityStatus = *ul.QualityStatus
+			}
 
-	lt.UpdatedDate = time.Now()
+			lt.UpdatedDate = time.Now()
 
-	if err := b.storer.Update(ctx, lt); err != nil {
-		return LotTrackings{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, lt); err != nil {
+				return LotTrackings{}, fmt.Errorf("update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, lt)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return LotTrackings{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, lt)); err != nil {
-		b.log.Error(ctx, "lottrackingsbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, lt)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return LotTrackings{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, lt)); err != nil {
+				b.log.Error(ctx, "lottrackingsbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return lt, nil
+			return lt, nil
+		})
 }
 
 // Delete removes a lot tracking from the system.
@@ -170,21 +172,23 @@ func (b *Business) Delete(ctx context.Context, lt LotTrackings) error {
 	ctx, span := otel.AddSpan(ctx, "business.lottrackingsbus.delete")
 	defer span.End()
 
-	err := b.storer.Delete(ctx, lt)
-	if err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, lt); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(lt)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(lt)); err != nil {
-		b.log.Error(ctx, "lottrackingsbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(lt)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(lt)); err != nil {
+				b.log.Error(ctx, "lottrackingsbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of lot trackings based on the provided query filter,

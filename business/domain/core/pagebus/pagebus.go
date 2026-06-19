@@ -68,13 +68,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	bus := Business{
-		log:    b.log,
-		storer: storer,
-		outbox: b.outbox,
-	}
-
-	return &bus, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create adds a new page to the system.
@@ -82,31 +78,34 @@ func (b *Business) Create(ctx context.Context, np NewPage) (Page, error) {
 	ctx, span := otel.AddSpan(ctx, "business.pagebus.create")
 	defer span.End()
 
-	page := Page{
-		ID:         uuid.New(),
-		Path:       np.Path,
-		Name:       np.Name,
-		Module:     np.Module,
-		Icon:       np.Icon,
-		SortOrder:  np.SortOrder,
-		IsActive:   np.IsActive,
-		ShowInMenu: np.ShowInMenu,
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Page, error) {
+			page := Page{
+				ID:         uuid.New(),
+				Path:       np.Path,
+				Name:       np.Name,
+				Module:     np.Module,
+				Icon:       np.Icon,
+				SortOrder:  np.SortOrder,
+				IsActive:   np.IsActive,
+				ShowInMenu: np.ShowInMenu,
+			}
 
-	if err := b.storer.Create(ctx, page); err != nil {
-		return Page{}, fmt.Errorf("creating page: %w", err)
-	}
+			if err := b.storer.Create(ctx, page); err != nil {
+				return Page{}, fmt.Errorf("creating page: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(page)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Page{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.del.Call(ctx, ActionCreatedData(page)); err != nil {
-		b.log.Error(ctx, "pagebus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(page)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Page{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.del.Call(ctx, ActionCreatedData(page)); err != nil {
+				b.log.Error(ctx, "pagebus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return page, nil
+			return page, nil
+		})
 }
 
 // Update modifies a page in the system.
@@ -114,44 +113,47 @@ func (b *Business) Update(ctx context.Context, page Page, up UpdatePage) (Page, 
 	ctx, span := otel.AddSpan(ctx, "business.pagebus.update")
 	defer span.End()
 
-	before := page
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Page, error) {
+			before := page
 
-	if up.Path != nil {
-		page.Path = *up.Path
-	}
-	if up.Name != nil {
-		page.Name = *up.Name
-	}
-	if up.Module != nil {
-		page.Module = *up.Module
-	}
-	if up.Icon != nil {
-		page.Icon = *up.Icon
-	}
-	if up.SortOrder != nil {
-		page.SortOrder = *up.SortOrder
-	}
-	if up.IsActive != nil {
-		page.IsActive = *up.IsActive
-	}
-	if up.ShowInMenu != nil {
-		page.ShowInMenu = *up.ShowInMenu
-	}
+			if up.Path != nil {
+				page.Path = *up.Path
+			}
+			if up.Name != nil {
+				page.Name = *up.Name
+			}
+			if up.Module != nil {
+				page.Module = *up.Module
+			}
+			if up.Icon != nil {
+				page.Icon = *up.Icon
+			}
+			if up.SortOrder != nil {
+				page.SortOrder = *up.SortOrder
+			}
+			if up.IsActive != nil {
+				page.IsActive = *up.IsActive
+			}
+			if up.ShowInMenu != nil {
+				page.ShowInMenu = *up.ShowInMenu
+			}
 
-	if err := b.storer.Update(ctx, page); err != nil {
-		return Page{}, fmt.Errorf("updating page: %w", err)
-	}
+			if err := b.storer.Update(ctx, page); err != nil {
+				return Page{}, fmt.Errorf("updating page: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, page)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Page{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.del.Call(ctx, ActionUpdatedData(before, page)); err != nil {
-		b.log.Error(ctx, "pagebus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, page)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Page{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.del.Call(ctx, ActionUpdatedData(before, page)); err != nil {
+				b.log.Error(ctx, "pagebus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return page, nil
+			return page, nil
+		})
 }
 
 // Delete removes a page from the system.
@@ -159,20 +161,23 @@ func (b *Business) Delete(ctx context.Context, page Page) error {
 	ctx, span := otel.AddSpan(ctx, "business.pagebus.delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, page); err != nil {
-		return fmt.Errorf("deleting page: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, page); err != nil {
+				return fmt.Errorf("deleting page: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(page)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.del.Call(ctx, ActionDeletedData(page)); err != nil {
-		b.log.Error(ctx, "pagebus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(page)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.del.Call(ctx, ActionDeletedData(page)); err != nil {
+				b.log.Error(ctx, "pagebus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of pages from the system.

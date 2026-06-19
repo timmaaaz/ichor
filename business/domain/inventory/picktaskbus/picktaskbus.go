@@ -68,12 +68,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	return &Business{
-		log:      b.log,
-		storer:   storer,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-	}, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create adds a new pick task to the system.
@@ -81,42 +78,45 @@ func (b *Business) Create(ctx context.Context, npt NewPickTask) (PickTask, error
 	ctx, span := otel.AddSpan(ctx, "business.picktaskbus.create")
 	defer span.End()
 
-	now := time.Now()
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (PickTask, error) {
+			now := time.Now()
 
-	task := PickTask{
-		ID:                   uuid.New(),
-		TaskNumber:           npt.TaskNumber,
-		SalesOrderID:         npt.SalesOrderID,
-		SalesOrderLineItemID: npt.SalesOrderLineItemID,
-		ProductID:            npt.ProductID,
-		LotID:                npt.LotID,
-		SerialID:             npt.SerialID,
-		LocationID:           npt.LocationID,
-		QuantityToPick:       npt.QuantityToPick,
-		QuantityPicked:       0,
-		Status:               Statuses.Pending,
-		CreatedBy:            npt.CreatedBy,
-		CreatedDate:          now,
-		UpdatedDate:          now,
-	}
+			task := PickTask{
+				ID:                   uuid.New(),
+				TaskNumber:           npt.TaskNumber,
+				SalesOrderID:         npt.SalesOrderID,
+				SalesOrderLineItemID: npt.SalesOrderLineItemID,
+				ProductID:            npt.ProductID,
+				LotID:                npt.LotID,
+				SerialID:             npt.SerialID,
+				LocationID:           npt.LocationID,
+				QuantityToPick:       npt.QuantityToPick,
+				QuantityPicked:       0,
+				Status:               Statuses.Pending,
+				CreatedBy:            npt.CreatedBy,
+				CreatedDate:          now,
+				UpdatedDate:          now,
+			}
 
-	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
-		task.ScenarioID = &sid
-	}
+			if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+				task.ScenarioID = &sid
+			}
 
-	if err := b.storer.Create(ctx, task); err != nil {
-		return PickTask{}, fmt.Errorf("create: %w", err)
-	}
+			if err := b.storer.Create(ctx, task); err != nil {
+				return PickTask{}, fmt.Errorf("create: %w", err)
+			}
 
-	evtData := ActionCreatedData(task)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return PickTask{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(task)); err != nil {
-		b.log.Error(ctx, "picktaskbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			evtData := ActionCreatedData(task)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return PickTask{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(task)); err != nil {
+				b.log.Error(ctx, "picktaskbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return task, nil
+			return task, nil
+		})
 }
 
 // Update modifies an existing pick task in the system.
@@ -124,60 +124,63 @@ func (b *Business) Update(ctx context.Context, task PickTask, upt UpdatePickTask
 	ctx, span := otel.AddSpan(ctx, "business.picktaskbus.update")
 	defer span.End()
 
-	before := task
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (PickTask, error) {
+			before := task
 
-	if upt.TaskNumber != nil {
-		task.TaskNumber = upt.TaskNumber
-	}
-	if upt.LotID != nil {
-		task.LotID = upt.LotID
-	}
-	if upt.SerialID != nil {
-		task.SerialID = upt.SerialID
-	}
-	if upt.LocationID != nil {
-		task.LocationID = *upt.LocationID
-	}
-	if upt.QuantityToPick != nil {
-		task.QuantityToPick = *upt.QuantityToPick
-	}
-	if upt.QuantityPicked != nil {
-		task.QuantityPicked = *upt.QuantityPicked
-	}
-	if upt.Status != nil {
-		task.Status = *upt.Status
-	}
-	if upt.AssignedTo != nil {
-		task.AssignedTo = *upt.AssignedTo
-	}
-	if upt.AssignedAt != nil {
-		task.AssignedAt = *upt.AssignedAt
-	}
-	if upt.CompletedBy != nil {
-		task.CompletedBy = *upt.CompletedBy
-	}
-	if upt.CompletedAt != nil {
-		task.CompletedAt = *upt.CompletedAt
-	}
-	if upt.ShortPickReason != nil {
-		task.ShortPickReason = *upt.ShortPickReason
-	}
+			if upt.TaskNumber != nil {
+				task.TaskNumber = upt.TaskNumber
+			}
+			if upt.LotID != nil {
+				task.LotID = upt.LotID
+			}
+			if upt.SerialID != nil {
+				task.SerialID = upt.SerialID
+			}
+			if upt.LocationID != nil {
+				task.LocationID = *upt.LocationID
+			}
+			if upt.QuantityToPick != nil {
+				task.QuantityToPick = *upt.QuantityToPick
+			}
+			if upt.QuantityPicked != nil {
+				task.QuantityPicked = *upt.QuantityPicked
+			}
+			if upt.Status != nil {
+				task.Status = *upt.Status
+			}
+			if upt.AssignedTo != nil {
+				task.AssignedTo = *upt.AssignedTo
+			}
+			if upt.AssignedAt != nil {
+				task.AssignedAt = *upt.AssignedAt
+			}
+			if upt.CompletedBy != nil {
+				task.CompletedBy = *upt.CompletedBy
+			}
+			if upt.CompletedAt != nil {
+				task.CompletedAt = *upt.CompletedAt
+			}
+			if upt.ShortPickReason != nil {
+				task.ShortPickReason = *upt.ShortPickReason
+			}
 
-	task.UpdatedDate = time.Now()
+			task.UpdatedDate = time.Now()
 
-	if err := b.storer.Update(ctx, task); err != nil {
-		return PickTask{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, task); err != nil {
+				return PickTask{}, fmt.Errorf("update: %w", err)
+			}
 
-	evtData := ActionUpdatedData(before, task)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return PickTask{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, task)); err != nil {
-		b.log.Error(ctx, "picktaskbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			evtData := ActionUpdatedData(before, task)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return PickTask{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, task)); err != nil {
+				b.log.Error(ctx, "picktaskbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return task, nil
+			return task, nil
+		})
 }
 
 // Delete removes a pick task from the system.
@@ -185,19 +188,22 @@ func (b *Business) Delete(ctx context.Context, task PickTask) error {
 	ctx, span := otel.AddSpan(ctx, "business.picktaskbus.delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, task); err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, task); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	evtData := ActionDeletedData(task)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(task)); err != nil {
-		b.log.Error(ctx, "picktaskbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			evtData := ActionDeletedData(task)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(task)); err != nil {
+				b.log.Error(ctx, "picktaskbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of pick tasks from the system.

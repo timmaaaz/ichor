@@ -69,12 +69,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	return &Business{
-		log:      b.log,
-		storer:   storer,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-	}, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create adds a new cycle count session to the system.
@@ -82,34 +79,37 @@ func (b *Business) Create(ctx context.Context, nccs NewCycleCountSession) (Cycle
 	ctx, span := otel.AddSpan(ctx, "business.cyclecountsessionbus.create")
 	defer span.End()
 
-	now := time.Now()
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (CycleCountSession, error) {
+			now := time.Now()
 
-	session := CycleCountSession{
-		ID:          uuid.New(),
-		Name:        nccs.Name,
-		Status:      Statuses.Draft,
-		CreatedBy:   nccs.CreatedBy,
-		CreatedDate: now,
-		UpdatedDate: now,
-	}
+			session := CycleCountSession{
+				ID:          uuid.New(),
+				Name:        nccs.Name,
+				Status:      Statuses.Draft,
+				CreatedBy:   nccs.CreatedBy,
+				CreatedDate: now,
+				UpdatedDate: now,
+			}
 
-	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
-		session.ScenarioID = &sid
-	}
+			if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+				session.ScenarioID = &sid
+			}
 
-	if err := b.storer.Create(ctx, session); err != nil {
-		return CycleCountSession{}, fmt.Errorf("create: %w", err)
-	}
+			if err := b.storer.Create(ctx, session); err != nil {
+				return CycleCountSession{}, fmt.Errorf("create: %w", err)
+			}
 
-	evtData := ActionCreatedData(session)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return CycleCountSession{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(session)); err != nil {
-		b.log.Error(ctx, "cyclecountsessionbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			evtData := ActionCreatedData(session)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return CycleCountSession{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(session)); err != nil {
+				b.log.Error(ctx, "cyclecountsessionbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return session, nil
+			return session, nil
+		})
 }
 
 // Update modifies an existing cycle count session in the system.
@@ -117,33 +117,36 @@ func (b *Business) Update(ctx context.Context, session CycleCountSession, uccs U
 	ctx, span := otel.AddSpan(ctx, "business.cyclecountsessionbus.update")
 	defer span.End()
 
-	before := session
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (CycleCountSession, error) {
+			before := session
 
-	if uccs.Name != nil {
-		session.Name = *uccs.Name
-	}
-	if uccs.Status != nil {
-		session.Status = *uccs.Status
-	}
-	if uccs.CompletedDate != nil {
-		session.CompletedDate = uccs.CompletedDate
-	}
+			if uccs.Name != nil {
+				session.Name = *uccs.Name
+			}
+			if uccs.Status != nil {
+				session.Status = *uccs.Status
+			}
+			if uccs.CompletedDate != nil {
+				session.CompletedDate = uccs.CompletedDate
+			}
 
-	session.UpdatedDate = time.Now()
+			session.UpdatedDate = time.Now()
 
-	if err := b.storer.Update(ctx, session); err != nil {
-		return CycleCountSession{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, session); err != nil {
+				return CycleCountSession{}, fmt.Errorf("update: %w", err)
+			}
 
-	evtData := ActionUpdatedData(before, session)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return CycleCountSession{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, session)); err != nil {
-		b.log.Error(ctx, "cyclecountsessionbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			evtData := ActionUpdatedData(before, session)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return CycleCountSession{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, session)); err != nil {
+				b.log.Error(ctx, "cyclecountsessionbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return session, nil
+			return session, nil
+		})
 }
 
 // Delete removes a cycle count session from the system.
@@ -151,19 +154,22 @@ func (b *Business) Delete(ctx context.Context, session CycleCountSession) error 
 	ctx, span := otel.AddSpan(ctx, "business.cyclecountsessionbus.delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, session); err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, session); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	evtData := ActionDeletedData(session)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(session)); err != nil {
-		b.log.Error(ctx, "cyclecountsessionbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			evtData := ActionDeletedData(session)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(session)); err != nil {
+				b.log.Error(ctx, "cyclecountsessionbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of cycle count sessions from the system.

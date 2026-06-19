@@ -70,12 +70,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	return &Business{
-		log:      b.log,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-		storer:   storer,
-	}, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create creates a new supplier in the database
@@ -83,35 +80,38 @@ func (b *Business) Create(ctx context.Context, newSupplier NewSupplier) (Supplie
 	ctx, span := otel.AddSpan(ctx, "business.supplierbus.create")
 	defer span.End()
 
-	now := time.Now()
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Supplier, error) {
+			now := time.Now()
 
-	supplier := Supplier{
-		SupplierID:     uuid.New(),
-		Code:           newSupplier.Code,
-		Name:           newSupplier.Name,
-		ContactInfosID: newSupplier.ContactInfosID,
-		IsActive:       newSupplier.IsActive,
-		PaymentTermID:  newSupplier.PaymentTermID,
-		LeadTimeDays:   newSupplier.LeadTimeDays,
-		Rating:         newSupplier.Rating,
-		CreatedDate:    now,
-		UpdatedDate:    now,
-	}
+			supplier := Supplier{
+				SupplierID:     uuid.New(),
+				Code:           newSupplier.Code,
+				Name:           newSupplier.Name,
+				ContactInfosID: newSupplier.ContactInfosID,
+				IsActive:       newSupplier.IsActive,
+				PaymentTermID:  newSupplier.PaymentTermID,
+				LeadTimeDays:   newSupplier.LeadTimeDays,
+				Rating:         newSupplier.Rating,
+				CreatedDate:    now,
+				UpdatedDate:    now,
+			}
 
-	if err := b.storer.Create(ctx, supplier); err != nil {
-		return Supplier{}, fmt.Errorf("create: %w", err)
-	}
+			if err := b.storer.Create(ctx, supplier); err != nil {
+				return Supplier{}, fmt.Errorf("create: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(supplier)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Supplier{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(supplier)); err != nil {
-		b.log.Error(ctx, "supplierbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(supplier)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Supplier{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(supplier)); err != nil {
+				b.log.Error(ctx, "supplierbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return supplier, nil
+			return supplier, nil
+		})
 }
 
 // Update modifies a supplier in the database
@@ -119,46 +119,49 @@ func (b *Business) Update(ctx context.Context, supplier Supplier, us UpdateSuppl
 	ctx, span := otel.AddSpan(ctx, "business.supplierbus.update")
 	defer span.End()
 
-	before := supplier
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Supplier, error) {
+			before := supplier
 
-	if us.ContactInfosID != nil {
-		supplier.ContactInfosID = *us.ContactInfosID
-	}
-	if us.Code != nil {
-		supplier.Code = *us.Code
-	}
-	if us.Name != nil {
-		supplier.Name = *us.Name
-	}
-	if us.PaymentTermID != nil {
-		supplier.PaymentTermID = us.PaymentTermID
-	}
-	if us.LeadTimeDays != nil {
-		supplier.LeadTimeDays = *us.LeadTimeDays
-	}
-	if us.Rating != nil {
-		supplier.Rating = *us.Rating
-	}
-	if us.IsActive != nil {
-		supplier.IsActive = *us.IsActive
-	}
+			if us.ContactInfosID != nil {
+				supplier.ContactInfosID = *us.ContactInfosID
+			}
+			if us.Code != nil {
+				supplier.Code = *us.Code
+			}
+			if us.Name != nil {
+				supplier.Name = *us.Name
+			}
+			if us.PaymentTermID != nil {
+				supplier.PaymentTermID = us.PaymentTermID
+			}
+			if us.LeadTimeDays != nil {
+				supplier.LeadTimeDays = *us.LeadTimeDays
+			}
+			if us.Rating != nil {
+				supplier.Rating = *us.Rating
+			}
+			if us.IsActive != nil {
+				supplier.IsActive = *us.IsActive
+			}
 
-	supplier.UpdatedDate = time.Now()
+			supplier.UpdatedDate = time.Now()
 
-	if err := b.storer.Update(ctx, supplier); err != nil {
-		return Supplier{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, supplier); err != nil {
+				return Supplier{}, fmt.Errorf("update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, supplier)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Supplier{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, supplier)); err != nil {
-		b.log.Error(ctx, "supplierbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, supplier)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Supplier{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, supplier)); err != nil {
+				b.log.Error(ctx, "supplierbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return supplier, nil
+			return supplier, nil
+		})
 }
 
 // Delete removes the specified brand.
@@ -166,20 +169,23 @@ func (b *Business) Delete(ctx context.Context, supplier Supplier) error {
 	ctx, span := otel.AddSpan(ctx, "business.supplierbus.delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, supplier); err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, supplier); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(supplier)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(supplier)); err != nil {
-		b.log.Error(ctx, "supplierbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(supplier)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(supplier)); err != nil {
+				b.log.Error(ctx, "supplierbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of product costs from the system.

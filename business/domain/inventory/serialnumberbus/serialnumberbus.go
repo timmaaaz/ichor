@@ -70,111 +70,115 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	return &Business{
-		log:      b.log,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-		storer:   storer,
-	}, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 func (b *Business) Create(ctx context.Context, nsn NewSerialNumber) (SerialNumber, error) {
 	ctx, span := otel.AddSpan(ctx, "business.serialnumberbus.create")
 	defer span.End()
 
-	now := time.Now()
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (SerialNumber, error) {
+			now := time.Now()
 
-	sn := SerialNumber{
-		SerialID:     uuid.New(),
-		ProductID:    nsn.ProductID,
-		LocationID:   nsn.LocationID,
-		SerialNumber: nsn.SerialNumber,
-		LotID:        nsn.LotID,
-		Status:       nsn.Status,
-		UpdatedDate:  now,
-		CreatedDate:  now,
-	}
+			sn := SerialNumber{
+				SerialID:     uuid.New(),
+				ProductID:    nsn.ProductID,
+				LocationID:   nsn.LocationID,
+				SerialNumber: nsn.SerialNumber,
+				LotID:        nsn.LotID,
+				Status:       nsn.Status,
+				UpdatedDate:  now,
+				CreatedDate:  now,
+			}
 
-	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
-		sn.ScenarioID = &sid
-	}
+			if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+				sn.ScenarioID = &sid
+			}
 
-	err := b.storer.Create(ctx, sn)
-	if err != nil {
-		return sn, fmt.Errorf("create: %w", err)
-	}
+			if err := b.storer.Create(ctx, sn); err != nil {
+				return SerialNumber{}, fmt.Errorf("create: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(sn)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return SerialNumber{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(sn)); err != nil {
-		b.log.Error(ctx, "serialnumberbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(sn)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return SerialNumber{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(sn)); err != nil {
+				b.log.Error(ctx, "serialnumberbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return sn, nil
+			return sn, nil
+		})
 }
 
 func (b *Business) Update(ctx context.Context, sn SerialNumber, usn UpdateSerialNumber) (SerialNumber, error) {
 	ctx, span := otel.AddSpan(ctx, "business.serialnumberbus.update")
 	defer span.End()
 
-	before := sn
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (SerialNumber, error) {
+			before := sn
 
-	if usn.LotID != nil {
-		sn.LotID = *usn.LotID
-	}
-	if usn.ProductID != nil {
-		sn.ProductID = *usn.ProductID
-	}
-	if usn.LocationID != nil {
-		sn.LocationID = *usn.LocationID
-	}
-	if usn.SerialNumber != nil {
-		sn.SerialNumber = *usn.SerialNumber
-	}
-	if usn.Status != nil {
-		sn.Status = *usn.Status
-	}
+			if usn.LotID != nil {
+				sn.LotID = *usn.LotID
+			}
+			if usn.ProductID != nil {
+				sn.ProductID = *usn.ProductID
+			}
+			if usn.LocationID != nil {
+				sn.LocationID = *usn.LocationID
+			}
+			if usn.SerialNumber != nil {
+				sn.SerialNumber = *usn.SerialNumber
+			}
+			if usn.Status != nil {
+				sn.Status = *usn.Status
+			}
 
-	sn.UpdatedDate = time.Now()
+			sn.UpdatedDate = time.Now()
 
-	if err := b.storer.Update(ctx, sn); err != nil {
-		return sn, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, sn); err != nil {
+				return SerialNumber{}, fmt.Errorf("update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, sn)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return SerialNumber{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, sn)); err != nil {
-		b.log.Error(ctx, "serialnumberbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, sn)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return SerialNumber{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, sn)); err != nil {
+				b.log.Error(ctx, "serialnumberbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return sn, nil
+			return sn, nil
+		})
 }
 
 func (b *Business) Delete(ctx context.Context, sn SerialNumber) error {
 	ctx, span := otel.AddSpan(ctx, "business.serialnumberbus.delete")
 	defer span.End()
 
-	err := b.storer.Delete(ctx, sn)
-	if err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, sn); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(sn)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(sn)); err != nil {
-		b.log.Error(ctx, "serialnumberbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(sn)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(sn)); err != nil {
+				b.log.Error(ctx, "serialnumberbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]SerialNumber, error) {

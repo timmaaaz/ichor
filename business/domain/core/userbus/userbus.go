@@ -115,53 +115,56 @@ func (b *Business) Create(ctx context.Context, nu NewUser) (User, error) {
 		return User{}, fmt.Errorf("default approval status not found: got %q, want %q", status.Name, defaultStatus)
 	}
 
-	now := time.Now()
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (User, error) {
+			now := time.Now()
 
-	zones := nu.AssignedZones
-	if zones == nil {
-		zones = []string{}
-	}
+			zones := nu.AssignedZones
+			if zones == nil {
+				zones = []string{}
+			}
 
-	usr := User{
-		ID:                 uuid.New(),
-		RequestedBy:        nu.RequestedBy,
-		ApprovedBy:         uuid.Nil,
-		UserApprovalStatus: status.ID,
-		TitleID:            nu.TitleID,
-		OfficeID:           nu.OfficeID,
-		WorkPhoneID:        nu.WorkPhoneID,
-		CellPhoneID:        nu.CellPhoneID,
-		Username:           nu.Username,
-		FirstName:          nu.FirstName,
-		LastName:           nu.LastName,
-		Email:              nu.Email,
-		Birthday:           nu.Birthday,
-		Roles:              nu.Roles,
-		SystemRoles:        nu.SystemRoles,
-		AssignedZones:      zones,
-		PasswordHash:       hash,
-		Enabled:            nu.Enabled,
-		DateHired:          time.Time{}, // Zero-value
-		DateRequested:      now,
-		DateApproved:       time.Time{}, // Zero-value
-		CreatedDate:        now,
-		UpdatedDate:        now,
-	}
+			usr := User{
+				ID:                 uuid.New(),
+				RequestedBy:        nu.RequestedBy,
+				ApprovedBy:         uuid.Nil,
+				UserApprovalStatus: status.ID,
+				TitleID:            nu.TitleID,
+				OfficeID:           nu.OfficeID,
+				WorkPhoneID:        nu.WorkPhoneID,
+				CellPhoneID:        nu.CellPhoneID,
+				Username:           nu.Username,
+				FirstName:          nu.FirstName,
+				LastName:           nu.LastName,
+				Email:              nu.Email,
+				Birthday:           nu.Birthday,
+				Roles:              nu.Roles,
+				SystemRoles:        nu.SystemRoles,
+				AssignedZones:      zones,
+				PasswordHash:       hash,
+				Enabled:            nu.Enabled,
+				DateHired:          time.Time{}, // Zero-value
+				DateRequested:      now,
+				DateApproved:       time.Time{}, // Zero-value
+				CreatedDate:        now,
+				UpdatedDate:        now,
+			}
 
-	if err := b.storer.Create(ctx, usr); err != nil {
-		return User{}, fmt.Errorf("create: %w", err)
-	}
+			if err := b.storer.Create(ctx, usr); err != nil {
+				return User{}, fmt.Errorf("create: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(usr)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return User{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(usr)); err != nil {
-		b.log.Error(ctx, "userbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(usr)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return User{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(usr)); err != nil {
+				b.log.Error(ctx, "userbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return usr, nil
+			return usr, nil
+		})
 }
 
 // Update modifies information about a user.
@@ -169,84 +172,87 @@ func (b *Business) Update(ctx context.Context, usr User, uu UpdateUser) (User, e
 	ctx, span := otel.AddSpan(ctx, "business.userbus.update")
 	defer span.End()
 
-	before := usr
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (User, error) {
+			before := usr
 
-	if uu.ApprovedBy != nil {
-		usr.ApprovedBy = *uu.ApprovedBy
-	}
-	if uu.UserApprovalStatus != nil {
-		usr.UserApprovalStatus = *uu.UserApprovalStatus
-	}
-	if uu.TitleID != nil {
-		usr.TitleID = *uu.TitleID
-	}
-	if uu.OfficeID != nil {
-		usr.OfficeID = *uu.OfficeID
-	}
-	if uu.WorkPhoneID != nil {
-		usr.WorkPhoneID = *uu.WorkPhoneID
-	}
-	if uu.CellPhoneID != nil {
-		usr.CellPhoneID = *uu.CellPhoneID
-	}
-	if uu.Username != nil {
-		usr.Username = *uu.Username
-	}
-	if uu.FirstName != nil {
-		usr.FirstName = *uu.FirstName
-	}
-	if uu.LastName != nil {
-		usr.LastName = *uu.LastName
-	}
-	if uu.Email != nil {
-		usr.Email = *uu.Email
-	}
-	if uu.Birthday != nil {
-		usr.Birthday = *uu.Birthday
-	}
-	if uu.Roles != nil {
-		usr.Roles = uu.Roles
-	}
-	if uu.SystemRoles != nil {
-		usr.SystemRoles = uu.SystemRoles
-	}
-	if uu.AssignedZones != nil {
-		usr.AssignedZones = *uu.AssignedZones
-	}
-	if uu.Enabled != nil {
-		usr.Enabled = *uu.Enabled
-	}
-	if uu.DateHired != nil {
-		usr.DateHired = *uu.DateHired
-	}
-	if uu.DateApproved != nil {
-		usr.DateApproved = *uu.DateApproved
-	}
+			if uu.ApprovedBy != nil {
+				usr.ApprovedBy = *uu.ApprovedBy
+			}
+			if uu.UserApprovalStatus != nil {
+				usr.UserApprovalStatus = *uu.UserApprovalStatus
+			}
+			if uu.TitleID != nil {
+				usr.TitleID = *uu.TitleID
+			}
+			if uu.OfficeID != nil {
+				usr.OfficeID = *uu.OfficeID
+			}
+			if uu.WorkPhoneID != nil {
+				usr.WorkPhoneID = *uu.WorkPhoneID
+			}
+			if uu.CellPhoneID != nil {
+				usr.CellPhoneID = *uu.CellPhoneID
+			}
+			if uu.Username != nil {
+				usr.Username = *uu.Username
+			}
+			if uu.FirstName != nil {
+				usr.FirstName = *uu.FirstName
+			}
+			if uu.LastName != nil {
+				usr.LastName = *uu.LastName
+			}
+			if uu.Email != nil {
+				usr.Email = *uu.Email
+			}
+			if uu.Birthday != nil {
+				usr.Birthday = *uu.Birthday
+			}
+			if uu.Roles != nil {
+				usr.Roles = uu.Roles
+			}
+			if uu.SystemRoles != nil {
+				usr.SystemRoles = uu.SystemRoles
+			}
+			if uu.AssignedZones != nil {
+				usr.AssignedZones = *uu.AssignedZones
+			}
+			if uu.Enabled != nil {
+				usr.Enabled = *uu.Enabled
+			}
+			if uu.DateHired != nil {
+				usr.DateHired = *uu.DateHired
+			}
+			if uu.DateApproved != nil {
+				usr.DateApproved = *uu.DateApproved
+			}
 
-	if uu.Password != nil {
-		pw, err := bcrypt.GenerateFromPassword([]byte(*uu.Password), bcryptCost)
-		if err != nil {
-			return User{}, fmt.Errorf("generatefrompassword: %w", err)
-		}
-		usr.PasswordHash = pw
-	}
+			if uu.Password != nil {
+				pw, err := bcrypt.GenerateFromPassword([]byte(*uu.Password), bcryptCost)
+				if err != nil {
+					return User{}, fmt.Errorf("generatefrompassword: %w", err)
+				}
+				usr.PasswordHash = pw
+			}
 
-	usr.UpdatedDate = time.Now()
+			usr.UpdatedDate = time.Now()
 
-	if err := b.storer.Update(ctx, usr); err != nil {
-		return User{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, usr); err != nil {
+				return User{}, fmt.Errorf("update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, usr)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return User{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, usr)); err != nil {
-		b.log.Error(ctx, "userbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, usr)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return User{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, usr)); err != nil {
+				b.log.Error(ctx, "userbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return usr, nil
+			return usr, nil
+		})
 }
 
 // Delete removes the specified user.
@@ -254,20 +260,23 @@ func (b *Business) Delete(ctx context.Context, usr User) error {
 	ctx, span := otel.AddSpan(ctx, "business.userbus.delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, usr); err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, usr); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(usr)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(usr)); err != nil {
-		b.log.Error(ctx, "userbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(usr)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(usr)); err != nil {
+				b.log.Error(ctx, "userbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of existing users.

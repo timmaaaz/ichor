@@ -53,8 +53,6 @@ func NewBusiness(log *logger.Logger, d *delegate.Delegate, storer Storer, printe
 	return &Business{log: log, delegate: d, storer: storer, printer: printer}
 }
 
-// NewWithTx constructs a new Business value replacing the Storer value with
-// a Storer value that is currently inside a transaction.
 // WithOutbox returns a copy of the Business wired to the cascade outbox Writer.
 // Inert until the Writer is injected at the F2 cutover (nil Writer -> Emit no-ops).
 func (b *Business) WithOutbox(w *outbox.Writer) *Business {
@@ -63,96 +61,104 @@ func (b *Business) WithOutbox(w *outbox.Writer) *Business {
 	return &nb
 }
 
+// NewWithTx constructs a new business value that will use the specified transaction
+// in any store-related calls. It copies the receiver and overrides only the storer,
+// so no field (delegate, outbox, log, printer) is silently dropped (cf. commit 63f6b034).
 func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 	storer, err := b.storer.NewWithTx(tx)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Business{
-		log:      b.log,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-		storer:   storer,
-		printer:  b.printer,
-	}, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create inserts a new label into the catalog.
 func (b *Business) Create(ctx context.Context, nlc NewLabelCatalog) (LabelCatalog, error) {
-	lc := LabelCatalog{
-		ID:          uuid.New(),
-		Code:        nlc.Code,
-		Type:        nlc.Type,
-		EntityRef:   nlc.EntityRef,
-		PayloadJSON: nlc.PayloadJSON,
-		CreatedDate: time.Now(),
-	}
-	if err := b.storer.Create(ctx, lc); err != nil {
-		return LabelCatalog{}, fmt.Errorf("create: %w", err)
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (LabelCatalog, error) {
+			lc := LabelCatalog{
+				ID:          uuid.New(),
+				Code:        nlc.Code,
+				Type:        nlc.Type,
+				EntityRef:   nlc.EntityRef,
+				PayloadJSON: nlc.PayloadJSON,
+				CreatedDate: time.Now(),
+			}
+			if err := b.storer.Create(ctx, lc); err != nil {
+				return LabelCatalog{}, fmt.Errorf("create: %w", err)
+			}
 
-	// Fire delegate event for workflow automation. Errors are logged
-	// but not returned — the DB write already succeeded and the caller
-	// has a valid LabelCatalog back.
-	evtData := ActionCreatedData(lc)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return LabelCatalog{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(lc)); err != nil {
-		b.log.Error(ctx, "labelbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation. Errors are logged
+			// but not returned — the DB write already succeeded and the caller
+			// has a valid LabelCatalog back.
+			evtData := ActionCreatedData(lc)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return LabelCatalog{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(lc)); err != nil {
+				b.log.Error(ctx, "labelbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return lc, nil
+			return lc, nil
+		})
 }
 
 // Update applies a partial patch to an existing label and persists it.
 func (b *Business) Update(ctx context.Context, lc LabelCatalog, ulc UpdateLabelCatalog) (LabelCatalog, error) {
-	before := lc
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (LabelCatalog, error) {
+			before := lc
 
-	if ulc.Code != nil {
-		lc.Code = *ulc.Code
-	}
-	if ulc.Type != nil {
-		lc.Type = *ulc.Type
-	}
-	if ulc.EntityRef != nil {
-		lc.EntityRef = *ulc.EntityRef
-	}
-	if ulc.PayloadJSON != nil {
-		lc.PayloadJSON = *ulc.PayloadJSON
-	}
+			if ulc.Code != nil {
+				lc.Code = *ulc.Code
+			}
+			if ulc.Type != nil {
+				lc.Type = *ulc.Type
+			}
+			if ulc.EntityRef != nil {
+				lc.EntityRef = *ulc.EntityRef
+			}
+			if ulc.PayloadJSON != nil {
+				lc.PayloadJSON = *ulc.PayloadJSON
+			}
 
-	if err := b.storer.Update(ctx, lc); err != nil {
-		return LabelCatalog{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, lc); err != nil {
+				return LabelCatalog{}, fmt.Errorf("update: %w", err)
+			}
 
-	evtData := ActionUpdatedData(before, lc)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return LabelCatalog{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, lc)); err != nil {
-		b.log.Error(ctx, "labelbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			evtData := ActionUpdatedData(before, lc)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return LabelCatalog{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, lc)); err != nil {
+				b.log.Error(ctx, "labelbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return lc, nil
+			return lc, nil
+		})
 }
 
 // Delete removes a label from the catalog.
 func (b *Business) Delete(ctx context.Context, lc LabelCatalog) error {
-	if err := b.storer.Delete(ctx, lc); err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, lc); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	evtData := ActionDeletedData(lc)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(lc)); err != nil {
-		b.log.Error(ctx, "labelbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			evtData := ActionDeletedData(lc)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(lc)); err != nil {
+				b.log.Error(ctx, "labelbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // QueryByID retrieves a label by its ID.

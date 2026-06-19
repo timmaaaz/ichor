@@ -87,12 +87,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	return &Business{
-		log:      b.log,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-		storer:   storer,
-	}, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create inserts a new inspection into the database.
@@ -100,39 +97,42 @@ func (b *Business) Create(ctx context.Context, ni NewInspection) (Inspection, er
 	ctx, span := otel.AddSpan(ctx, "business.inspectionbus.create")
 	defer span.End()
 
-	now := time.Now()
-	inspection := Inspection{
-		InspectionID:       uuid.New(),
-		ProductID:          ni.ProductID,
-		InspectorID:        ni.InspectorID,
-		InspectionDate:     ni.InspectionDate,
-		Status:             ni.Status,
-		LotID:              ni.LotID,
-		Notes:              ni.Notes,
-		NextInspectionDate: ni.NextInspectionDate,
-		UpdatedDate:        now,
-		CreatedDate:        now,
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Inspection, error) {
+			now := time.Now()
+			inspection := Inspection{
+				InspectionID:       uuid.New(),
+				ProductID:          ni.ProductID,
+				InspectorID:        ni.InspectorID,
+				InspectionDate:     ni.InspectionDate,
+				Status:             ni.Status,
+				LotID:              ni.LotID,
+				Notes:              ni.Notes,
+				NextInspectionDate: ni.NextInspectionDate,
+				UpdatedDate:        now,
+				CreatedDate:        now,
+			}
 
-	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
-		inspection.ScenarioID = &sid
-	}
+			if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+				inspection.ScenarioID = &sid
+			}
 
-	err := b.storer.Create(ctx, inspection)
-	if err != nil {
-		return Inspection{}, fmt.Errorf("create: %w", err)
-	}
+			err := b.storer.Create(ctx, inspection)
+			if err != nil {
+				return Inspection{}, fmt.Errorf("create: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(inspection)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Inspection{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(inspection)); err != nil {
-		b.log.Error(ctx, "inspectionbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(inspection)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Inspection{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(inspection)); err != nil {
+				b.log.Error(ctx, "inspectionbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return inspection, nil
+			return inspection, nil
+		})
 }
 
 // Update updates an existing inspection in the database.
@@ -140,46 +140,49 @@ func (b *Business) Update(ctx context.Context, i Inspection, ui UpdateInspection
 	ctx, span := otel.AddSpan(ctx, "business.inspectionbus.update")
 	defer span.End()
 
-	before := i
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Inspection, error) {
+			before := i
 
-	if ui.ProductID != nil {
-		i.ProductID = *ui.ProductID
-	}
-	if ui.InspectorID != nil {
-		i.InspectorID = *ui.InspectorID
-	}
-	if ui.LotID != nil {
-		i.LotID = *ui.LotID
-	}
-	if ui.Status != nil {
-		i.Status = *ui.Status
-	}
-	if ui.Notes != nil {
-		i.Notes = *ui.Notes
-	}
-	if ui.InspectionDate != nil {
-		i.InspectionDate = *ui.InspectionDate
-	}
-	if ui.NextInspectionDate != nil {
-		i.NextInspectionDate = *ui.NextInspectionDate
-	}
+			if ui.ProductID != nil {
+				i.ProductID = *ui.ProductID
+			}
+			if ui.InspectorID != nil {
+				i.InspectorID = *ui.InspectorID
+			}
+			if ui.LotID != nil {
+				i.LotID = *ui.LotID
+			}
+			if ui.Status != nil {
+				i.Status = *ui.Status
+			}
+			if ui.Notes != nil {
+				i.Notes = *ui.Notes
+			}
+			if ui.InspectionDate != nil {
+				i.InspectionDate = *ui.InspectionDate
+			}
+			if ui.NextInspectionDate != nil {
+				i.NextInspectionDate = *ui.NextInspectionDate
+			}
 
-	i.UpdatedDate = time.Now()
+			i.UpdatedDate = time.Now()
 
-	if err := b.storer.Update(ctx, i); err != nil {
-		return Inspection{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, i); err != nil {
+				return Inspection{}, fmt.Errorf("update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, i)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Inspection{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, i)); err != nil {
-		b.log.Error(ctx, "inspectionbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, i)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Inspection{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, i)); err != nil {
+				b.log.Error(ctx, "inspectionbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return i, nil
+			return i, nil
+		})
 }
 
 // Delete removes an existing inspection from the database.
@@ -187,21 +190,24 @@ func (b *Business) Delete(ctx context.Context, i Inspection) error {
 	ctx, span := otel.AddSpan(ctx, "business.inspectionbus.delete")
 	defer span.End()
 
-	err := b.storer.Delete(ctx, i)
-	if err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			err := b.storer.Delete(ctx, i)
+			if err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(i)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(i)); err != nil {
-		b.log.Error(ctx, "inspectionbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(i)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(i)); err != nil {
+				b.log.Error(ctx, "inspectionbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of inspections based on the provided filter and sorting options.

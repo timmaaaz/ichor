@@ -67,14 +67,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	bus := Business{
-		log:      b.log,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-		storer:   storer,
-	}
-
-	return &bus, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create adds a new payment term to the system.
@@ -82,29 +77,32 @@ func (b *Business) Create(ctx context.Context, npt NewPaymentTerm) (PaymentTerm,
 	ctx, span := otel.AddSpan(ctx, "business.paymenttermbus.Create")
 	defer span.End()
 
-	pt := PaymentTerm{
-		ID:          uuid.New(),
-		Name:        npt.Name,
-		Description: npt.Description,
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (PaymentTerm, error) {
+			pt := PaymentTerm{
+				ID:          uuid.New(),
+				Name:        npt.Name,
+				Description: npt.Description,
+			}
 
-	if err := b.storer.Create(ctx, pt); err != nil {
-		if errors.Is(err, ErrUniqueEntry) {
-			return PaymentTerm{}, fmt.Errorf("create: %w", ErrUniqueEntry)
-		}
-		return PaymentTerm{}, err
-	}
+			if err := b.storer.Create(ctx, pt); err != nil {
+				if errors.Is(err, ErrUniqueEntry) {
+					return PaymentTerm{}, fmt.Errorf("create: %w", ErrUniqueEntry)
+				}
+				return PaymentTerm{}, err
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(pt)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return PaymentTerm{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(pt)); err != nil {
-		b.log.Error(ctx, "paymenttermbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(pt)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return PaymentTerm{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(pt)); err != nil {
+				b.log.Error(ctx, "paymenttermbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return pt, nil
+			return pt, nil
+		})
 }
 
 // Update updates an existing payment term.
@@ -112,33 +110,36 @@ func (b *Business) Update(ctx context.Context, pt PaymentTerm, upt UpdatePayment
 	ctx, span := otel.AddSpan(ctx, "business.paymenttermbus.Update")
 	defer span.End()
 
-	before := pt
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (PaymentTerm, error) {
+			before := pt
 
-	if upt.Name != nil {
-		pt.Name = *upt.Name
-	}
+			if upt.Name != nil {
+				pt.Name = *upt.Name
+			}
 
-	if upt.Description != nil {
-		pt.Description = *upt.Description
-	}
+			if upt.Description != nil {
+				pt.Description = *upt.Description
+			}
 
-	if err := b.storer.Update(ctx, pt); err != nil {
-		if errors.Is(err, ErrUniqueEntry) {
-			return PaymentTerm{}, fmt.Errorf("update: %w", ErrUniqueEntry)
-		}
-		return PaymentTerm{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, pt); err != nil {
+				if errors.Is(err, ErrUniqueEntry) {
+					return PaymentTerm{}, fmt.Errorf("update: %w", ErrUniqueEntry)
+				}
+				return PaymentTerm{}, fmt.Errorf("update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, pt)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return PaymentTerm{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, pt)); err != nil {
-		b.log.Error(ctx, "paymenttermbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, pt)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return PaymentTerm{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, pt)); err != nil {
+				b.log.Error(ctx, "paymenttermbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return pt, nil
+			return pt, nil
+		})
 }
 
 // Delete removes a payment term from the system.
@@ -146,20 +147,23 @@ func (b *Business) Delete(ctx context.Context, pt PaymentTerm) error {
 	ctx, span := otel.AddSpan(ctx, "business.paymenttermbus.Delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, pt); err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, pt); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(pt)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(pt)); err != nil {
-		b.log.Error(ctx, "paymenttermbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(pt)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(pt)); err != nil {
+				b.log.Error(ctx, "paymenttermbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of existing payment terms from the system.

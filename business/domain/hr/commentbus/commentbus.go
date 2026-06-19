@@ -99,37 +99,40 @@ func (b *Business) Create(ctx context.Context, nuac NewUserApprovalComment) (Use
 	ctx, span := otel.AddSpan(ctx, "business.user.status.comment.Create")
 	defer span.End()
 
-	now := time.Now().UTC().Truncate(time.Second)
-	if nuac.CreatedDate != nil {
-		now = nuac.CreatedDate.Truncate(time.Second)
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (UserApprovalComment, error) {
+			now := time.Now().UTC().Truncate(time.Second)
+			if nuac.CreatedDate != nil {
+				now = nuac.CreatedDate.Truncate(time.Second)
+			}
 
-	uac := UserApprovalComment{
-		ID:          uuid.New(),
-		Comment:     nuac.Comment,
-		CommenterID: nuac.CommenterID,
-		UserID:      nuac.UserID,
-		CreatedDate: now,
-	}
+			uac := UserApprovalComment{
+				ID:          uuid.New(),
+				Comment:     nuac.Comment,
+				CommenterID: nuac.CommenterID,
+				UserID:      nuac.UserID,
+				CreatedDate: now,
+			}
 
-	if err := b.storer.Create(ctx, uac); err != nil {
-		return UserApprovalComment{}, fmt.Errorf("store create: %w", err)
-	}
+			if err := b.storer.Create(ctx, uac); err != nil {
+				return UserApprovalComment{}, fmt.Errorf("store create: %w", err)
+			}
 
-	if err := b.userbus.SetUnderReview(ctx, nuac.UserID); err != nil {
-		return UserApprovalComment{}, fmt.Errorf("userbus set under review: %w", err)
-	}
+			if err := b.userbus.SetUnderReview(ctx, nuac.UserID); err != nil {
+				return UserApprovalComment{}, fmt.Errorf("userbus set under review: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(uac)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return UserApprovalComment{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(uac)); err != nil {
-		b.log.Error(ctx, "commentbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(uac)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return UserApprovalComment{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(uac)); err != nil {
+				b.log.Error(ctx, "commentbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return uac, nil
+			return uac, nil
+		})
 }
 
 // Update modifies information about an user status comment.
@@ -137,26 +140,29 @@ func (b *Business) Update(ctx context.Context, uac UserApprovalComment, uuac Upd
 	ctx, span := otel.AddSpan(ctx, "business.user.status.comment.Update")
 	defer span.End()
 
-	before := uac
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (UserApprovalComment, error) {
+			before := uac
 
-	if uuac.Comment != nil {
-		uac.Comment = *uuac.Comment
-	}
+			if uuac.Comment != nil {
+				uac.Comment = *uuac.Comment
+			}
 
-	if err := b.storer.Update(ctx, uac); err != nil {
-		return UserApprovalComment{}, fmt.Errorf("store update: %w", err)
-	}
+			if err := b.storer.Update(ctx, uac); err != nil {
+				return UserApprovalComment{}, fmt.Errorf("store update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, uac)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return UserApprovalComment{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, uac)); err != nil {
-		b.log.Error(ctx, "commentbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, uac)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return UserApprovalComment{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, uac)); err != nil {
+				b.log.Error(ctx, "commentbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return uac, nil
+			return uac, nil
+		})
 }
 
 // Delete removes an user status comment from the system.
@@ -164,20 +170,23 @@ func (b *Business) Delete(ctx context.Context, uac UserApprovalComment) error {
 	ctx, span := otel.AddSpan(ctx, "business.user.status.comment.Delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, uac); err != nil {
-		return fmt.Errorf("store delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, uac); err != nil {
+				return fmt.Errorf("store delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(uac)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(uac)); err != nil {
-		b.log.Error(ctx, "commentbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(uac)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(uac)); err != nil {
+				b.log.Error(ctx, "commentbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query returns a list of user status commentes

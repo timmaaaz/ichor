@@ -102,12 +102,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	return &Business{
-		log:      b.log,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-		storer:   storer,
-	}, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create creates a new inventoryAdjustment.
@@ -119,42 +116,45 @@ func (b *Business) Create(ctx context.Context, nia NewInventoryAdjustment) (Inve
 		return InventoryAdjustment{}, fmt.Errorf("create: %w", ErrInvalidReasonCode)
 	}
 
-	now := time.Now()
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (InventoryAdjustment, error) {
+			now := time.Now()
 
-	ia := InventoryAdjustment{
-		InventoryAdjustmentID: uuid.New(),
-		ProductID:             nia.ProductID,
-		LocationID:            nia.LocationID,
-		AdjustedBy:            nia.AdjustedBy,
-		ApprovedBy:            nia.ApprovedBy,
-		ApprovalStatus:        ApprovalStatusPending,
-		QuantityChange:        nia.QuantityChange,
-		ReasonCode:            nia.ReasonCode,
-		Notes:                 nia.Notes,
-		AdjustmentDate:        nia.AdjustmentDate,
-		UpdatedDate:           now,
-		CreatedDate:           now,
-	}
+			ia := InventoryAdjustment{
+				InventoryAdjustmentID: uuid.New(),
+				ProductID:             nia.ProductID,
+				LocationID:            nia.LocationID,
+				AdjustedBy:            nia.AdjustedBy,
+				ApprovedBy:            nia.ApprovedBy,
+				ApprovalStatus:        ApprovalStatusPending,
+				QuantityChange:        nia.QuantityChange,
+				ReasonCode:            nia.ReasonCode,
+				Notes:                 nia.Notes,
+				AdjustmentDate:        nia.AdjustmentDate,
+				UpdatedDate:           now,
+				CreatedDate:           now,
+			}
 
-	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
-		ia.ScenarioID = &sid
-	}
+			if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+				ia.ScenarioID = &sid
+			}
 
-	err := b.storer.Create(ctx, ia)
-	if err != nil {
-		return InventoryAdjustment{}, fmt.Errorf("create: %w", err)
-	}
+			err := b.storer.Create(ctx, ia)
+			if err != nil {
+				return InventoryAdjustment{}, fmt.Errorf("create: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(ia)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return InventoryAdjustment{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(ia)); err != nil {
-		b.log.Error(ctx, "inventoryadjustmentbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(ia)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return InventoryAdjustment{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(ia)); err != nil {
+				b.log.Error(ctx, "inventoryadjustmentbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return ia, nil
+			return ia, nil
+		})
 }
 
 // Update updates an existing inventoryAdjustment.
@@ -162,64 +162,67 @@ func (b *Business) Update(ctx context.Context, ia InventoryAdjustment, u UpdateI
 	ctx, span := otel.AddSpan(ctx, "business.inventoryadjustmentbus.update")
 	defer span.End()
 
-	before := ia
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (InventoryAdjustment, error) {
+			before := ia
 
-	if u.ProductID != nil {
-		ia.ProductID = *u.ProductID
-	}
-	if u.LocationID != nil {
-		ia.LocationID = *u.LocationID
-	}
-	if u.AdjustedBy != nil {
-		ia.AdjustedBy = *u.AdjustedBy
-	}
-	if u.ApprovedBy != nil {
-		ia.ApprovedBy = u.ApprovedBy
-	}
-	if u.ApprovalStatus != nil {
-		ia.ApprovalStatus = *u.ApprovalStatus
-	}
-	if u.ApprovalReason != nil {
-		ia.ApprovalReason = *u.ApprovalReason
-	}
-	if u.RejectedBy != nil {
-		ia.RejectedBy = u.RejectedBy
-	}
-	if u.RejectionReason != nil {
-		ia.RejectionReason = *u.RejectionReason
-	}
-	if u.QuantityChange != nil {
-		ia.QuantityChange = *u.QuantityChange
-	}
-	if u.ReasonCode != nil {
-		if !ValidReasonCodes[*u.ReasonCode] {
-			return InventoryAdjustment{}, fmt.Errorf("update: %w", ErrInvalidReasonCode)
-		}
-		ia.ReasonCode = *u.ReasonCode
-	}
-	if u.Notes != nil {
-		ia.Notes = *u.Notes
-	}
-	if u.AdjustmentDate != nil {
-		ia.AdjustmentDate = *u.AdjustmentDate
-	}
+			if u.ProductID != nil {
+				ia.ProductID = *u.ProductID
+			}
+			if u.LocationID != nil {
+				ia.LocationID = *u.LocationID
+			}
+			if u.AdjustedBy != nil {
+				ia.AdjustedBy = *u.AdjustedBy
+			}
+			if u.ApprovedBy != nil {
+				ia.ApprovedBy = u.ApprovedBy
+			}
+			if u.ApprovalStatus != nil {
+				ia.ApprovalStatus = *u.ApprovalStatus
+			}
+			if u.ApprovalReason != nil {
+				ia.ApprovalReason = *u.ApprovalReason
+			}
+			if u.RejectedBy != nil {
+				ia.RejectedBy = u.RejectedBy
+			}
+			if u.RejectionReason != nil {
+				ia.RejectionReason = *u.RejectionReason
+			}
+			if u.QuantityChange != nil {
+				ia.QuantityChange = *u.QuantityChange
+			}
+			if u.ReasonCode != nil {
+				if !ValidReasonCodes[*u.ReasonCode] {
+					return InventoryAdjustment{}, fmt.Errorf("update: %w", ErrInvalidReasonCode)
+				}
+				ia.ReasonCode = *u.ReasonCode
+			}
+			if u.Notes != nil {
+				ia.Notes = *u.Notes
+			}
+			if u.AdjustmentDate != nil {
+				ia.AdjustmentDate = *u.AdjustmentDate
+			}
 
-	ia.UpdatedDate = time.Now()
+			ia.UpdatedDate = time.Now()
 
-	if err := b.storer.Update(ctx, ia); err != nil {
-		return InventoryAdjustment{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, ia); err != nil {
+				return InventoryAdjustment{}, fmt.Errorf("update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, ia)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return InventoryAdjustment{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, ia)); err != nil {
-		b.log.Error(ctx, "inventoryadjustmentbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, ia)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return InventoryAdjustment{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, ia)); err != nil {
+				b.log.Error(ctx, "inventoryadjustmentbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return ia, nil
+			return ia, nil
+		})
 }
 
 // Delete deletes an existing inventoryAdjustment.
@@ -227,21 +230,24 @@ func (b *Business) Delete(ctx context.Context, ia InventoryAdjustment) error {
 	ctx, span := otel.AddSpan(ctx, "business.inventoryadjustmentbus.delete")
 	defer span.End()
 
-	err := b.storer.Delete(ctx, ia)
-	if err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			err := b.storer.Delete(ctx, ia)
+			if err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(ia)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(ia)); err != nil {
-		b.log.Error(ctx, "inventoryadjustmentbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(ia)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(ia)); err != nil {
+				b.log.Error(ctx, "inventoryadjustmentbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Approve sets the approver and marks the inventory adjustment as approved.
@@ -253,27 +259,30 @@ func (b *Business) Approve(ctx context.Context, ia InventoryAdjustment, approved
 		return InventoryAdjustment{}, fmt.Errorf("approve: %w", ErrInvalidApprovalStatus)
 	}
 
-	before := ia
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (InventoryAdjustment, error) {
+			before := ia
 
-	now := time.Now()
-	ia.ApprovedBy = &approvedBy
-	ia.ApprovalStatus = ApprovalStatusApproved
-	ia.ApprovalReason = reason
-	ia.UpdatedDate = now
+			now := time.Now()
+			ia.ApprovedBy = &approvedBy
+			ia.ApprovalStatus = ApprovalStatusApproved
+			ia.ApprovalReason = reason
+			ia.UpdatedDate = now
 
-	if err := b.storer.Update(ctx, ia); err != nil {
-		return InventoryAdjustment{}, fmt.Errorf("approve: %w", err)
-	}
+			if err := b.storer.Update(ctx, ia); err != nil {
+				return InventoryAdjustment{}, fmt.Errorf("approve: %w", err)
+			}
 
-	evtData := ActionUpdatedData(before, ia)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return InventoryAdjustment{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, ia)); err != nil {
-		b.log.Error(ctx, "inventoryadjustmentbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			evtData := ActionUpdatedData(before, ia)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return InventoryAdjustment{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, ia)); err != nil {
+				b.log.Error(ctx, "inventoryadjustmentbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return ia, nil
+			return ia, nil
+		})
 }
 
 // Reject marks the inventory adjustment as rejected, capturing the rejector and reason.
@@ -285,26 +294,29 @@ func (b *Business) Reject(ctx context.Context, ia InventoryAdjustment, rejectedB
 		return InventoryAdjustment{}, fmt.Errorf("reject: %w", ErrInvalidApprovalStatus)
 	}
 
-	before := ia
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (InventoryAdjustment, error) {
+			before := ia
 
-	ia.RejectedBy = &rejectedBy
-	ia.ApprovalStatus = ApprovalStatusRejected
-	ia.RejectionReason = reason
-	ia.UpdatedDate = time.Now()
+			ia.RejectedBy = &rejectedBy
+			ia.ApprovalStatus = ApprovalStatusRejected
+			ia.RejectionReason = reason
+			ia.UpdatedDate = time.Now()
 
-	if err := b.storer.Update(ctx, ia); err != nil {
-		return InventoryAdjustment{}, fmt.Errorf("reject: %w", err)
-	}
+			if err := b.storer.Update(ctx, ia); err != nil {
+				return InventoryAdjustment{}, fmt.Errorf("reject: %w", err)
+			}
 
-	evtData := ActionUpdatedData(before, ia)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return InventoryAdjustment{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, ia)); err != nil {
-		b.log.Error(ctx, "inventoryadjustmentbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			evtData := ActionUpdatedData(before, ia)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return InventoryAdjustment{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, ia)); err != nil {
+				b.log.Error(ctx, "inventoryadjustmentbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return ia, nil
+			return ia, nil
+		})
 }
 
 // Query retrieves inventoryAdjustments based on the provided filter, order, and page.

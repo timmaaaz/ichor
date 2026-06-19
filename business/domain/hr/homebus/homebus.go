@@ -77,15 +77,10 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	bus := Business{
-		log:      b.log,
-		userBus:  userBus,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-		storer:   storer,
-	}
-
-	return &bus, nil
+	nb := *b
+	nb.storer = storer
+	nb.userBus = userBus
+	return &nb, nil
 }
 
 // Create adds a new home to the system.
@@ -93,50 +88,53 @@ func (b *Business) Create(ctx context.Context, nh NewHome) (Home, error) {
 	ctx, span := otel.AddSpan(ctx, "business.homebus.delete")
 	defer span.End()
 
-	usr, err := b.userBus.QueryByID(ctx, nh.UserID)
-	if err != nil {
-		return Home{}, fmt.Errorf("user.querybyid: %s: %w", nh.UserID, err)
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Home, error) {
+			usr, err := b.userBus.QueryByID(ctx, nh.UserID)
+			if err != nil {
+				return Home{}, fmt.Errorf("user.querybyid: %s: %w", nh.UserID, err)
+			}
 
-	if !usr.Enabled {
-		return Home{}, ErrUserDisabled
-	}
+			if !usr.Enabled {
+				return Home{}, ErrUserDisabled
+			}
 
-	now := time.Now()
-	if nh.CreatedDate != nil {
-		now = *nh.CreatedDate
-	}
+			now := time.Now()
+			if nh.CreatedDate != nil {
+				now = *nh.CreatedDate
+			}
 
-	hme := Home{
-		ID:   uuid.New(),
-		Type: nh.Type,
-		Address: Address{
-			Address1: nh.Address.Address1,
-			Address2: nh.Address.Address2,
-			ZipCode:  nh.Address.ZipCode,
-			City:     nh.Address.City,
-			State:    nh.Address.State,
-			Country:  nh.Address.Country,
-		},
-		UserID:      nh.UserID,
-		CreatedDate: now,
-		UpdatedDate: now,
-	}
+			hme := Home{
+				ID:   uuid.New(),
+				Type: nh.Type,
+				Address: Address{
+					Address1: nh.Address.Address1,
+					Address2: nh.Address.Address2,
+					ZipCode:  nh.Address.ZipCode,
+					City:     nh.Address.City,
+					State:    nh.Address.State,
+					Country:  nh.Address.Country,
+				},
+				UserID:      nh.UserID,
+				CreatedDate: now,
+				UpdatedDate: now,
+			}
 
-	if err := b.storer.Create(ctx, hme); err != nil {
-		return Home{}, fmt.Errorf("create: %w", err)
-	}
+			if err := b.storer.Create(ctx, hme); err != nil {
+				return Home{}, fmt.Errorf("create: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(hme)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Home{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(hme)); err != nil {
-		b.log.Error(ctx, "homebus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(hme)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Home{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(hme)); err != nil {
+				b.log.Error(ctx, "homebus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return hme, nil
+			return hme, nil
+		})
 }
 
 // Update modifies information about a home.
@@ -144,54 +142,57 @@ func (b *Business) Update(ctx context.Context, hme Home, uh UpdateHome) (Home, e
 	ctx, span := otel.AddSpan(ctx, "business.homebus.update")
 	defer span.End()
 
-	before := hme
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Home, error) {
+			before := hme
 
-	if uh.Type != nil {
-		hme.Type = *uh.Type
-	}
+			if uh.Type != nil {
+				hme.Type = *uh.Type
+			}
 
-	if uh.Address != nil {
-		if uh.Address.Address1 != nil {
-			hme.Address.Address1 = *uh.Address.Address1
-		}
+			if uh.Address != nil {
+				if uh.Address.Address1 != nil {
+					hme.Address.Address1 = *uh.Address.Address1
+				}
 
-		if uh.Address.Address2 != nil {
-			hme.Address.Address2 = *uh.Address.Address2
-		}
+				if uh.Address.Address2 != nil {
+					hme.Address.Address2 = *uh.Address.Address2
+				}
 
-		if uh.Address.ZipCode != nil {
-			hme.Address.ZipCode = *uh.Address.ZipCode
-		}
+				if uh.Address.ZipCode != nil {
+					hme.Address.ZipCode = *uh.Address.ZipCode
+				}
 
-		if uh.Address.City != nil {
-			hme.Address.City = *uh.Address.City
-		}
+				if uh.Address.City != nil {
+					hme.Address.City = *uh.Address.City
+				}
 
-		if uh.Address.State != nil {
-			hme.Address.State = *uh.Address.State
-		}
+				if uh.Address.State != nil {
+					hme.Address.State = *uh.Address.State
+				}
 
-		if uh.Address.Country != nil {
-			hme.Address.Country = *uh.Address.Country
-		}
-	}
+				if uh.Address.Country != nil {
+					hme.Address.Country = *uh.Address.Country
+				}
+			}
 
-	hme.UpdatedDate = time.Now()
+			hme.UpdatedDate = time.Now()
 
-	if err := b.storer.Update(ctx, hme); err != nil {
-		return Home{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, hme); err != nil {
+				return Home{}, fmt.Errorf("update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, hme)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Home{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, hme)); err != nil {
-		b.log.Error(ctx, "homebus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, hme)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Home{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, hme)); err != nil {
+				b.log.Error(ctx, "homebus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return hme, nil
+			return hme, nil
+		})
 }
 
 // Delete removes the specified home.
@@ -199,20 +200,23 @@ func (b *Business) Delete(ctx context.Context, hme Home) error {
 	ctx, span := otel.AddSpan(ctx, "business.homebus.delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, hme); err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, hme); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(hme)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(hme)); err != nil {
-		b.log.Error(ctx, "homebus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(hme)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(hme)); err != nil {
+				b.log.Error(ctx, "homebus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of existing homes.

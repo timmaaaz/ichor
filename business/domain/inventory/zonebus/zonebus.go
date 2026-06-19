@@ -69,108 +69,113 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	return &Business{
-		log:      b.log,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-		storer:   storer,
-	}, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 func (b *Business) Create(ctx context.Context, nz NewZone) (Zone, error) {
 	ctx, span := otel.AddSpan(ctx, "business.zonesbus.create")
 	defer span.End()
 
-	now := time.Now()
-	zone := Zone{
-		ZoneID:      uuid.New(),
-		WarehouseID: nz.WarehouseID,
-		Name:        nz.Name,
-		ZoneCode:    nz.ZoneCode,
-		Description: nz.Description,
-		Stage:       nz.Stage,
-		CreatedDate: now,
-		UpdatedDate: now,
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Zone, error) {
+			now := time.Now()
+			zone := Zone{
+				ZoneID:      uuid.New(),
+				WarehouseID: nz.WarehouseID,
+				Name:        nz.Name,
+				ZoneCode:    nz.ZoneCode,
+				Description: nz.Description,
+				Stage:       nz.Stage,
+				CreatedDate: now,
+				UpdatedDate: now,
+			}
 
-	if err := b.storer.Create(ctx, zone); err != nil {
-		return Zone{}, fmt.Errorf("create: %w", err)
-	}
+			if err := b.storer.Create(ctx, zone); err != nil {
+				return Zone{}, fmt.Errorf("create: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(zone)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Zone{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(zone)); err != nil {
-		b.log.Error(ctx, "zonebus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(zone)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Zone{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(zone)); err != nil {
+				b.log.Error(ctx, "zonebus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return zone, nil
+			return zone, nil
+		})
 }
 
 // Update modifies a zone in the system.
-
 func (b *Business) Update(ctx context.Context, zone Zone, u UpdateZone) (Zone, error) {
 	ctx, span := otel.AddSpan(ctx, "business.zonesbus.update")
 	defer span.End()
 
-	before := zone
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Zone, error) {
+			before := zone
 
-	if u.Name != nil {
-		zone.Name = *u.Name
-	}
-	if u.ZoneCode != nil {
-		zone.ZoneCode = u.ZoneCode
-	}
-	if u.Description != nil {
-		zone.Description = *u.Description
-	}
+			if u.Name != nil {
+				zone.Name = *u.Name
+			}
+			if u.ZoneCode != nil {
+				zone.ZoneCode = u.ZoneCode
+			}
+			if u.Description != nil {
+				zone.Description = *u.Description
+			}
 
-	if u.WarehouseID != nil {
-		zone.WarehouseID = *u.WarehouseID
-	}
+			if u.WarehouseID != nil {
+				zone.WarehouseID = *u.WarehouseID
+			}
 
-	if u.Stage != nil {
-		zone.Stage = u.Stage
-	}
+			if u.Stage != nil {
+				zone.Stage = u.Stage
+			}
 
-	zone.UpdatedDate = time.Now()
+			zone.UpdatedDate = time.Now()
 
-	if err := b.storer.Update(ctx, zone); err != nil {
-		return Zone{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, zone); err != nil {
+				return Zone{}, fmt.Errorf("update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, zone)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Zone{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, zone)); err != nil {
-		b.log.Error(ctx, "zonebus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, zone)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Zone{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, zone)); err != nil {
+				b.log.Error(ctx, "zonebus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return zone, nil
+			return zone, nil
+		})
 }
 
 func (b *Business) Delete(ctx context.Context, zone Zone) error {
 	ctx, span := otel.AddSpan(ctx, "business.zonebus.delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, zone); err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, zone); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(zone)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(zone)); err != nil {
-		b.log.Error(ctx, "zonebus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(zone)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(zone)); err != nil {
+				b.log.Error(ctx, "zonebus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]Zone, error) {

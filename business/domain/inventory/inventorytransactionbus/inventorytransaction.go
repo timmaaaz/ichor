@@ -69,12 +69,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	return &Business{
-		log:      b.log,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-		storer:   storer,
-	}, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create creates a new inventoryTransaction.
@@ -82,42 +79,45 @@ func (b *Business) Create(ctx context.Context, nit NewInventoryTransaction) (Inv
 	ctx, span := otel.AddSpan(ctx, "business.inventorytransactionbus.Create")
 	defer span.End()
 
-	now := time.Now()
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (InventoryTransaction, error) {
+			now := time.Now()
 
-	it := InventoryTransaction{
-		InventoryTransactionID: uuid.New(),
-		LocationID:             nit.LocationID,
-		ProductID:              nit.ProductID,
-		UserID:                 nit.UserID,
-		LotID:                  nit.LotID,
-		SerialID:               nit.SerialID,
-		TransactionType:        nit.TransactionType,
-		Quantity:               nit.Quantity,
-		ReferenceNumber:        nit.ReferenceNumber,
-		TransactionDate:        nit.TransactionDate,
-		CreatedDate:            now,
-		UpdatedDate:            now,
-	}
+			it := InventoryTransaction{
+				InventoryTransactionID: uuid.New(),
+				LocationID:             nit.LocationID,
+				ProductID:              nit.ProductID,
+				UserID:                 nit.UserID,
+				LotID:                  nit.LotID,
+				SerialID:               nit.SerialID,
+				TransactionType:        nit.TransactionType,
+				Quantity:               nit.Quantity,
+				ReferenceNumber:        nit.ReferenceNumber,
+				TransactionDate:        nit.TransactionDate,
+				CreatedDate:            now,
+				UpdatedDate:            now,
+			}
 
-	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
-		it.ScenarioID = &sid
-	}
+			if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+				it.ScenarioID = &sid
+			}
 
-	err := b.storer.Create(ctx, it)
-	if err != nil {
-		return InventoryTransaction{}, fmt.Errorf("create: %w", err)
-	}
+			err := b.storer.Create(ctx, it)
+			if err != nil {
+				return InventoryTransaction{}, fmt.Errorf("create: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(it)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return InventoryTransaction{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(it)); err != nil {
-		b.log.Error(ctx, "inventorytransactionbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(it)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return InventoryTransaction{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(it)); err != nil {
+				b.log.Error(ctx, "inventorytransactionbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return it, nil
+			return it, nil
+		})
 }
 
 // Update updates an existing inventoryTransaction.
@@ -125,46 +125,49 @@ func (b *Business) Update(ctx context.Context, it InventoryTransaction, u Update
 	ctx, span := otel.AddSpan(ctx, "business.inventorytransactionbus.update")
 	defer span.End()
 
-	before := it
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (InventoryTransaction, error) {
+			before := it
 
-	if u.ProductID != nil {
-		it.ProductID = *u.ProductID
-	}
-	if u.LocationID != nil {
-		it.LocationID = *u.LocationID
-	}
-	if u.UserID != nil {
-		it.UserID = *u.UserID
-	}
-	if u.Quantity != nil {
-		it.Quantity = *u.Quantity
-	}
-	if u.TransactionType != nil {
-		it.TransactionType = *u.TransactionType
-	}
-	if u.ReferenceNumber != nil {
-		it.ReferenceNumber = *u.ReferenceNumber
-	}
-	if u.TransactionDate != nil {
-		it.TransactionDate = *u.TransactionDate
-	}
+			if u.ProductID != nil {
+				it.ProductID = *u.ProductID
+			}
+			if u.LocationID != nil {
+				it.LocationID = *u.LocationID
+			}
+			if u.UserID != nil {
+				it.UserID = *u.UserID
+			}
+			if u.Quantity != nil {
+				it.Quantity = *u.Quantity
+			}
+			if u.TransactionType != nil {
+				it.TransactionType = *u.TransactionType
+			}
+			if u.ReferenceNumber != nil {
+				it.ReferenceNumber = *u.ReferenceNumber
+			}
+			if u.TransactionDate != nil {
+				it.TransactionDate = *u.TransactionDate
+			}
 
-	it.UpdatedDate = time.Now()
+			it.UpdatedDate = time.Now()
 
-	if err := b.storer.Update(ctx, it); err != nil {
-		return InventoryTransaction{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, it); err != nil {
+				return InventoryTransaction{}, fmt.Errorf("update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, it)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return InventoryTransaction{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, it)); err != nil {
-		b.log.Error(ctx, "inventorytransactionbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, it)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return InventoryTransaction{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, it)); err != nil {
+				b.log.Error(ctx, "inventorytransactionbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return it, nil
+			return it, nil
+		})
 }
 
 // Delete removes a inventoryTransaction from the system.
@@ -172,21 +175,24 @@ func (b *Business) Delete(ctx context.Context, it InventoryTransaction) error {
 	ctx, span := otel.AddSpan(ctx, "business.inventorytransactionbus.delete")
 	defer span.End()
 
-	err := b.storer.Delete(ctx, it)
-	if err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			err := b.storer.Delete(ctx, it)
+			if err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(it)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(it)); err != nil {
-		b.log.Error(ctx, "inventorytransactionbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(it)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(it)); err != nil {
+				b.log.Error(ctx, "inventorytransactionbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves inventoryTransactions based on the given filter, order, and page.

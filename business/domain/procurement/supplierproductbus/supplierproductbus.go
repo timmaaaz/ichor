@@ -70,123 +70,129 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	return &Business{
-		log:      b.log,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-		storer:   storer,
-	}, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 func (b *Business) Create(ctx context.Context, nsp NewSupplierProduct) (SupplierProduct, error) {
 	ctx, span := otel.AddSpan(ctx, "business.supplierproductbus.create")
 	defer span.End()
 
-	now := time.Now()
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (SupplierProduct, error) {
+			now := time.Now()
 
-	sp := SupplierProduct{
-		SupplierProductID:  uuid.New(),
-		SupplierID:         nsp.SupplierID,
-		ProductID:          nsp.ProductID,
-		SupplierPartNumber: nsp.SupplierPartNumber,
-		MinOrderQuantity:   nsp.MinOrderQuantity,
-		MaxOrderQuantity:   nsp.MaxOrderQuantity,
-		LeadTimeDays:       nsp.LeadTimeDays,
-		UnitCost:           nsp.UnitCost,
-		IsPrimarySupplier:  nsp.IsPrimarySupplier,
-		UpdatedDate:        now,
-		CreatedDate:        now,
-	}
+			sp := SupplierProduct{
+				SupplierProductID:  uuid.New(),
+				SupplierID:         nsp.SupplierID,
+				ProductID:          nsp.ProductID,
+				SupplierPartNumber: nsp.SupplierPartNumber,
+				MinOrderQuantity:   nsp.MinOrderQuantity,
+				MaxOrderQuantity:   nsp.MaxOrderQuantity,
+				LeadTimeDays:       nsp.LeadTimeDays,
+				UnitCost:           nsp.UnitCost,
+				IsPrimarySupplier:  nsp.IsPrimarySupplier,
+				UpdatedDate:        now,
+				CreatedDate:        now,
+			}
 
-	// Phase 0d: tag the row with the active scenario (if any) so scenario
-	// Reset can later undo this row while leaving baseline rows intact.
-	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
-		sp.ScenarioID = &sid
-	}
+			// Phase 0d: tag the row with the active scenario (if any) so scenario
+			// Reset can later undo this row while leaving baseline rows intact.
+			if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+				sp.ScenarioID = &sid
+			}
 
-	if err := b.storer.Create(ctx, sp); err != nil {
-		return SupplierProduct{}, fmt.Errorf("create: %w", err)
-	}
+			if err := b.storer.Create(ctx, sp); err != nil {
+				return SupplierProduct{}, fmt.Errorf("create: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(sp)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return SupplierProduct{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(sp)); err != nil {
-		b.log.Error(ctx, "supplierproductbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(sp)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return SupplierProduct{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(sp)); err != nil {
+				b.log.Error(ctx, "supplierproductbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return sp, nil
+			return sp, nil
+		})
 }
 
 func (b *Business) Update(ctx context.Context, sp SupplierProduct, usp UpdateSupplierProduct) (SupplierProduct, error) {
 	ctx, span := otel.AddSpan(ctx, "business.supplierproductbus.update")
 	defer span.End()
 
-	before := sp
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (SupplierProduct, error) {
+			before := sp
 
-	if usp.SupplierID != nil {
-		sp.SupplierID = *usp.SupplierID
-	}
-	if usp.ProductID != nil {
-		sp.ProductID = *usp.ProductID
-	}
-	if usp.SupplierPartNumber != nil {
-		sp.SupplierPartNumber = *usp.SupplierPartNumber
-	}
-	if usp.MinOrderQuantity != nil {
-		sp.MinOrderQuantity = *usp.MinOrderQuantity
-	}
-	if usp.MaxOrderQuantity != nil {
-		sp.MaxOrderQuantity = *usp.MaxOrderQuantity
-	}
-	if usp.LeadTimeDays != nil {
-		sp.LeadTimeDays = *usp.LeadTimeDays
-	}
-	if usp.UnitCost != nil {
-		sp.UnitCost = *usp.UnitCost
-	}
-	if usp.IsPrimarySupplier != nil {
-		sp.IsPrimarySupplier = *usp.IsPrimarySupplier
-	}
+			if usp.SupplierID != nil {
+				sp.SupplierID = *usp.SupplierID
+			}
+			if usp.ProductID != nil {
+				sp.ProductID = *usp.ProductID
+			}
+			if usp.SupplierPartNumber != nil {
+				sp.SupplierPartNumber = *usp.SupplierPartNumber
+			}
+			if usp.MinOrderQuantity != nil {
+				sp.MinOrderQuantity = *usp.MinOrderQuantity
+			}
+			if usp.MaxOrderQuantity != nil {
+				sp.MaxOrderQuantity = *usp.MaxOrderQuantity
+			}
+			if usp.LeadTimeDays != nil {
+				sp.LeadTimeDays = *usp.LeadTimeDays
+			}
+			if usp.UnitCost != nil {
+				sp.UnitCost = *usp.UnitCost
+			}
+			if usp.IsPrimarySupplier != nil {
+				sp.IsPrimarySupplier = *usp.IsPrimarySupplier
+			}
 
-	sp.UpdatedDate = time.Now()
+			sp.UpdatedDate = time.Now()
 
-	if err := b.storer.Update(ctx, sp); err != nil {
-		return SupplierProduct{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, sp); err != nil {
+				return SupplierProduct{}, fmt.Errorf("update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, sp)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return SupplierProduct{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, sp)); err != nil {
-		b.log.Error(ctx, "supplierproductbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, sp)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return SupplierProduct{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, sp)); err != nil {
+				b.log.Error(ctx, "supplierproductbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return sp, nil
+			return sp, nil
+		})
 }
 
 func (b *Business) Delete(ctx context.Context, sp SupplierProduct) error {
 	ctx, span := otel.AddSpan(ctx, "business.supplierproductbus.delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, sp); err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, sp); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(sp)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(sp)); err != nil {
-		b.log.Error(ctx, "supplierproductbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(sp)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(sp)); err != nil {
+				b.log.Error(ctx, "supplierproductbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]SupplierProduct, error) {

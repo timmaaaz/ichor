@@ -54,8 +54,6 @@ func NewBusiness(log *logger.Logger, delegate *delegate.Delegate, storer Storer)
 	}
 }
 
-// NewWithTx constructs a new Business value replacing the Storer
-// value with a Storer value that is currently inside a transaction.
 // WithOutbox returns a copy of the Business wired to the cascade outbox Writer.
 // Inert until the Writer is injected at the F2 cutover (nil Writer -> Emit no-ops).
 func (b *Business) WithOutbox(w *outbox.Writer) *Business {
@@ -64,18 +62,18 @@ func (b *Business) WithOutbox(w *outbox.Writer) *Business {
 	return &nb
 }
 
+// NewWithTx constructs a new business value that will use the specified transaction
+// in any store-related calls. It copies the receiver and overrides only the storer,
+// so no field (delegate, outbox, log) is silently dropped (cf. commit 63f6b034).
 func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 	storer, err := b.storer.NewWithTx(tx)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Business{
-		log:      b.log,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-		storer:   storer,
-	}, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create inserts a new product into the database.
@@ -83,51 +81,53 @@ func (b *Business) Create(ctx context.Context, np NewProduct) (Product, error) {
 	ctx, span := otel.AddSpan(ctx, "business.productbus.create")
 	defer span.End()
 
-	now := time.Now().UTC()
-	if np.CreatedDate != nil {
-		now = *np.CreatedDate
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Product, error) {
+			now := time.Now().UTC()
+			if np.CreatedDate != nil {
+				now = *np.CreatedDate
+			}
 
-	trackingType := np.TrackingType
-	if trackingType == "" {
-		trackingType = "none"
-	}
+			trackingType := np.TrackingType
+			if trackingType == "" {
+				trackingType = "none"
+			}
 
-	product := Product{
-		ProductID:            uuid.New(),
-		Name:                 np.Name,
-		Description:          np.Description,
-		SKU:                  np.SKU,
-		BrandID:              np.BrandID,
-		ProductCategoryID:    np.ProductCategoryID,
-		ModelNumber:          np.ModelNumber,
-		UpcCode:              np.UpcCode,
-		Status:               np.Status,
-		IsActive:             np.IsActive,
-		IsPerishable:         np.IsPerishable,
-		HandlingInstructions: np.HandlingInstructions,
-		UnitsPerCase:         np.UnitsPerCase,
-		TrackingType:         trackingType,
-		InventoryType:        np.InventoryType,
-		CreatedDate:          now,
-		UpdatedDate:          now,
-	}
+			product := Product{
+				ProductID:            uuid.New(),
+				Name:                 np.Name,
+				Description:          np.Description,
+				SKU:                  np.SKU,
+				BrandID:              np.BrandID,
+				ProductCategoryID:    np.ProductCategoryID,
+				ModelNumber:          np.ModelNumber,
+				UpcCode:              np.UpcCode,
+				Status:               np.Status,
+				IsActive:             np.IsActive,
+				IsPerishable:         np.IsPerishable,
+				HandlingInstructions: np.HandlingInstructions,
+				UnitsPerCase:         np.UnitsPerCase,
+				TrackingType:         trackingType,
+				InventoryType:        np.InventoryType,
+				CreatedDate:          now,
+				UpdatedDate:          now,
+			}
 
-	err := b.storer.Create(ctx, product)
-	if err != nil {
-		return Product{}, fmt.Errorf("create: %w", err)
-	}
+			if err := b.storer.Create(ctx, product); err != nil {
+				return Product{}, fmt.Errorf("create: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(product)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Product{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(product)); err != nil {
-		b.log.Error(ctx, "productbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(product)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Product{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(product)); err != nil {
+				b.log.Error(ctx, "productbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return product, nil
+			return product, nil
+		})
 }
 
 // SeedCreate inserts a Product with a caller-supplied ProductID. It is
@@ -175,68 +175,71 @@ func (b *Business) Update(ctx context.Context, product Product, ub UpdateProduct
 	ctx, span := otel.AddSpan(ctx, "business.productbus.update")
 	defer span.End()
 
-	before := product
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Product, error) {
+			before := product
 
-	if ub.SKU != nil {
-		product.SKU = *ub.SKU
-	}
-	if ub.BrandID != nil {
-		product.BrandID = *ub.BrandID
-	}
-	if ub.ProductCategoryID != nil {
-		product.ProductCategoryID = *ub.ProductCategoryID
-	}
-	if ub.Name != nil {
-		product.Name = *ub.Name
-	}
-	if ub.Description != nil {
-		product.Description = *ub.Description
-	}
-	if ub.ModelNumber != nil {
-		product.ModelNumber = *ub.ModelNumber
-	}
-	if ub.UpcCode != nil {
-		product.UpcCode = *ub.UpcCode
-	}
-	if ub.Status != nil {
-		product.Status = *ub.Status
-	}
-	if ub.IsActive != nil {
-		product.IsActive = *ub.IsActive
-	}
-	if ub.IsPerishable != nil {
-		product.IsPerishable = *ub.IsPerishable
-	}
-	if ub.HandlingInstructions != nil {
-		product.HandlingInstructions = *ub.HandlingInstructions
-	}
-	if ub.UnitsPerCase != nil {
-		product.UnitsPerCase = *ub.UnitsPerCase
-	}
-	if ub.TrackingType != nil {
-		product.TrackingType = *ub.TrackingType
-	}
+			if ub.SKU != nil {
+				product.SKU = *ub.SKU
+			}
+			if ub.BrandID != nil {
+				product.BrandID = *ub.BrandID
+			}
+			if ub.ProductCategoryID != nil {
+				product.ProductCategoryID = *ub.ProductCategoryID
+			}
+			if ub.Name != nil {
+				product.Name = *ub.Name
+			}
+			if ub.Description != nil {
+				product.Description = *ub.Description
+			}
+			if ub.ModelNumber != nil {
+				product.ModelNumber = *ub.ModelNumber
+			}
+			if ub.UpcCode != nil {
+				product.UpcCode = *ub.UpcCode
+			}
+			if ub.Status != nil {
+				product.Status = *ub.Status
+			}
+			if ub.IsActive != nil {
+				product.IsActive = *ub.IsActive
+			}
+			if ub.IsPerishable != nil {
+				product.IsPerishable = *ub.IsPerishable
+			}
+			if ub.HandlingInstructions != nil {
+				product.HandlingInstructions = *ub.HandlingInstructions
+			}
+			if ub.UnitsPerCase != nil {
+				product.UnitsPerCase = *ub.UnitsPerCase
+			}
+			if ub.TrackingType != nil {
+				product.TrackingType = *ub.TrackingType
+			}
 
-	if ub.InventoryType != nil {
-		product.InventoryType = ub.InventoryType
-	}
+			if ub.InventoryType != nil {
+				product.InventoryType = ub.InventoryType
+			}
 
-	product.UpdatedDate = time.Now()
+			product.UpdatedDate = time.Now()
 
-	if err := b.storer.Update(ctx, product); err != nil {
-		return Product{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, product); err != nil {
+				return Product{}, fmt.Errorf("update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, product)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Product{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, product)); err != nil {
-		b.log.Error(ctx, "productbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, product)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Product{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, product)); err != nil {
+				b.log.Error(ctx, "productbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return product, nil
+			return product, nil
+		})
 }
 
 // Delete removes the specified product.
@@ -244,20 +247,23 @@ func (b *Business) Delete(ctx context.Context, product Product) error {
 	ctx, span := otel.AddSpan(ctx, "business.productbus.delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, product); err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, product); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(product)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(product)); err != nil {
-		b.log.Error(ctx, "productbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(product)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(product)); err != nil {
+				b.log.Error(ctx, "productbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of products from the system.

@@ -68,12 +68,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	return &Business{
-		log:      b.log,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-		storer:   storer,
-	}, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create inserts a new asset into the database.
@@ -81,41 +78,44 @@ func (b *Business) Create(ctx context.Context, na NewValidAsset) (ValidAsset, er
 	ctx, span := otel.AddSpan(ctx, "business.validassetbus.create")
 	defer span.End()
 
-	now := time.Now()
-	if na.CreatedDate != nil {
-		now = *na.CreatedDate
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (ValidAsset, error) {
+			now := time.Now()
+			if na.CreatedDate != nil {
+				now = *na.CreatedDate
+			}
 
-	asset := ValidAsset{
-		ID:                  uuid.New(),
-		TypeID:              na.TypeID,
-		Name:                na.Name,
-		EstPrice:            na.EstPrice,
-		MaintenanceInterval: na.MaintenanceInterval,
-		LifeExpectancy:      na.LifeExpectancy,
-		SerialNumber:        na.SerialNumber,
-		ModelNumber:         na.ModelNumber,
-		IsEnabled:           na.IsEnabled,
-		CreatedDate:         now,
-		UpdatedDate:         now,
-		CreatedBy:           na.CreatedBy,
-		UpdatedBy:           na.CreatedBy,
-	}
+			asset := ValidAsset{
+				ID:                  uuid.New(),
+				TypeID:              na.TypeID,
+				Name:                na.Name,
+				EstPrice:            na.EstPrice,
+				MaintenanceInterval: na.MaintenanceInterval,
+				LifeExpectancy:      na.LifeExpectancy,
+				SerialNumber:        na.SerialNumber,
+				ModelNumber:         na.ModelNumber,
+				IsEnabled:           na.IsEnabled,
+				CreatedDate:         now,
+				UpdatedDate:         now,
+				CreatedBy:           na.CreatedBy,
+				UpdatedBy:           na.CreatedBy,
+			}
 
-	if err := b.storer.Create(ctx, asset); err != nil {
-		return ValidAsset{}, fmt.Errorf("create: %w", err)
-	}
+			if err := b.storer.Create(ctx, asset); err != nil {
+				return ValidAsset{}, fmt.Errorf("create: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(asset)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return ValidAsset{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(asset)); err != nil {
-		b.log.Error(ctx, "validassetbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(asset)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return ValidAsset{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(asset)); err != nil {
+				b.log.Error(ctx, "validassetbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return asset, nil
+			return asset, nil
+		})
 }
 
 // Update replaces an asset document in the database.
@@ -123,57 +123,60 @@ func (b *Business) Update(ctx context.Context, ass ValidAsset, ua UpdateValidAss
 	ctx, span := otel.AddSpan(ctx, "business.validassetbus.update")
 	defer span.End()
 
-	before := ass
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (ValidAsset, error) {
+			before := ass
 
-	now := time.Now()
+			now := time.Now()
 
-	if ua.TypeID != nil {
-		ass.TypeID = *ua.TypeID
-	}
-	if ua.Name != nil {
-		ass.Name = *ua.Name
-	}
-	if ua.EstPrice != nil {
-		ass.EstPrice = *ua.EstPrice
-	}
-	if ua.Price != nil {
-		ass.Price = *ua.Price
-	}
-	if ua.MaintenanceInterval != nil {
-		ass.MaintenanceInterval = *ua.MaintenanceInterval
-	}
-	if ua.LifeExpectancy != nil {
-		ass.LifeExpectancy = *ua.LifeExpectancy
-	}
-	if ua.SerialNumber != nil {
-		ass.SerialNumber = *ua.SerialNumber
-	}
-	if ua.ModelNumber != nil {
-		ass.ModelNumber = *ua.ModelNumber
-	}
-	if ua.IsEnabled != nil {
-		ass.IsEnabled = *ua.IsEnabled
-	}
-	if ua.UpdatedBy != nil {
-		ass.UpdatedBy = *ua.UpdatedBy
-	}
+			if ua.TypeID != nil {
+				ass.TypeID = *ua.TypeID
+			}
+			if ua.Name != nil {
+				ass.Name = *ua.Name
+			}
+			if ua.EstPrice != nil {
+				ass.EstPrice = *ua.EstPrice
+			}
+			if ua.Price != nil {
+				ass.Price = *ua.Price
+			}
+			if ua.MaintenanceInterval != nil {
+				ass.MaintenanceInterval = *ua.MaintenanceInterval
+			}
+			if ua.LifeExpectancy != nil {
+				ass.LifeExpectancy = *ua.LifeExpectancy
+			}
+			if ua.SerialNumber != nil {
+				ass.SerialNumber = *ua.SerialNumber
+			}
+			if ua.ModelNumber != nil {
+				ass.ModelNumber = *ua.ModelNumber
+			}
+			if ua.IsEnabled != nil {
+				ass.IsEnabled = *ua.IsEnabled
+			}
+			if ua.UpdatedBy != nil {
+				ass.UpdatedBy = *ua.UpdatedBy
+			}
 
-	ass.UpdatedDate = now
+			ass.UpdatedDate = now
 
-	if err := b.storer.Update(ctx, ass); err != nil {
-		return ValidAsset{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, ass); err != nil {
+				return ValidAsset{}, fmt.Errorf("update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, ass)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return ValidAsset{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, ass)); err != nil {
-		b.log.Error(ctx, "validassetbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, ass)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return ValidAsset{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, ass)); err != nil {
+				b.log.Error(ctx, "validassetbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return ass, nil
+			return ass, nil
+		})
 }
 
 // Delete removes the specified asset.
@@ -181,20 +184,23 @@ func (b *Business) Delete(ctx context.Context, ass ValidAsset) error {
 	ctx, span := otel.AddSpan(ctx, "business.validassetbus.delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, ass); err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, ass); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(ass)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(ass)); err != nil {
-		b.log.Error(ctx, "validassetbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(ass)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(ass)); err != nil {
+				b.log.Error(ctx, "validassetbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of assets from the system.

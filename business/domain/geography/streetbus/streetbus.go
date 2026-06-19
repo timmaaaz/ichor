@@ -67,14 +67,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	bus := Business{
-		log:      b.log,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-		storer:   storer,
-	}
-
-	return &bus, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create adds a new street to the system.
@@ -82,28 +77,31 @@ func (b *Business) Create(ctx context.Context, ns NewStreet) (Street, error) {
 	ctx, span := otel.AddSpan(ctx, "business.streetbus.Create")
 	defer span.End()
 
-	str := Street{
-		ID:         uuid.New(),
-		CityID:     ns.CityID,
-		Line1:      ns.Line1,
-		Line2:      ns.Line2,
-		PostalCode: ns.PostalCode,
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Street, error) {
+			str := Street{
+				ID:         uuid.New(),
+				CityID:     ns.CityID,
+				Line1:      ns.Line1,
+				Line2:      ns.Line2,
+				PostalCode: ns.PostalCode,
+			}
 
-	if err := b.storer.Create(ctx, str); err != nil {
-		return Street{}, fmt.Errorf("store create: %w", err)
-	}
+			if err := b.storer.Create(ctx, str); err != nil {
+				return Street{}, fmt.Errorf("store create: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(str)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Street{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(str)); err != nil {
-		b.log.Error(ctx, "streetbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(str)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Street{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(str)); err != nil {
+				b.log.Error(ctx, "streetbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return str, nil
+			return str, nil
+		})
 }
 
 // Update modifies data about a street.
@@ -111,38 +109,41 @@ func (b *Business) Update(ctx context.Context, str Street, us UpdateStreet) (Str
 	ctx, span := otel.AddSpan(ctx, "business.streetbus.Update")
 	defer span.End()
 
-	before := str
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Street, error) {
+			before := str
 
-	if us.CityID != nil {
-		str.CityID = *us.CityID
-	}
+			if us.CityID != nil {
+				str.CityID = *us.CityID
+			}
 
-	if us.Line1 != nil {
-		str.Line1 = *us.Line1
-	}
+			if us.Line1 != nil {
+				str.Line1 = *us.Line1
+			}
 
-	if us.Line2 != nil {
-		str.Line2 = *us.Line2
-	}
+			if us.Line2 != nil {
+				str.Line2 = *us.Line2
+			}
 
-	if us.PostalCode != nil {
-		str.PostalCode = *us.PostalCode
-	}
+			if us.PostalCode != nil {
+				str.PostalCode = *us.PostalCode
+			}
 
-	if err := b.storer.Update(ctx, str); err != nil {
-		return Street{}, fmt.Errorf("store update: %w", err)
-	}
+			if err := b.storer.Update(ctx, str); err != nil {
+				return Street{}, fmt.Errorf("store update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, str)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Street{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, str)); err != nil {
-		b.log.Error(ctx, "streetbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, str)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Street{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, str)); err != nil {
+				b.log.Error(ctx, "streetbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return str, nil
+			return str, nil
+		})
 }
 
 // Delete removes a street from the system.
@@ -150,20 +151,23 @@ func (b *Business) Delete(ctx context.Context, str Street) error {
 	ctx, span := otel.AddSpan(ctx, "business.streetbus.Delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, str); err != nil {
-		return fmt.Errorf("store delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, str); err != nil {
+				return fmt.Errorf("store delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(str)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(str)); err != nil {
-		b.log.Error(ctx, "streetbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(str)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(str)); err != nil {
+				b.log.Error(ctx, "streetbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of streets from the system.

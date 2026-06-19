@@ -75,122 +75,127 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 }
 
 func (b *Business) Create(ctx context.Context, newStatus NewOrderLineItem) (OrderLineItem, error) {
-
 	ctx, span := otel.AddSpan(ctx, "business.orderlineitemsbus.create")
 	defer span.End()
 
-	now := time.Now().UTC()
-	if newStatus.CreatedDate != nil {
-		now = *newStatus.CreatedDate // Use provided date for seeding
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (OrderLineItem, error) {
+			now := time.Now().UTC()
+			if newStatus.CreatedDate != nil {
+				now = *newStatus.CreatedDate // Use provided date for seeding
+			}
 
-	// Default discount_type to 'flat' if not specified
-	discountType := newStatus.DiscountType
-	if discountType == "" {
-		discountType = "flat"
-	}
+			// Default discount_type to 'flat' if not specified
+			discountType := newStatus.DiscountType
+			if discountType == "" {
+				discountType = "flat"
+			}
 
-	status := OrderLineItem{
-		ID:                            uuid.New(),
-		OrderID:                       newStatus.OrderID,
-		ProductID:                     newStatus.ProductID,
-		Description:                   newStatus.Description,
-		Quantity:                      newStatus.Quantity,
-		UnitPrice:                     newStatus.UnitPrice,
-		Discount:                      newStatus.Discount,
-		DiscountType:                  discountType,
-		LineTotal:                     newStatus.LineTotal,
-		LineItemFulfillmentStatusesID: newStatus.LineItemFulfillmentStatusesID,
-		CreatedBy:                     newStatus.CreatedBy,
-		UpdatedBy:                     newStatus.CreatedBy,
-		CreatedDate:                   now,
-		UpdatedDate:                   now,
-	}
+			status := OrderLineItem{
+				ID:                            uuid.New(),
+				OrderID:                       newStatus.OrderID,
+				ProductID:                     newStatus.ProductID,
+				Description:                   newStatus.Description,
+				Quantity:                      newStatus.Quantity,
+				UnitPrice:                     newStatus.UnitPrice,
+				Discount:                      newStatus.Discount,
+				DiscountType:                  discountType,
+				LineTotal:                     newStatus.LineTotal,
+				LineItemFulfillmentStatusesID: newStatus.LineItemFulfillmentStatusesID,
+				CreatedBy:                     newStatus.CreatedBy,
+				UpdatedBy:                     newStatus.CreatedBy,
+				CreatedDate:                   now,
+				UpdatedDate:                   now,
+			}
 
-	// Phase 0d: tag the row with the active scenario (if any) so scenario
-	// Reset can later undo this row while leaving baseline rows intact.
-	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
-		status.ScenarioID = &sid
-	}
+			// Phase 0d: tag the row with the active scenario (if any) so scenario
+			// Reset can later undo this row while leaving baseline rows intact.
+			if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+				status.ScenarioID = &sid
+			}
 
-	if err := b.storer.Create(ctx, status); err != nil {
-		return OrderLineItem{}, err
-	}
+			if err := b.storer.Create(ctx, status); err != nil {
+				return OrderLineItem{}, err
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(status)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return OrderLineItem{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(status)); err != nil {
-		b.log.Error(ctx, "orderlineitemsbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(status)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return OrderLineItem{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(status)); err != nil {
+				b.log.Error(ctx, "orderlineitemsbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return status, nil
+			return status, nil
+		})
 }
 
 func (b *Business) Update(ctx context.Context, status OrderLineItem, uStatus UpdateOrderLineItem) (OrderLineItem, error) {
 	ctx, span := otel.AddSpan(ctx, "business.orderlineitemsbus.update")
 	defer span.End()
 
-	before := status
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (OrderLineItem, error) {
+			before := status
 
-	if uStatus.OrderID != nil {
-		status.OrderID = *uStatus.OrderID
-	}
-	if uStatus.ProductID != nil {
-		status.ProductID = *uStatus.ProductID
-	}
-	if uStatus.Description != nil {
-		status.Description = *uStatus.Description
-	}
-	if uStatus.Quantity != nil {
-		status.Quantity = *uStatus.Quantity
-	}
-	if uStatus.UnitPrice != nil {
-		status.UnitPrice = *uStatus.UnitPrice
-	}
-	if uStatus.Discount != nil {
-		status.Discount = *uStatus.Discount
-	}
-	if uStatus.DiscountType != nil {
-		status.DiscountType = *uStatus.DiscountType
-	}
-	if uStatus.LineTotal != nil {
-		status.LineTotal = *uStatus.LineTotal
-	}
-	if uStatus.LineItemFulfillmentStatusesID != nil {
-		status.LineItemFulfillmentStatusesID = *uStatus.LineItemFulfillmentStatusesID
-	}
-	if uStatus.PickedQuantity != nil {
-		status.PickedQuantity = *uStatus.PickedQuantity
-	}
-	if uStatus.BackorderedQuantity != nil {
-		status.BackorderedQuantity = *uStatus.BackorderedQuantity
-	}
-	if uStatus.ShortPickReason != nil {
-		status.ShortPickReason = uStatus.ShortPickReason
-	}
-	if uStatus.UpdatedBy != nil {
-		status.UpdatedBy = *uStatus.UpdatedBy
-	}
+			if uStatus.OrderID != nil {
+				status.OrderID = *uStatus.OrderID
+			}
+			if uStatus.ProductID != nil {
+				status.ProductID = *uStatus.ProductID
+			}
+			if uStatus.Description != nil {
+				status.Description = *uStatus.Description
+			}
+			if uStatus.Quantity != nil {
+				status.Quantity = *uStatus.Quantity
+			}
+			if uStatus.UnitPrice != nil {
+				status.UnitPrice = *uStatus.UnitPrice
+			}
+			if uStatus.Discount != nil {
+				status.Discount = *uStatus.Discount
+			}
+			if uStatus.DiscountType != nil {
+				status.DiscountType = *uStatus.DiscountType
+			}
+			if uStatus.LineTotal != nil {
+				status.LineTotal = *uStatus.LineTotal
+			}
+			if uStatus.LineItemFulfillmentStatusesID != nil {
+				status.LineItemFulfillmentStatusesID = *uStatus.LineItemFulfillmentStatusesID
+			}
+			if uStatus.PickedQuantity != nil {
+				status.PickedQuantity = *uStatus.PickedQuantity
+			}
+			if uStatus.BackorderedQuantity != nil {
+				status.BackorderedQuantity = *uStatus.BackorderedQuantity
+			}
+			if uStatus.ShortPickReason != nil {
+				status.ShortPickReason = uStatus.ShortPickReason
+			}
+			if uStatus.UpdatedBy != nil {
+				status.UpdatedBy = *uStatus.UpdatedBy
+			}
 
-	status.UpdatedDate = time.Now().UTC()
+			status.UpdatedDate = time.Now().UTC()
 
-	if err := b.storer.Update(ctx, status); err != nil {
-		return OrderLineItem{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, status); err != nil {
+				return OrderLineItem{}, fmt.Errorf("update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, status)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return OrderLineItem{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, status)); err != nil {
-		b.log.Error(ctx, "orderlineitemsbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, status)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return OrderLineItem{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, status)); err != nil {
+				b.log.Error(ctx, "orderlineitemsbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return status, nil
+			return status, nil
+		})
 }
 
 func (b *Business) Query(ctx context.Context, filter QueryFilter, orderBy order.By, page page.Page) ([]OrderLineItem, error) {
@@ -209,20 +214,23 @@ func (b *Business) Delete(ctx context.Context, status OrderLineItem) error {
 	ctx, span := otel.AddSpan(ctx, "business.orderlineitemsbus.delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, status); err != nil {
-		return err
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, status); err != nil {
+				return err
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(status)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(status)); err != nil {
-		b.log.Error(ctx, "orderlineitemsbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(status)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(status)); err != nil {
+				b.log.Error(ctx, "orderlineitemsbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Count returns the total number of order line itemes.

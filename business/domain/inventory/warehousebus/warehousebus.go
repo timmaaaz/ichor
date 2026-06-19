@@ -69,12 +69,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	return &Business{
-		log:      b.log,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-		storer:   storer,
-	}, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create adds a new warehouse to the system.
@@ -109,21 +106,29 @@ func (b *Business) Create(ctx context.Context, nw NewWarehouse) (Warehouse, erro
 		UpdatedDate: now,
 	}
 
-	// Retry logic for unique constraint violations (max 3 attempts)
+	// Retry logic for unique constraint violations (max 3 attempts). Each attempt runs in its
+	// OWN transaction via WriteAtomic: a unique violation rolls back that attempt's tx (rather
+	// than poisoning a single shared tx, which would make every later INSERT fail), so the next
+	// attempt with a regenerated code starts on a clean transaction.
 	const maxRetries = 3
 	for attempt := 1; attempt <= maxRetries; attempt++ {
-		err := b.storer.Create(ctx, warehouse)
+		w, err := outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+			func(ctx context.Context, b *Business) (Warehouse, error) {
+				if err := b.storer.Create(ctx, warehouse); err != nil {
+					return Warehouse{}, err
+				}
+				// Fire delegate event for workflow automation
+				evtData := ActionCreatedData(warehouse)
+				if err := b.outbox.Emit(ctx, evtData); err != nil {
+					return Warehouse{}, fmt.Errorf("emit cascade event: %w", err)
+				}
+				if err := b.delegate.Call(ctx, ActionCreatedData(warehouse)); err != nil {
+					b.log.Error(ctx, "warehousebus: delegate call failed", "action", ActionCreated, "err", err)
+				}
+				return warehouse, nil
+			})
 		if err == nil {
-			// Fire delegate event for workflow automation
-			evtData := ActionCreatedData(warehouse)
-			if err := b.outbox.Emit(ctx, evtData); err != nil {
-				return Warehouse{}, fmt.Errorf("emit cascade event: %w", err)
-			}
-			if err := b.delegate.Call(ctx, ActionCreatedData(warehouse)); err != nil {
-				b.log.Error(ctx, "warehousebus: delegate call failed", "action", ActionCreated, "err", err)
-			}
-
-			return warehouse, nil
+			return w, nil
 		}
 
 		// If not a unique constraint error, or we've exhausted retries, return error
@@ -161,40 +166,43 @@ func (b *Business) Update(ctx context.Context, bus Warehouse, uw UpdateWarehouse
 	ctx, span := otel.AddSpan(ctx, "business.warehouse.update")
 	defer span.End()
 
-	before := bus
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Warehouse, error) {
+			before := bus
 
-	if uw.Code != nil {
-		bus.Code = *uw.Code
-	}
-	if uw.StreetID != nil {
-		bus.StreetID = *uw.StreetID
-	}
-	if uw.Name != nil {
-		bus.Name = *uw.Name
-	}
-	if uw.IsActive != nil {
-		bus.IsActive = *uw.IsActive
-	}
-	if uw.UpdatedBy != nil {
-		bus.UpdatedBy = *uw.UpdatedBy
-	}
+			if uw.Code != nil {
+				bus.Code = *uw.Code
+			}
+			if uw.StreetID != nil {
+				bus.StreetID = *uw.StreetID
+			}
+			if uw.Name != nil {
+				bus.Name = *uw.Name
+			}
+			if uw.IsActive != nil {
+				bus.IsActive = *uw.IsActive
+			}
+			if uw.UpdatedBy != nil {
+				bus.UpdatedBy = *uw.UpdatedBy
+			}
 
-	bus.UpdatedDate = time.Now()
+			bus.UpdatedDate = time.Now()
 
-	if err := b.storer.Update(ctx, bus); err != nil {
-		return Warehouse{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, bus); err != nil {
+				return Warehouse{}, fmt.Errorf("update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, bus)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Warehouse{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, bus)); err != nil {
-		b.log.Error(ctx, "warehousebus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, bus)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Warehouse{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, bus)); err != nil {
+				b.log.Error(ctx, "warehousebus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return bus, nil
+			return bus, nil
+		})
 }
 
 // Delete removes a warehouse from the system by its ID.
@@ -202,20 +210,23 @@ func (b *Business) Delete(ctx context.Context, bus Warehouse) error {
 	ctx, span := otel.AddSpan(ctx, "business.warehouse.delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, bus); err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, bus); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(bus)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(bus)); err != nil {
-		b.log.Error(ctx, "warehousebus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(bus)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(bus)); err != nil {
+				b.log.Error(ctx, "warehousebus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of warehouses from the system.

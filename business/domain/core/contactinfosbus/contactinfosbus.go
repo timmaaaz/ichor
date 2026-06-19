@@ -77,36 +77,39 @@ func (b *Business) Create(ctx context.Context, nci NewContactInfos) (ContactInfo
 	ctx, span := otel.AddSpan(ctx, "business.contactInfosbus.create")
 	defer span.End()
 
-	contactInfos := ContactInfos{
-		ID:                   uuid.New(),
-		FirstName:            nci.FirstName,
-		LastName:             nci.LastName,
-		EmailAddress:         nci.EmailAddress,
-		PrimaryPhone:         nci.PrimaryPhone,
-		SecondaryPhone:       nci.SecondaryPhone,
-		StreetID:             nci.StreetID,
-		DeliveryAddressID:    nci.DeliveryAddressID,
-		AvailableHoursStart:  nci.AvailableHoursStart,
-		AvailableHoursEnd:    nci.AvailableHoursEnd,
-		TimezoneID:           nci.TimezoneID,
-		PreferredContactType: nci.PreferredContactType,
-		Notes:                nci.Notes,
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (ContactInfos, error) {
+			contactInfos := ContactInfos{
+				ID:                   uuid.New(),
+				FirstName:            nci.FirstName,
+				LastName:             nci.LastName,
+				EmailAddress:         nci.EmailAddress,
+				PrimaryPhone:         nci.PrimaryPhone,
+				SecondaryPhone:       nci.SecondaryPhone,
+				StreetID:             nci.StreetID,
+				DeliveryAddressID:    nci.DeliveryAddressID,
+				AvailableHoursStart:  nci.AvailableHoursStart,
+				AvailableHoursEnd:    nci.AvailableHoursEnd,
+				TimezoneID:           nci.TimezoneID,
+				PreferredContactType: nci.PreferredContactType,
+				Notes:                nci.Notes,
+			}
 
-	if err := b.storer.Create(ctx, contactInfos); err != nil {
-		return ContactInfos{}, fmt.Errorf("create: %w", err)
-	}
+			if err := b.storer.Create(ctx, contactInfos); err != nil {
+				return ContactInfos{}, fmt.Errorf("create: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(contactInfos)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return ContactInfos{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(contactInfos)); err != nil {
-		b.log.Error(ctx, "contactinfosbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(contactInfos)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return ContactInfos{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(contactInfos)); err != nil {
+				b.log.Error(ctx, "contactinfosbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return contactInfos, nil
+			return contactInfos, nil
+		})
 }
 
 // Update replaces an contactInfos document in the database.
@@ -114,59 +117,62 @@ func (b *Business) Update(ctx context.Context, ci ContactInfos, uci UpdateContac
 	ctx, span := otel.AddSpan(ctx, "business.contactInfosbus.update")
 	defer span.End()
 
-	before := ci
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (ContactInfos, error) {
+			before := ci
 
-	if uci.FirstName != nil {
-		ci.FirstName = *uci.FirstName
-	}
-	if uci.LastName != nil {
-		ci.LastName = *uci.LastName
-	}
-	if uci.EmailAddress != nil {
-		ci.EmailAddress = *uci.EmailAddress
-	}
-	if uci.PrimaryPhone != nil {
-		ci.PrimaryPhone = *uci.PrimaryPhone
-	}
-	if uci.SecondaryPhone != nil {
-		ci.SecondaryPhone = *uci.SecondaryPhone
-	}
-	if uci.StreetID != nil {
-		ci.StreetID = *uci.StreetID
-	}
-	if uci.DeliveryAddressID != nil {
-		ci.DeliveryAddressID = *uci.DeliveryAddressID
-	}
-	if uci.AvailableHoursStart != nil {
-		ci.AvailableHoursStart = *uci.AvailableHoursStart
-	}
-	if uci.AvailableHoursEnd != nil {
-		ci.AvailableHoursEnd = *uci.AvailableHoursEnd
-	}
-	if uci.TimezoneID != nil {
-		ci.TimezoneID = *uci.TimezoneID
-	}
-	if uci.PreferredContactType != nil {
-		ci.PreferredContactType = *uci.PreferredContactType
-	}
-	if uci.Notes != nil {
-		ci.Notes = *uci.Notes
-	}
+			if uci.FirstName != nil {
+				ci.FirstName = *uci.FirstName
+			}
+			if uci.LastName != nil {
+				ci.LastName = *uci.LastName
+			}
+			if uci.EmailAddress != nil {
+				ci.EmailAddress = *uci.EmailAddress
+			}
+			if uci.PrimaryPhone != nil {
+				ci.PrimaryPhone = *uci.PrimaryPhone
+			}
+			if uci.SecondaryPhone != nil {
+				ci.SecondaryPhone = *uci.SecondaryPhone
+			}
+			if uci.StreetID != nil {
+				ci.StreetID = *uci.StreetID
+			}
+			if uci.DeliveryAddressID != nil {
+				ci.DeliveryAddressID = *uci.DeliveryAddressID
+			}
+			if uci.AvailableHoursStart != nil {
+				ci.AvailableHoursStart = *uci.AvailableHoursStart
+			}
+			if uci.AvailableHoursEnd != nil {
+				ci.AvailableHoursEnd = *uci.AvailableHoursEnd
+			}
+			if uci.TimezoneID != nil {
+				ci.TimezoneID = *uci.TimezoneID
+			}
+			if uci.PreferredContactType != nil {
+				ci.PreferredContactType = *uci.PreferredContactType
+			}
+			if uci.Notes != nil {
+				ci.Notes = *uci.Notes
+			}
 
-	if err := b.storer.Update(ctx, ci); err != nil {
-		return ContactInfos{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, ci); err != nil {
+				return ContactInfos{}, fmt.Errorf("update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, ci)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return ContactInfos{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, ci)); err != nil {
-		b.log.Error(ctx, "contactinfosbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, ci)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return ContactInfos{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, ci)); err != nil {
+				b.log.Error(ctx, "contactinfosbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return ci, nil
+			return ci, nil
+		})
 }
 
 // Delete removes the specified contactInfos.
@@ -174,20 +180,23 @@ func (b *Business) Delete(ctx context.Context, ci ContactInfos) error {
 	ctx, span := otel.AddSpan(ctx, "business.contactInfosbus.delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, ci); err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, ci); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(ci)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(ci)); err != nil {
-		b.log.Error(ctx, "contactinfosbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(ci)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(ci)); err != nil {
+				b.log.Error(ctx, "contactinfosbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of contactInfoss from the system.

@@ -67,14 +67,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	bus := Business{
-		log:      b.log,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-		storer:   storer,
-	}
-
-	return &bus, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create adds a new tag to the system.
@@ -82,29 +77,32 @@ func (b *Business) Create(ctx context.Context, nt NewTag) (Tag, error) {
 	ctx, span := otel.AddSpan(ctx, "business.tagbus.Create")
 	defer span.End()
 
-	t := Tag{
-		ID:          uuid.New(),
-		Name:        nt.Name,
-		Description: nt.Description,
-	}
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Tag, error) {
+			t := Tag{
+				ID:          uuid.New(),
+				Name:        nt.Name,
+				Description: nt.Description,
+			}
 
-	if err := b.storer.Create(ctx, t); err != nil {
-		if errors.Is(err, ErrUniqueEntry) {
-			return Tag{}, fmt.Errorf("create: %w", ErrUniqueEntry)
-		}
-		return Tag{}, err
-	}
+			if err := b.storer.Create(ctx, t); err != nil {
+				if errors.Is(err, ErrUniqueEntry) {
+					return Tag{}, fmt.Errorf("create: %w", ErrUniqueEntry)
+				}
+				return Tag{}, err
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(t)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Tag{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(t)); err != nil {
-		b.log.Error(ctx, "tagbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(t)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Tag{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(t)); err != nil {
+				b.log.Error(ctx, "tagbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return t, nil
+			return t, nil
+		})
 }
 
 // Update updates an existing tag.
@@ -112,33 +110,36 @@ func (b *Business) Update(ctx context.Context, t Tag, ut UpdateTag) (Tag, error)
 	ctx, span := otel.AddSpan(ctx, "business.tagbus.Update")
 	defer span.End()
 
-	before := t
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (Tag, error) {
+			before := t
 
-	if ut.Name != nil {
-		t.Name = *ut.Name
-	}
+			if ut.Name != nil {
+				t.Name = *ut.Name
+			}
 
-	if ut.Description != nil {
-		t.Description = *ut.Description
-	}
+			if ut.Description != nil {
+				t.Description = *ut.Description
+			}
 
-	if err := b.storer.Update(ctx, t); err != nil {
-		if errors.Is(err, ErrUniqueEntry) {
-			return Tag{}, fmt.Errorf("update: %w", ErrUniqueEntry)
-		}
-		return Tag{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, t); err != nil {
+				if errors.Is(err, ErrUniqueEntry) {
+					return Tag{}, fmt.Errorf("update: %w", ErrUniqueEntry)
+				}
+				return Tag{}, fmt.Errorf("update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, t)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return Tag{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, t)); err != nil {
-		b.log.Error(ctx, "tagbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, t)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return Tag{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, t)); err != nil {
+				b.log.Error(ctx, "tagbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return t, nil
+			return t, nil
+		})
 }
 
 // Delete removes an tag from the system.
@@ -146,20 +147,23 @@ func (b *Business) Delete(ctx context.Context, at Tag) error {
 	ctx, span := otel.AddSpan(ctx, "business.tagbus.Delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, at); err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, at); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(at)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(at)); err != nil {
-		b.log.Error(ctx, "tagbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(at)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(at)); err != nil {
+				b.log.Error(ctx, "tagbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of existing tags from the system.

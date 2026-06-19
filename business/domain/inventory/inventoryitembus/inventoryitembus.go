@@ -69,12 +69,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	return &Business{
-		storer:   storer,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-		log:      b.log,
-	}, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create inserts a new inventoryItem into the database.
@@ -82,43 +79,46 @@ func (b *Business) Create(ctx context.Context, nip NewInventoryItem) (InventoryI
 	ctx, span := otel.AddSpan(ctx, "business.inventoryitembus.create")
 	defer span.End()
 
-	now := time.Now()
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (InventoryItem, error) {
+			now := time.Now()
 
-	inventoryItem := InventoryItem{
-		ID:                    uuid.New(),
-		ProductID:             nip.ProductID,
-		LocationID:            nip.LocationID,
-		Quantity:              nip.Quantity,
-		ReservedQuantity:      nip.ReservedQuantity,
-		AllocatedQuantity:     nip.AllocatedQuantity,
-		AvgDailyUsage:         nip.AvgDailyUsage,
-		SafetyStock:           nip.SafetyStock,
-		MinimumStock:          nip.MinimumStock,
-		MaximumStock:          nip.MaximumStock,
-		ReorderPoint:          nip.ReorderPoint,
-		EconomicOrderQuantity: nip.EconomicOrderQuantity,
-		CreatedDate:           now,
-		UpdatedDate:           now,
-	}
+			inventoryItem := InventoryItem{
+				ID:                    uuid.New(),
+				ProductID:             nip.ProductID,
+				LocationID:            nip.LocationID,
+				Quantity:              nip.Quantity,
+				ReservedQuantity:      nip.ReservedQuantity,
+				AllocatedQuantity:     nip.AllocatedQuantity,
+				AvgDailyUsage:         nip.AvgDailyUsage,
+				SafetyStock:           nip.SafetyStock,
+				MinimumStock:          nip.MinimumStock,
+				MaximumStock:          nip.MaximumStock,
+				ReorderPoint:          nip.ReorderPoint,
+				EconomicOrderQuantity: nip.EconomicOrderQuantity,
+				CreatedDate:           now,
+				UpdatedDate:           now,
+			}
 
-	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
-		inventoryItem.ScenarioID = &sid
-	}
+			if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+				inventoryItem.ScenarioID = &sid
+			}
 
-	if err := b.storer.Create(ctx, inventoryItem); err != nil {
-		return InventoryItem{}, fmt.Errorf("create: %w", err)
-	}
+			if err := b.storer.Create(ctx, inventoryItem); err != nil {
+				return InventoryItem{}, fmt.Errorf("create: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(inventoryItem)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return InventoryItem{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(inventoryItem)); err != nil {
-		b.log.Error(ctx, "inventoryitembus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(inventoryItem)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return InventoryItem{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(inventoryItem)); err != nil {
+				b.log.Error(ctx, "inventoryitembus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return inventoryItem, nil
+			return inventoryItem, nil
+		})
 }
 
 // Update modifies an inventoryItem in the system.
@@ -126,58 +126,61 @@ func (b *Business) Update(ctx context.Context, ip InventoryItem, up UpdateInvent
 	ctx, span := otel.AddSpan(ctx, "business.inventoryitembus.update")
 	defer span.End()
 
-	before := ip
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (InventoryItem, error) {
+			before := ip
 
-	if up.ProductID != nil {
-		ip.ProductID = *up.ProductID
-	}
-	if up.LocationID != nil {
-		ip.LocationID = *up.LocationID
-	}
-	if up.Quantity != nil {
-		ip.Quantity = *up.Quantity
-	}
-	if up.ReservedQuantity != nil {
-		ip.ReservedQuantity = *up.ReservedQuantity
-	}
-	if up.AllocatedQuantity != nil {
-		ip.AllocatedQuantity = *up.AllocatedQuantity
-	}
-	if up.MinimumStock != nil {
-		ip.MinimumStock = *up.MinimumStock
-	}
-	if up.MaximumStock != nil {
-		ip.MaximumStock = *up.MaximumStock
-	}
-	if up.ReorderPoint != nil {
-		ip.ReorderPoint = *up.ReorderPoint
-	}
-	if up.EconomicOrderQuantity != nil {
-		ip.EconomicOrderQuantity = *up.EconomicOrderQuantity
-	}
-	if up.SafetyStock != nil {
-		ip.SafetyStock = *up.SafetyStock
-	}
-	if up.AvgDailyUsage != nil {
-		ip.AvgDailyUsage = *up.AvgDailyUsage
-	}
+			if up.ProductID != nil {
+				ip.ProductID = *up.ProductID
+			}
+			if up.LocationID != nil {
+				ip.LocationID = *up.LocationID
+			}
+			if up.Quantity != nil {
+				ip.Quantity = *up.Quantity
+			}
+			if up.ReservedQuantity != nil {
+				ip.ReservedQuantity = *up.ReservedQuantity
+			}
+			if up.AllocatedQuantity != nil {
+				ip.AllocatedQuantity = *up.AllocatedQuantity
+			}
+			if up.MinimumStock != nil {
+				ip.MinimumStock = *up.MinimumStock
+			}
+			if up.MaximumStock != nil {
+				ip.MaximumStock = *up.MaximumStock
+			}
+			if up.ReorderPoint != nil {
+				ip.ReorderPoint = *up.ReorderPoint
+			}
+			if up.EconomicOrderQuantity != nil {
+				ip.EconomicOrderQuantity = *up.EconomicOrderQuantity
+			}
+			if up.SafetyStock != nil {
+				ip.SafetyStock = *up.SafetyStock
+			}
+			if up.AvgDailyUsage != nil {
+				ip.AvgDailyUsage = *up.AvgDailyUsage
+			}
 
-	ip.UpdatedDate = time.Now()
+			ip.UpdatedDate = time.Now()
 
-	if err := b.storer.Update(ctx, ip); err != nil {
-		return InventoryItem{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, ip); err != nil {
+				return InventoryItem{}, fmt.Errorf("update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, ip)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return InventoryItem{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, ip)); err != nil {
-		b.log.Error(ctx, "inventoryitembus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, ip)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return InventoryItem{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, ip)); err != nil {
+				b.log.Error(ctx, "inventoryitembus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return ip, nil
+			return ip, nil
+		})
 }
 
 // Delete removes an inventoryItem from the system.
@@ -185,20 +188,23 @@ func (b *Business) Delete(ctx context.Context, ip InventoryItem) error {
 	ctx, span := otel.AddSpan(ctx, "business.inventoryitembus.delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, ip); err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, ip); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(ip)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(ip)); err != nil {
-		b.log.Error(ctx, "inventoryitembus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(ip)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(ip)); err != nil {
+				b.log.Error(ctx, "inventoryitembus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // QueryItemsWithProductAtLocation retrieves inventory items at a location with product name/sku/tracking joined.

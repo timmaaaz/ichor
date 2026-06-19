@@ -68,12 +68,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	return &Business{
-		log:      b.log,
-		delegate: b.delegate,
-		outbox:   b.outbox,
-		storer:   storer,
-	}, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create creates a new put-away task with status pending.
@@ -81,37 +78,40 @@ func (b *Business) Create(ctx context.Context, npt NewPutAwayTask) (PutAwayTask,
 	ctx, span := otel.AddSpan(ctx, "business.putawaytaskbus.create")
 	defer span.End()
 
-	now := time.Now()
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (PutAwayTask, error) {
+			now := time.Now()
 
-	task := PutAwayTask{
-		ID:              uuid.New(),
-		ProductID:       npt.ProductID,
-		LocationID:      npt.LocationID,
-		Quantity:        npt.Quantity,
-		ReferenceNumber: npt.ReferenceNumber,
-		Status:          Statuses.Pending,
-		CreatedBy:       npt.CreatedBy,
-		CreatedDate:     now,
-		UpdatedDate:     now,
-	}
+			task := PutAwayTask{
+				ID:              uuid.New(),
+				ProductID:       npt.ProductID,
+				LocationID:      npt.LocationID,
+				Quantity:        npt.Quantity,
+				ReferenceNumber: npt.ReferenceNumber,
+				Status:          Statuses.Pending,
+				CreatedBy:       npt.CreatedBy,
+				CreatedDate:     now,
+				UpdatedDate:     now,
+			}
 
-	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
-		task.ScenarioID = &sid
-	}
+			if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+				task.ScenarioID = &sid
+			}
 
-	if err := b.storer.Create(ctx, task); err != nil {
-		return PutAwayTask{}, fmt.Errorf("create: %w", err)
-	}
+			if err := b.storer.Create(ctx, task); err != nil {
+				return PutAwayTask{}, fmt.Errorf("create: %w", err)
+			}
 
-	evtData := ActionCreatedData(task)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return PutAwayTask{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionCreatedData(task)); err != nil {
-		b.log.Error(ctx, "putawaytaskbus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			evtData := ActionCreatedData(task)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return PutAwayTask{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionCreatedData(task)); err != nil {
+				b.log.Error(ctx, "putawaytaskbus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return task, nil
+			return task, nil
+		})
 }
 
 // Update modifies an existing put-away task.
@@ -119,51 +119,54 @@ func (b *Business) Update(ctx context.Context, pat PutAwayTask, upt UpdatePutAwa
 	ctx, span := otel.AddSpan(ctx, "business.putawaytaskbus.update")
 	defer span.End()
 
-	before := pat
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (PutAwayTask, error) {
+			before := pat
 
-	if upt.ProductID != nil {
-		pat.ProductID = *upt.ProductID
-	}
-	if upt.LocationID != nil {
-		pat.LocationID = *upt.LocationID
-	}
-	if upt.Quantity != nil {
-		pat.Quantity = *upt.Quantity
-	}
-	if upt.ReferenceNumber != nil {
-		pat.ReferenceNumber = *upt.ReferenceNumber
-	}
-	if upt.Status != nil {
-		pat.Status = *upt.Status
-	}
-	if upt.AssignedTo != nil {
-		pat.AssignedTo = *upt.AssignedTo
-	}
-	if upt.AssignedAt != nil {
-		pat.AssignedAt = *upt.AssignedAt
-	}
-	if upt.CompletedBy != nil {
-		pat.CompletedBy = *upt.CompletedBy
-	}
-	if upt.CompletedAt != nil {
-		pat.CompletedAt = *upt.CompletedAt
-	}
+			if upt.ProductID != nil {
+				pat.ProductID = *upt.ProductID
+			}
+			if upt.LocationID != nil {
+				pat.LocationID = *upt.LocationID
+			}
+			if upt.Quantity != nil {
+				pat.Quantity = *upt.Quantity
+			}
+			if upt.ReferenceNumber != nil {
+				pat.ReferenceNumber = *upt.ReferenceNumber
+			}
+			if upt.Status != nil {
+				pat.Status = *upt.Status
+			}
+			if upt.AssignedTo != nil {
+				pat.AssignedTo = *upt.AssignedTo
+			}
+			if upt.AssignedAt != nil {
+				pat.AssignedAt = *upt.AssignedAt
+			}
+			if upt.CompletedBy != nil {
+				pat.CompletedBy = *upt.CompletedBy
+			}
+			if upt.CompletedAt != nil {
+				pat.CompletedAt = *upt.CompletedAt
+			}
 
-	pat.UpdatedDate = time.Now()
+			pat.UpdatedDate = time.Now()
 
-	if err := b.storer.Update(ctx, pat); err != nil {
-		return PutAwayTask{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, pat); err != nil {
+				return PutAwayTask{}, fmt.Errorf("update: %w", err)
+			}
 
-	evtData := ActionUpdatedData(before, pat)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return PutAwayTask{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionUpdatedData(before, pat)); err != nil {
-		b.log.Error(ctx, "putawaytaskbus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			evtData := ActionUpdatedData(before, pat)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return PutAwayTask{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionUpdatedData(before, pat)); err != nil {
+				b.log.Error(ctx, "putawaytaskbus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return pat, nil
+			return pat, nil
+		})
 }
 
 // Delete removes a put-away task from the system.
@@ -171,19 +174,22 @@ func (b *Business) Delete(ctx context.Context, pat PutAwayTask) error {
 	ctx, span := otel.AddSpan(ctx, "business.putawaytaskbus.delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, pat); err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, pat); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	evtData := ActionDeletedData(pat)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.delegate.Call(ctx, ActionDeletedData(pat)); err != nil {
-		b.log.Error(ctx, "putawaytaskbus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			evtData := ActionDeletedData(pat)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.delegate.Call(ctx, ActionDeletedData(pat)); err != nil {
+				b.log.Error(ctx, "putawaytaskbus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of put-away tasks based on the given filter, order, and page.

@@ -69,14 +69,9 @@ func (b *Business) NewWithTx(tx sqldb.CommitRollbacker) (*Business, error) {
 		return nil, err
 	}
 
-	bus := Business{
-		log:    b.log,
-		storer: storer,
-		del:    b.del,
-		outbox: b.outbox,
-	}
-
-	return &bus, nil
+	nb := *b
+	nb.storer = storer
+	return &nb, nil
 }
 
 // Create adds a new purchase order line item to the system.
@@ -84,47 +79,50 @@ func (b *Business) Create(ctx context.Context, npoli NewPurchaseOrderLineItem) (
 	ctx, span := otel.AddSpan(ctx, "business.purchaseorderlineitembus.create")
 	defer span.End()
 
-	now := time.Now().UTC()
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (PurchaseOrderLineItem, error) {
+			now := time.Now().UTC()
 
-	poli := PurchaseOrderLineItem{
-		ID:                   uuid.New(),
-		PurchaseOrderID:      npoli.PurchaseOrderID,
-		SupplierProductID:    npoli.SupplierProductID,
-		QuantityOrdered:      npoli.QuantityOrdered,
-		QuantityReceived:     0,
-		QuantityCancelled:    0,
-		UnitCost:             npoli.UnitCost,
-		Discount:             npoli.Discount,
-		LineTotal:            npoli.LineTotal,
-		LineItemStatusID:     npoli.LineItemStatusID,
-		ExpectedDeliveryDate: npoli.ExpectedDeliveryDate,
-		Notes:                npoli.Notes,
-		CreatedBy:            npoli.CreatedBy,
-		UpdatedBy:            npoli.CreatedBy,
-		CreatedDate:          now,
-		UpdatedDate:          now,
-	}
+			poli := PurchaseOrderLineItem{
+				ID:                   uuid.New(),
+				PurchaseOrderID:      npoli.PurchaseOrderID,
+				SupplierProductID:    npoli.SupplierProductID,
+				QuantityOrdered:      npoli.QuantityOrdered,
+				QuantityReceived:     0,
+				QuantityCancelled:    0,
+				UnitCost:             npoli.UnitCost,
+				Discount:             npoli.Discount,
+				LineTotal:            npoli.LineTotal,
+				LineItemStatusID:     npoli.LineItemStatusID,
+				ExpectedDeliveryDate: npoli.ExpectedDeliveryDate,
+				Notes:                npoli.Notes,
+				CreatedBy:            npoli.CreatedBy,
+				UpdatedBy:            npoli.CreatedBy,
+				CreatedDate:          now,
+				UpdatedDate:          now,
+			}
 
-	// Phase 0d: tag the row with the active scenario (if any) so scenario
-	// Reset can later undo this row while leaving baseline rows intact.
-	if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
-		poli.ScenarioID = &sid
-	}
+			// Phase 0d: tag the row with the active scenario (if any) so scenario
+			// Reset can later undo this row while leaving baseline rows intact.
+			if sid, ok := sqldb.GetScenarioFilter(ctx); ok {
+				poli.ScenarioID = &sid
+			}
 
-	if err := b.storer.Create(ctx, poli); err != nil {
-		return PurchaseOrderLineItem{}, fmt.Errorf("create: %w", err)
-	}
+			if err := b.storer.Create(ctx, poli); err != nil {
+				return PurchaseOrderLineItem{}, fmt.Errorf("create: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionCreatedData(poli)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return PurchaseOrderLineItem{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.del.Call(ctx, ActionCreatedData(poli)); err != nil {
-		b.log.Error(ctx, "purchaseorderlineitembus: delegate call failed", "action", ActionCreated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionCreatedData(poli)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return PurchaseOrderLineItem{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.del.Call(ctx, ActionCreatedData(poli)); err != nil {
+				b.log.Error(ctx, "purchaseorderlineitembus: delegate call failed", "action", ActionCreated, "err", err)
+			}
 
-	return poli, nil
+			return poli, nil
+		})
 }
 
 // Update modifies a purchase order line item in the system.
@@ -132,61 +130,64 @@ func (b *Business) Update(ctx context.Context, poli PurchaseOrderLineItem, upoli
 	ctx, span := otel.AddSpan(ctx, "business.purchaseorderlineitembus.update")
 	defer span.End()
 
-	before := poli
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (PurchaseOrderLineItem, error) {
+			before := poli
 
-	if upoli.SupplierProductID != nil {
-		poli.SupplierProductID = *upoli.SupplierProductID
-	}
-	if upoli.QuantityOrdered != nil {
-		poli.QuantityOrdered = *upoli.QuantityOrdered
-	}
-	if upoli.QuantityReceived != nil {
-		poli.QuantityReceived = *upoli.QuantityReceived
-	}
-	if upoli.QuantityCancelled != nil {
-		poli.QuantityCancelled = *upoli.QuantityCancelled
-	}
-	if upoli.UnitCost != nil {
-		poli.UnitCost = *upoli.UnitCost
-	}
-	if upoli.Discount != nil {
-		poli.Discount = *upoli.Discount
-	}
-	if upoli.LineTotal != nil {
-		poli.LineTotal = *upoli.LineTotal
-	}
-	if upoli.LineItemStatusID != nil {
-		poli.LineItemStatusID = *upoli.LineItemStatusID
-	}
-	if upoli.ExpectedDeliveryDate != nil {
-		poli.ExpectedDeliveryDate = *upoli.ExpectedDeliveryDate
-	}
-	if upoli.ActualDeliveryDate != nil {
-		poli.ActualDeliveryDate = *upoli.ActualDeliveryDate
-	}
-	if upoli.Notes != nil {
-		poli.Notes = *upoli.Notes
-	}
-	if upoli.UpdatedBy != nil {
-		poli.UpdatedBy = *upoli.UpdatedBy
-	}
+			if upoli.SupplierProductID != nil {
+				poli.SupplierProductID = *upoli.SupplierProductID
+			}
+			if upoli.QuantityOrdered != nil {
+				poli.QuantityOrdered = *upoli.QuantityOrdered
+			}
+			if upoli.QuantityReceived != nil {
+				poli.QuantityReceived = *upoli.QuantityReceived
+			}
+			if upoli.QuantityCancelled != nil {
+				poli.QuantityCancelled = *upoli.QuantityCancelled
+			}
+			if upoli.UnitCost != nil {
+				poli.UnitCost = *upoli.UnitCost
+			}
+			if upoli.Discount != nil {
+				poli.Discount = *upoli.Discount
+			}
+			if upoli.LineTotal != nil {
+				poli.LineTotal = *upoli.LineTotal
+			}
+			if upoli.LineItemStatusID != nil {
+				poli.LineItemStatusID = *upoli.LineItemStatusID
+			}
+			if upoli.ExpectedDeliveryDate != nil {
+				poli.ExpectedDeliveryDate = *upoli.ExpectedDeliveryDate
+			}
+			if upoli.ActualDeliveryDate != nil {
+				poli.ActualDeliveryDate = *upoli.ActualDeliveryDate
+			}
+			if upoli.Notes != nil {
+				poli.Notes = *upoli.Notes
+			}
+			if upoli.UpdatedBy != nil {
+				poli.UpdatedBy = *upoli.UpdatedBy
+			}
 
-	poli.UpdatedDate = time.Now().UTC()
+			poli.UpdatedDate = time.Now().UTC()
 
-	if err := b.storer.Update(ctx, poli); err != nil {
-		return PurchaseOrderLineItem{}, fmt.Errorf("update: %w", err)
-	}
+			if err := b.storer.Update(ctx, poli); err != nil {
+				return PurchaseOrderLineItem{}, fmt.Errorf("update: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, poli)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return PurchaseOrderLineItem{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.del.Call(ctx, ActionUpdatedData(before, poli)); err != nil {
-		b.log.Error(ctx, "purchaseorderlineitembus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, poli)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return PurchaseOrderLineItem{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.del.Call(ctx, ActionUpdatedData(before, poli)); err != nil {
+				b.log.Error(ctx, "purchaseorderlineitembus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return poli, nil
+			return poli, nil
+		})
 }
 
 // Delete removes a purchase order line item from the system.
@@ -194,20 +195,23 @@ func (b *Business) Delete(ctx context.Context, poli PurchaseOrderLineItem) error
 	ctx, span := otel.AddSpan(ctx, "business.purchaseorderlineitembus.delete")
 	defer span.End()
 
-	if err := b.storer.Delete(ctx, poli); err != nil {
-		return fmt.Errorf("delete: %w", err)
-	}
+	return outbox.WriteAtomicVoid(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) error {
+			if err := b.storer.Delete(ctx, poli); err != nil {
+				return fmt.Errorf("delete: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionDeletedData(poli)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.del.Call(ctx, ActionDeletedData(poli)); err != nil {
-		b.log.Error(ctx, "purchaseorderlineitembus: delegate call failed", "action", ActionDeleted, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionDeletedData(poli)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.del.Call(ctx, ActionDeletedData(poli)); err != nil {
+				b.log.Error(ctx, "purchaseorderlineitembus: delegate call failed", "action", ActionDeleted, "err", err)
+			}
 
-	return nil
+			return nil
+		})
 }
 
 // Query retrieves a list of purchase order line items from the system.
@@ -275,28 +279,31 @@ func (b *Business) ReceiveQuantity(ctx context.Context, poli PurchaseOrderLineIt
 	ctx, span := otel.AddSpan(ctx, "business.purchaseorderlineitembus.receivequantity")
 	defer span.End()
 
-	before := poli
+	return outbox.WriteAtomic(ctx, b.outbox, b, (*Business).NewWithTx,
+		func(ctx context.Context, b *Business) (PurchaseOrderLineItem, error) {
+			before := poli
 
-	poli.QuantityReceived += quantity
-	poli.UpdatedBy = receivedBy
-	poli.UpdatedDate = time.Now().UTC()
+			poli.QuantityReceived += quantity
+			poli.UpdatedBy = receivedBy
+			poli.UpdatedDate = time.Now().UTC()
 
-	if notes != nil {
-		poli.Notes = *notes
-	}
+			if notes != nil {
+				poli.Notes = *notes
+			}
 
-	if err := b.storer.Update(ctx, poli); err != nil {
-		return PurchaseOrderLineItem{}, fmt.Errorf("receivequantity: %w", err)
-	}
+			if err := b.storer.Update(ctx, poli); err != nil {
+				return PurchaseOrderLineItem{}, fmt.Errorf("receivequantity: %w", err)
+			}
 
-	// Fire delegate event for workflow automation
-	evtData := ActionUpdatedData(before, poli)
-	if err := b.outbox.Emit(ctx, evtData); err != nil {
-		return PurchaseOrderLineItem{}, fmt.Errorf("emit cascade event: %w", err)
-	}
-	if err := b.del.Call(ctx, ActionUpdatedData(before, poli)); err != nil {
-		b.log.Error(ctx, "purchaseorderlineitembus: delegate call failed", "action", ActionUpdated, "err", err)
-	}
+			// Fire delegate event for workflow automation
+			evtData := ActionUpdatedData(before, poli)
+			if err := b.outbox.Emit(ctx, evtData); err != nil {
+				return PurchaseOrderLineItem{}, fmt.Errorf("emit cascade event: %w", err)
+			}
+			if err := b.del.Call(ctx, ActionUpdatedData(before, poli)); err != nil {
+				b.log.Error(ctx, "purchaseorderlineitembus: delegate call failed", "action", ActionUpdated, "err", err)
+			}
 
-	return poli, nil
+			return poli, nil
+		})
 }
