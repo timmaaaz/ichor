@@ -60,6 +60,7 @@ func TestCoverage_EveryCascadeBusEmits(t *testing.T) {
 	// Emit from different files in the same package.
 	firing := map[string]bool{}   // packages firing a cascade delegate event
 	emitting := map[string]bool{} // packages emitting to the transactional outbox
+	wrapped := map[string]bool{}  // packages that wrap their outbox writes in WriteAtomic/WriteAtomicVoid
 	err := filepath.WalkDir(domainDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -79,6 +80,9 @@ func TestCoverage_EveryCascadeBusEmits(t *testing.T) {
 		}
 		if strings.Contains(s, ".delegate.Call(ctx,") || strings.Contains(s, ".del.Call(ctx,") {
 			firing[pkg] = true
+		}
+		if strings.Contains(s, "outbox.WriteAtomic(") || strings.Contains(s, "outbox.WriteAtomicVoid(") {
+			wrapped[pkg] = true
 		}
 		return nil
 	})
@@ -117,5 +121,24 @@ func TestCoverage_EveryCascadeBusEmits(t *testing.T) {
 			"workflowdomains.Registrations() declares %d schema-qualified cascade domains — either the "+
 			"emit detection broke (vacuous-pass risk) or a registered domain's bus stopped emitting",
 			len(emitting), wantCascadeDomains)
+	}
+
+	// Guard 3 — atomicity: every emitting bus must wrap its outbox writes in
+	// outbox.WriteAtomic or outbox.WriteAtomicVoid. A plain b.outbox.Emit call outside
+	// the atomic wrapper means the outbox row is written without the application tx, so
+	// a subsequent tx rollback silently drops the cascade. FF#2 wrapped them all; this
+	// guard ensures future buses don't regress.
+	var unwrapped []string
+	for pkg := range emitting {
+		if excluded[pkg] || wrapped[pkg] {
+			continue
+		}
+		unwrapped = append(unwrapped, pkg)
+	}
+	sort.Strings(unwrapped)
+	if len(unwrapped) > 0 {
+		t.Fatalf("FF#2 atomicity gap: these cascade buses emit to the outbox but do NOT wrap "+
+			"their writes in outbox.WriteAtomic/WriteAtomicVoid — a simple-write emit failure would "+
+			"silently lose the cascade. Wrap each emitting method:\n  %s", strings.Join(unwrapped, "\n  "))
 	}
 }
