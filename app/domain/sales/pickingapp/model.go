@@ -11,8 +11,8 @@ import (
 // PickQuantityRequest is the request body for the pick-quantity endpoint.
 type PickQuantityRequest struct {
 	Quantity   string `json:"quantity"   validate:"required,numeric"`
-	PickedBy   string `json:"picked_by"  validate:"required,uuid4"`
-	LocationID string `json:"location_id" validate:"required,uuid4"`
+	PickedBy   string `json:"picked_by"  validate:"required,uuid"`
+	LocationID string `json:"location_id" validate:"required,uuid"`
 }
 
 func (r *PickQuantityRequest) Decode(data []byte) error {
@@ -36,8 +36,8 @@ type ShortPickRequest struct {
 	PickedQuantity       string  `json:"picked_quantity"        validate:"required,numeric"`
 	ShortPickType        string  `json:"short_pick_type"        validate:"required,oneof=partial backorder substitute skip"`
 	ShortPickReason      string  `json:"short_pick_reason"      validate:"omitempty"`
-	PickedBy             string  `json:"picked_by"              validate:"required,uuid4"`
-	LocationID           string  `json:"location_id"            validate:"omitempty,uuid4"`
+	PickedBy             string  `json:"picked_by"              validate:"required,uuid"`
+	LocationID           string  `json:"location_id"            validate:"omitempty,uuid"`
 	SubstituteProductID  *string `json:"substitute_product_id"  validate:"omitempty,uuid"`
 	SubstituteQuantity   *string `json:"substitute_quantity"    validate:"omitempty,numeric"`
 }
@@ -58,7 +58,7 @@ type ShortPickResponse = orderlineitemsapp.OrderLineItem
 
 // CompletePackingRequest is the request body for the complete-packing endpoint.
 type CompletePackingRequest struct {
-	PackedBy string `json:"packed_by" validate:"required,uuid4"`
+	PackedBy string `json:"packed_by" validate:"required,uuid"`
 }
 
 func (r *CompletePackingRequest) Decode(data []byte) error {

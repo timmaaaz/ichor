@@ -79,7 +79,7 @@ type NewSupplier struct {
 	ContactInfosID string `json:"contact_infos_id" validate:"required,min=36,max=36"`
 	Code           string `json:"code" validate:"required,min=1,max=32"`
 	Name           string `json:"name" validate:"required"`
-	PaymentTermID  string `json:"payment_term_id" validate:"omitempty,uuid4"`
+	PaymentTermID  string `json:"payment_term_id" validate:"omitempty,uuid"`
 	LeadTimeDays   string `json:"lead_time_days" validate:"required"`
 	Rating         string `json:"rating" validate:"required"`
 	IsActive       string `json:"is_active" validate:"required"`
@@ -141,7 +141,7 @@ type UpdateSupplier struct {
 	ContactInfosID *string `json:"contact_infos_id" validate:"omitempty,min=36,max=36"`
 	Code           *string `json:"code" validate:"omitempty,min=1,max=32"`
 	Name           *string `json:"name" validate:"omitempty"`
-	PaymentTermID  *string `json:"payment_term_id" validate:"omitempty,uuid4"`
+	PaymentTermID  *string `json:"payment_term_id" validate:"omitempty,uuid"`
 	LeadTimeDays   *string `json:"lead_time_days" validate:"omitempty"`
 	Rating         *string `json:"rating" validate:"omitempty"`
 	IsActive       *string `json:"is_active" validate:"omitempty"`

@@ -95,7 +95,7 @@ func ToAppOrderLineItems(bus []orderlineitemsbus.OrderLineItem) []OrderLineItem 
 }
 
 type NewOrderLineItem struct {
-	OrderID                       string  `json:"order_id" validate:"required,uuid4"`
+	OrderID                       string  `json:"order_id" validate:"required,uuid"`
 	ProductID                     string  `json:"product_id" validate:"required,uuid"`
 	Description                   string  `json:"description" validate:"omitempty"`
 	Quantity                      string  `json:"quantity" validate:"required,numeric"`
@@ -103,8 +103,8 @@ type NewOrderLineItem struct {
 	Discount                      string  `json:"discount" validate:"omitempty"`
 	DiscountType                  string  `json:"discount_type" validate:"omitempty,oneof=flat percent itemized"`
 	LineTotal                     string  `json:"line_total" validate:"omitempty"`
-	LineItemFulfillmentStatusesID string  `json:"line_item_fulfillment_statuses_id" validate:"required,uuid4"`
-	CreatedBy                     string  `json:"created_by" validate:"required,uuid4"`
+	LineItemFulfillmentStatusesID string  `json:"line_item_fulfillment_statuses_id" validate:"required,uuid"`
+	CreatedBy                     string  `json:"created_by" validate:"required,uuid"`
 	CreatedDate                   *string `json:"created_date"` // Optional: for seeding/import
 }
 
@@ -193,7 +193,7 @@ func toBusNewOrderLineItem(app NewOrderLineItem) (orderlineitemsbus.NewOrderLine
 }
 
 type UpdateOrderLineItem struct {
-	OrderID                       *string `json:"order_id" validate:"omitempty,uuid4"`
+	OrderID                       *string `json:"order_id" validate:"omitempty,uuid"`
 	ProductID                     *string `json:"product_id" validate:"omitempty,uuid"`
 	Description                   *string `json:"description" validate:"omitempty"`
 	Quantity                      *string `json:"quantity" validate:"omitempty,numeric"`
@@ -201,11 +201,11 @@ type UpdateOrderLineItem struct {
 	Discount                      *string `json:"discount" validate:"omitempty"`
 	DiscountType                  *string `json:"discount_type" validate:"omitempty,oneof=flat percent itemized"`
 	LineTotal                     *string `json:"line_total" validate:"omitempty"`
-	LineItemFulfillmentStatusesID *string `json:"line_item_fulfillment_statuses_id" validate:"omitempty,uuid4"`
+	LineItemFulfillmentStatusesID *string `json:"line_item_fulfillment_statuses_id" validate:"omitempty,uuid"`
 	PickedQuantity                *string `json:"picked_quantity" validate:"omitempty,numeric"`
 	BackorderedQuantity           *string `json:"backordered_quantity" validate:"omitempty,numeric"`
 	ShortPickReason               *string `json:"short_pick_reason" validate:"omitempty"`
-	UpdatedBy                     *string `json:"updated_by" validate:"omitempty,uuid4"`
+	UpdatedBy                     *string `json:"updated_by" validate:"omitempty,uuid"`
 }
 
 func (app *UpdateOrderLineItem) Decode(data []byte) error {
