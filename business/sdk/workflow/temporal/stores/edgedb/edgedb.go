@@ -13,6 +13,7 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
+	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/temporal"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
@@ -184,34 +185,13 @@ func toActionNode(dba dbAction) temporal.ActionNode {
 		// action_type declared inline in action_config so template-less
 		// actions remain executable. Without this, the node carries an
 		// empty ActionType, ActionActivityInput.Validate() rejects it, and
-		// the workflow fails at runtime on a rule the API accepted.
-		node.ActionType = configActionType(dba.ActionConfig)
+		// the workflow fails at runtime on a rule the API accepted. Uses the
+		// canonical workflow.ConfigActionType so creation, dispatch, and read
+		// resolve the type identically.
+		node.ActionType = workflow.ConfigActionType(dba.ActionConfig)
 	}
 
 	return node
-}
-
-// configActionType extracts an inline action type from an action_config JSON
-// document, preferring "action_type" and falling back to the legacy "type"
-// key (still used by the ruleapi create path and simulate.go). Returns ""
-// when absent — ActionActivityInput.Validate() then rejects the node with a
-// clear "action_type is required" error.
-//
-// NOTE: this MUST stay in lockstep with workflow.configActionType — the
-// write-time guard there must accept exactly the keys the executor resolves
-// here, or an action could pass creation yet fail dispatch (or vice versa).
-func configActionType(config json.RawMessage) string {
-	var cfg struct {
-		ActionType string `json:"action_type"`
-		Type       string `json:"type"`
-	}
-	if err := json.Unmarshal(config, &cfg); err != nil {
-		return ""
-	}
-	if cfg.ActionType != "" {
-		return cfg.ActionType
-	}
-	return cfg.Type
 }
 
 // toActionEdge converts a database edge row to a temporal.ActionEdge.

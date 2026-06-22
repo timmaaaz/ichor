@@ -9,10 +9,10 @@ import (
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 )
 
-// Test_validateActionExecutable covers the guard that rejects a rule action
+// Test_ValidateActionExecutable covers the guard that rejects a rule action
 // which has neither a template nor an inline "action_type" — the state that
 // saves cleanly but fails every Temporal dispatch ("action_type is required").
-func Test_validateActionExecutable(t *testing.T) {
+func Test_ValidateActionExecutable(t *testing.T) {
 	tmpl := uuid.New()
 
 	tests := []struct {
@@ -33,7 +33,7 @@ func Test_validateActionExecutable(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := validateActionExecutable(tc.templateID, tc.config)
+			err := ValidateActionExecutable(tc.templateID, tc.config)
 			if tc.wantErr {
 				if err == nil {
 					t.Fatalf("expected error, got nil")

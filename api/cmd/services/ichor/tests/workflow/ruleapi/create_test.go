@@ -87,10 +87,10 @@ func createRule201(sd RuleSeedData) []apitest.Table {
 				IsActive:          true,
 				Actions: []ruleapi.CreateActionInput{
 					{
-						Name:           "Action 1",
-						Description:    "First action",
-						ActionConfig:   actionConfigJSON,
-						IsActive:       true,
+						Name:         "Action 1",
+						Description:  "First action",
+						ActionConfig: actionConfigJSON,
+						IsActive:     true,
 					},
 				},
 			},
@@ -177,6 +177,63 @@ func createRule400(sd RuleSeedData) []apitest.Table {
 	}
 
 	return table
+}
+
+// createRule400EmbeddedAction proves the orphan guard: a valid rule carrying an
+// unexecutable embedded action (no template_id and no action_type/type in its
+// config) is rejected with 400 *before* the parent rule is persisted. create()
+// is not transactional, so without the up-front validation the rule would be
+// committed and then a late guard rejection would leave it orphaned.
+func createRule400EmbeddedAction(sd RuleSeedData) []apitest.Table {
+	if len(sd.Entities) == 0 || len(sd.EntityTypes) == 0 || len(sd.TriggerTypes) == 0 {
+		return nil
+	}
+
+	triggerConditions := map[string]interface{}{
+		"field":    "status",
+		"operator": "equals",
+		"value":    "active",
+	}
+	triggerConditionsJSON, _ := json.Marshal(triggerConditions)
+
+	// No "action_type", no legacy "type", and no template_id below: unexecutable.
+	badActionConfig, _ := json.Marshal(map[string]interface{}{
+		"message": "no action_type and no template",
+	})
+
+	newRuleID := uuid.New()
+
+	return []apitest.Table{
+		{
+			Name:       "embedded-action-no-type-and-no-template",
+			URL:        "/v1/workflow/rules",
+			Token:      sd.Users[0].Token,
+			StatusCode: http.StatusBadRequest,
+			Method:     http.MethodPost,
+			Input: ruleapi.CreateRuleRequest{
+				Name:              "Orphan Guard " + newRuleID.String()[:8],
+				Description:       "rule with an unexecutable embedded action",
+				EntityID:          sd.Entities[0].ID,
+				EntityTypeID:      sd.EntityTypes[0].ID,
+				TriggerTypeID:     sd.TriggerTypes[0].ID,
+				TriggerConditions: triggerConditionsJSON,
+				IsActive:          true,
+				Actions: []ruleapi.CreateActionInput{
+					{
+						Name:         "Unexecutable Action",
+						Description:  "no template, no action_type",
+						ActionConfig: badActionConfig,
+						IsActive:     true,
+					},
+				},
+			},
+			GotResp: &map[string]any{},
+			ExpResp: &map[string]any{},
+			CmpFunc: func(got any, exp any) string {
+				return ""
+			},
+		},
+	}
 }
 
 func createRule401(sd RuleSeedData) []apitest.Table {
