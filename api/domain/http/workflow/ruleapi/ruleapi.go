@@ -146,6 +146,9 @@ func (a *api) create(ctx context.Context, r *http.Request) web.Encoder {
 			a.log.Error(ctx, "failed to create action", "error", err, "rule_id", rule.ID)
 			// Note: Rule is created but action failed. Consider if this should rollback.
 			// For now, continue and log the error.
+			if errs.IsFieldErrors(err) {
+				return errs.New(errs.InvalidArgument, err)
+			}
 			return errs.Newf(errs.Internal, "create action: %s", err)
 		}
 		a.log.Info(ctx, "action created", "action_id", action.ID, "rule_id", rule.ID)
@@ -400,6 +403,9 @@ func (a *api) createAction(ctx context.Context, r *http.Request) web.Encoder {
 	// Create action - NO time.Now() parameter (business layer generates timestamp)
 	action, err := a.workflowBus.CreateRuleAction(ctx, newAction)
 	if err != nil {
+		if errs.IsFieldErrors(err) {
+			return errs.New(errs.InvalidArgument, err)
+		}
 		return errs.Newf(errs.Internal, "create action: %s", err)
 	}
 
@@ -462,6 +468,9 @@ func (a *api) updateAction(ctx context.Context, r *http.Request) web.Encoder {
 	// Update action - pass BOTH existing action AND update struct, NO time.Now()
 	updatedAction, err := a.workflowBus.UpdateRuleAction(ctx, existing, updateAction)
 	if err != nil {
+		if errs.IsFieldErrors(err) {
+			return errs.New(errs.InvalidArgument, err)
+		}
 		return errs.Newf(errs.Internal, "update action: %s", err)
 	}
 

@@ -649,6 +649,10 @@ func (b *Business) CreateRuleAction(ctx context.Context, nra NewRuleAction) (Rul
 	ctx, span := otel.AddSpan(ctx, "business.workflowbus.createruleaction")
 	defer span.End()
 
+	if err := validateActionExecutable(nra.TemplateID, nra.ActionConfig); err != nil {
+		return RuleAction{}, err
+	}
+
 	action := RuleAction{
 		ID:               uuid.New(),
 		AutomationRuleID: nra.AutomationRuleID,
@@ -685,6 +689,13 @@ func (b *Business) UpdateRuleAction(ctx context.Context, action RuleAction, ura 
 	}
 	if ura.TemplateID != nil {
 		action.TemplateID = ura.TemplateID
+	}
+
+	// Validate the merged result: an update can strip the inline action_type
+	// (config replaced wholesale) and still leave no template, re-introducing
+	// the unexecutable state on an action that was previously valid.
+	if err := validateActionExecutable(action.TemplateID, action.ActionConfig); err != nil {
+		return RuleAction{}, err
 	}
 
 	if err := b.storer.UpdateRuleAction(ctx, action); err != nil {

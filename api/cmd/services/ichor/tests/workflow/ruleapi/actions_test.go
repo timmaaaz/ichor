@@ -106,10 +106,10 @@ func createAction201(sd RuleSeedData) []apitest.Table {
 			StatusCode: http.StatusOK,
 			Method:     http.MethodPost,
 			Input: ruleapi.CreateActionRequest{
-				Name:           "Test Action " + uuid.New().String()[:8],
-				Description:    "A test action created via API",
-				ActionConfig:   actionConfigJSON,
-				IsActive:       true,
+				Name:         "Test Action " + uuid.New().String()[:8],
+				Description:  "A test action created via API",
+				ActionConfig: actionConfigJSON,
+				IsActive:     true,
 			},
 			GotResp: &ruleapi.ActionResponse{},
 			ExpResp: &ruleapi.ActionResponse{},
@@ -152,9 +152,9 @@ func createAction400(sd RuleSeedData) []apitest.Table {
 			StatusCode: http.StatusBadRequest,
 			Method:     http.MethodPost,
 			Input: ruleapi.CreateActionRequest{
-				Name:           "", // Missing name
-				ActionConfig:   json.RawMessage(`{"type": "test"}`),
-				IsActive:       true,
+				Name:         "", // Missing name
+				ActionConfig: json.RawMessage(`{"type": "test"}`),
+				IsActive:     true,
 			},
 			GotResp: &map[string]any{},
 			ExpResp: &map[string]any{},
@@ -169,9 +169,29 @@ func createAction400(sd RuleSeedData) []apitest.Table {
 			StatusCode: http.StatusBadRequest,
 			Method:     http.MethodPost,
 			Input: ruleapi.CreateActionRequest{
-				Name:           "Test Action",
-				ActionConfig:   nil, // Missing action config
-				IsActive:       true,
+				Name:         "Test Action",
+				ActionConfig: nil, // Missing action config
+				IsActive:     true,
+			},
+			GotResp: &map[string]any{},
+			ExpResp: &map[string]any{},
+			CmpFunc: func(got any, exp any) string {
+				return ""
+			},
+		},
+		{
+			// No template_id and no inline action_type → the action would save
+			// but fail every Temporal dispatch. The business guard rejects it;
+			// the handler must surface that as a 400, not a 500.
+			Name:       "no-type-and-no-template",
+			URL:        fmt.Sprintf("/v1/workflow/rules/%s/actions", sd.Rules[0].ID),
+			Token:      sd.Users[0].Token,
+			StatusCode: http.StatusBadRequest,
+			Method:     http.MethodPost,
+			Input: ruleapi.CreateActionRequest{
+				Name:         "Unexecutable Action",
+				ActionConfig: json.RawMessage(`{"message":"no action type here"}`),
+				IsActive:     true,
 			},
 			GotResp: &map[string]any{},
 			ExpResp: &map[string]any{},
@@ -196,9 +216,9 @@ func createAction404(sd RuleSeedData) []apitest.Table {
 			StatusCode: http.StatusNotFound,
 			Method:     http.MethodPost,
 			Input: ruleapi.CreateActionRequest{
-				Name:           "Test Action",
-				ActionConfig:   json.RawMessage(`{"type": "test"}`),
-				IsActive:       true,
+				Name:         "Test Action",
+				ActionConfig: json.RawMessage(`{"type": "test"}`),
+				IsActive:     true,
 			},
 			GotResp: &map[string]any{},
 			ExpResp: &map[string]any{},
@@ -224,9 +244,9 @@ func createAction401(sd RuleSeedData) []apitest.Table {
 			StatusCode: http.StatusUnauthorized,
 			Method:     http.MethodPost,
 			Input: ruleapi.CreateActionRequest{
-				Name:           "Test Action",
-				ActionConfig:   json.RawMessage(`{"type": "test"}`),
-				IsActive:       true,
+				Name:         "Test Action",
+				ActionConfig: json.RawMessage(`{"type": "test"}`),
+				IsActive:     true,
 			},
 			GotResp: &map[string]any{},
 			ExpResp: &map[string]any{},
@@ -286,6 +306,51 @@ func updateAction200(sd RuleSeedData) []apitest.Table {
 					return fmt.Sprintf("expected name %s, got %s", newName, gotResp.Name)
 				}
 
+				return ""
+			},
+		},
+	}
+
+	return table
+}
+
+func updateAction400(sd RuleSeedData) []apitest.Table {
+	if len(sd.Rules) == 0 || len(sd.Actions) == 0 {
+		return nil
+	}
+
+	// Find a seeded action on the first rule. Seeded actions have no template
+	// but an inline action_type, so overwriting the config to strip that type
+	// leaves the action with neither — the merged-state guard must reject it.
+	var actionForRule *ruleapi.ActionResponse
+	for _, action := range sd.Actions {
+		if action.AutomationRuleID == sd.Rules[0].ID {
+			actionForRule = &ruleapi.ActionResponse{
+				ID:     action.ID,
+				RuleID: action.AutomationRuleID,
+			}
+			break
+		}
+	}
+	if actionForRule == nil {
+		return nil
+	}
+
+	strippedConfig := json.RawMessage(`{"message":"action_type stripped"}`)
+
+	table := []apitest.Table{
+		{
+			Name:       "strip-type-leaves-no-template",
+			URL:        fmt.Sprintf("/v1/workflow/rules/%s/actions/%s", actionForRule.RuleID, actionForRule.ID),
+			Token:      sd.Users[0].Token,
+			StatusCode: http.StatusBadRequest,
+			Method:     http.MethodPut,
+			Input: ruleapi.UpdateActionRequest{
+				ActionConfig: &strippedConfig,
+			},
+			GotResp: &map[string]any{},
+			ExpResp: &map[string]any{},
+			CmpFunc: func(got any, exp any) string {
 				return ""
 			},
 		},
