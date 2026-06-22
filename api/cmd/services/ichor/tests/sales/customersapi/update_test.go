@@ -83,7 +83,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 				ContactID: dbtest.StringPointer("abc"),
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, `validate: [{"field":"contact_id","error":"contact_id must be a valid version 4 UUID"}]`),
+			ExpResp: errs.Newf(errs.InvalidArgument, `validate: [{"field":"contact_id","error":"contact_id must be a valid UUID"}]`),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},
@@ -98,7 +98,7 @@ func update400(sd apitest.SeedData) []apitest.Table {
 				DeliveryAddressID: dbtest.StringPointer("abc"),
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, `validate: [{"field":"delivery_address_id","error":"delivery_address_id must be a valid version 4 UUID"}]`),
+			ExpResp: errs.Newf(errs.InvalidArgument, `validate: [{"field":"delivery_address_id","error":"delivery_address_id must be a valid UUID"}]`),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},

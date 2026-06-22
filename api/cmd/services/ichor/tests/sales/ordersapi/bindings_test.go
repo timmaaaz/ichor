@@ -101,7 +101,7 @@ func bindContainer400(sd apitest.SeedData) []apitest.Table {
 				ContainerLabelID: "not-a-uuid",
 			},
 			GotResp: &errs.Error{},
-			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"container_label_id\",\"error\":\"container_label_id must be a valid version 4 UUID\"}]"),
+			ExpResp: errs.Newf(errs.InvalidArgument, "validate: [{\"field\":\"container_label_id\",\"error\":\"container_label_id must be a valid UUID\"}]"),
 			CmpFunc: func(got, exp any) string {
 				return cmp.Diff(got, exp)
 			},
