@@ -103,43 +103,30 @@ func (s *Store) QueryAll(ctx context.Context) ([]rolebus.Role, error) {
 	return s.storer.QueryAll(ctx)
 }
 
-// QueryByIDs retrieves a list of roles from the database, using cache where possible.
+// QueryByIDs retrieves a list of roles from the database, refreshing the cache.
+//
+// This always reads through to the database rather than serving cached entries.
+// Mutations run inside an outbox transaction whose tx-bound store drops this
+// cache layer (see NewWithTx), so the write-through on Update/Delete never
+// reaches it — a cache-first read here would return stale roles to
+// permissionsbus.QueryUserPermissions. Mirror tableaccesscache.QueryByRoleIDs,
+// the sibling read on the same permissions path, which fetches fresh and then
+// refreshes the cache.
 func (s *Store) QueryByIDs(ctx context.Context, ids []uuid.UUID) ([]rolebus.Role, error) {
 	if len(ids) == 0 {
 		return []rolebus.Role{}, nil
 	}
 
-	// First, try to get roles from cache
-	var foundRoles []rolebus.Role
-	var missingIDs []uuid.UUID
-
-	for _, id := range ids {
-		idStr := id.String()
-		if role, exists := s.readCache(idStr); exists {
-			foundRoles = append(foundRoles, role)
-		} else {
-			missingIDs = append(missingIDs, id)
-		}
-	}
-
-	// If all roles were in cache, return them
-	if len(missingIDs) == 0 {
-		return foundRoles, nil
-	}
-
-	// Fetch missing roles from database
-	dbRoles, err := s.storer.QueryByIDs(ctx, missingIDs)
+	roles, err := s.storer.QueryByIDs(ctx, ids)
 	if err != nil {
 		return nil, err
 	}
 
-	// Add newly fetched roles to cache
-	for _, role := range dbRoles {
+	for _, role := range roles {
 		s.writeCache(role)
 	}
 
-	// Combine cached and newly fetched roles
-	return append(foundRoles, dbRoles...), nil
+	return roles, nil
 }
 
 // readCache performs a safe search in the cache for the specified key.
