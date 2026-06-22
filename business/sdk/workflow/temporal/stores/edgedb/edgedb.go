@@ -13,6 +13,7 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
+	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/temporal"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
@@ -179,6 +180,15 @@ func toActionNode(dba dbAction) temporal.ActionNode {
 
 	if dba.TemplateActionType.Valid {
 		node.ActionType = dba.TemplateActionType.String
+	} else {
+		// No template linked (template_id IS NULL). Fall back to an
+		// action_type declared inline in action_config so template-less
+		// actions remain executable. Without this, the node carries an
+		// empty ActionType, ActionActivityInput.Validate() rejects it, and
+		// the workflow fails at runtime on a rule the API accepted. Uses the
+		// canonical workflow.ConfigActionType so creation, dispatch, and read
+		// resolve the type identically.
+		node.ActionType = workflow.ConfigActionType(dba.ActionConfig)
 	}
 
 	return node

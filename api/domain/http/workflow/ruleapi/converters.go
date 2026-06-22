@@ -77,22 +77,17 @@ func toActionResponse(action workflow.RuleActionView) ActionResponse {
 }
 
 // resolveActionType returns the action type from the template if available,
-// otherwise extracts it from the action_config JSON blob.
+// otherwise resolves it from the action_config JSON blob via the canonical
+// workflow.ConfigActionType resolver. Using the shared resolver keeps the read
+// path in lockstep with the write-time guard and the Temporal executor — in
+// particular it honors the legacy "type" key, which a bespoke "action_type"-only
+// lookup here would silently report as an empty type.
 func resolveActionType(action workflow.RuleActionView) string {
 	if action.TemplateActionType != "" {
 		return action.TemplateActionType
 	}
 
-	var configMap map[string]any
-	if err := json.Unmarshal(action.ActionConfig, &configMap); err != nil {
-		return ""
-	}
-
-	if actionType, ok := configMap["action_type"].(string); ok {
-		return actionType
-	}
-
-	return ""
+	return workflow.ConfigActionType(action.ActionConfig)
 }
 
 // toActionResponses converts a slice of workflow.RuleActionView to []ActionResponse.
@@ -177,6 +172,6 @@ func toUpdateRuleAction(req UpdateActionRequest) workflow.UpdateRuleAction {
 		Description:  req.Description,
 		ActionConfig: req.ActionConfig,
 		IsActive:     req.IsActive,
-		TemplateID:     req.TemplateID,
+		TemplateID:   req.TemplateID,
 	}
 }

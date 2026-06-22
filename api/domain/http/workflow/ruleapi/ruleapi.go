@@ -122,6 +122,16 @@ func (a *api) create(ctx context.Context, r *http.Request) web.Encoder {
 		return errs.New(errs.FailedPrecondition, validationErr)
 	}
 
+	// Reject any unexecutable embedded action up front. create() is not
+	// transactional, so the business guard firing mid-loop (below) would leave
+	// an orphaned rule behind. Validate against the same business-layer guard
+	// here, before the rule is persisted, so a bad action fails with no writes.
+	for _, actionInput := range req.Actions {
+		if err := workflow.ValidateActionExecutable(actionInput.TemplateID, actionInput.ActionConfig); err != nil {
+			return errs.New(errs.InvalidArgument, err)
+		}
+	}
+
 	userID, err := mid.GetUserID(ctx)
 	if err != nil {
 		return errs.New(errs.Unauthenticated, err)
@@ -144,8 +154,14 @@ func (a *api) create(ctx context.Context, r *http.Request) web.Encoder {
 		action, err := a.workflowBus.CreateRuleAction(ctx, newAction)
 		if err != nil {
 			a.log.Error(ctx, "failed to create action", "error", err, "rule_id", rule.ID)
-			// Note: Rule is created but action failed. Consider if this should rollback.
-			// For now, continue and log the error.
+			// Embedded actions are pre-validated above, so a field error here is
+			// unexpected; surface it as a 400 rather than a 500 either way. Any
+			// failure aborts the request — and because create() is not
+			// transactional, the rule created above is left without (all) its
+			// actions. That orphan window is a pre-existing limitation.
+			if errs.IsFieldErrors(err) {
+				return errs.New(errs.InvalidArgument, err)
+			}
 			return errs.Newf(errs.Internal, "create action: %s", err)
 		}
 		a.log.Info(ctx, "action created", "action_id", action.ID, "rule_id", rule.ID)
@@ -400,6 +416,9 @@ func (a *api) createAction(ctx context.Context, r *http.Request) web.Encoder {
 	// Create action - NO time.Now() parameter (business layer generates timestamp)
 	action, err := a.workflowBus.CreateRuleAction(ctx, newAction)
 	if err != nil {
+		if errs.IsFieldErrors(err) {
+			return errs.New(errs.InvalidArgument, err)
+		}
 		return errs.Newf(errs.Internal, "create action: %s", err)
 	}
 
@@ -462,6 +481,9 @@ func (a *api) updateAction(ctx context.Context, r *http.Request) web.Encoder {
 	// Update action - pass BOTH existing action AND update struct, NO time.Now()
 	updatedAction, err := a.workflowBus.UpdateRuleAction(ctx, existing, updateAction)
 	if err != nil {
+		if errs.IsFieldErrors(err) {
+			return errs.New(errs.InvalidArgument, err)
+		}
 		return errs.Newf(errs.Internal, "update action: %s", err)
 	}
 

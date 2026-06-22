@@ -28,6 +28,7 @@ func Test_RuleAPI(t *testing.T) {
 	// Create rule tests
 	test.Run(t, createRule201(sd), "createRule-201")
 	test.Run(t, createRule400(sd), "createRule-400")
+	test.Run(t, createRule400EmbeddedAction(sd), "createRule-400-embedded-action")
 	test.Run(t, createRule401(sd), "createRule-401")
 
 	// Update rule tests
@@ -62,6 +63,7 @@ func Test_RuleAPI(t *testing.T) {
 
 	// Update action tests
 	test.Run(t, updateAction200(sd), "updateAction-200")
+	test.Run(t, updateAction400(sd), "updateAction-400")
 	test.Run(t, updateAction404(sd), "updateAction-404")
 	test.Run(t, updateAction401(sd), "updateAction-401")
 
