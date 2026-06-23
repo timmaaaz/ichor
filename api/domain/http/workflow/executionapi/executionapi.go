@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/app/domain/workflow/executionapp"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/app/sdk/query"
 	"github.com/timmaaaz/ichor/business/sdk/order"
@@ -19,15 +20,17 @@ import (
 
 // api holds dependencies for execution HTTP handlers.
 type api struct {
-	log         *logger.Logger
-	workflowBus *workflow.Business
+	log          *logger.Logger
+	workflowBus  *workflow.Business
+	executionApp *executionapp.App
 }
 
 // newAPI creates a new execution API handler.
 func newAPI(cfg Config) *api {
 	return &api{
-		log:         cfg.Log,
-		workflowBus: cfg.WorkflowBus,
+		log:          cfg.Log,
+		workflowBus:  cfg.WorkflowBus,
+		executionApp: executionapp.NewApp(cfg.Trigger),
 	}
 }
 
@@ -79,4 +82,22 @@ func (a *api) queryByID(ctx context.Context, r *http.Request) web.Encoder {
 	}
 
 	return toExecutionDetail(execution)
+}
+
+// rerun handles POST /v1/workflow/executions/{id}/rerun. It re-fires the rule
+// behind a prior execution with a fresh execution id (admin-gated).
+func (a *api) rerun(ctx context.Context, r *http.Request) web.Encoder {
+	id, err := uuid.Parse(web.Param(r, "id"))
+	if err != nil {
+		return errs.New(errs.InvalidArgument, err)
+	}
+
+	resp, err := a.executionApp.Rerun(ctx, id)
+	if err != nil {
+		// executionapp.Rerun already returns *errs.Error-typed errors with the
+		// correct code (NotFound, FailedPrecondition, Internal); forward as-is.
+		return errs.NewError(err)
+	}
+
+	return resp
 }
