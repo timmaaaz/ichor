@@ -49,6 +49,37 @@ func Test_ReserveInventory(t *testing.T) {
 	unitest.Run(t, reserveInventoryTests(db.BusDomain, db.DB, sd), "reserveInventory")
 }
 
+// TestReserveInventory_GetOutputPorts asserts reserve declares the allocate-style
+// output ports — so a stock shortfall can route to "insufficient_stock" and an
+// edge wired to that port is valid at save time. Mirrors the GetOutputPorts
+// tests on sibling inventory handlers. Pure metadata — no DB needed.
+func TestReserveInventory_GetOutputPorts(t *testing.T) {
+	handler := inventory.NewReserveInventoryHandler(nil, nil, nil, nil)
+	ports := handler.GetOutputPorts()
+
+	want := map[string]bool{"success": false, "partial": false, "insufficient_stock": false, "failure": false}
+	var defaults []workflow.OutputPort
+	for _, p := range ports {
+		if _, ok := want[p.Name]; ok {
+			want[p.Name] = true
+		}
+		if p.IsDefault {
+			defaults = append(defaults, p)
+		}
+	}
+	for name, seen := range want {
+		if !seen {
+			t.Errorf("missing output port %q", name)
+		}
+	}
+	if len(defaults) != 1 {
+		t.Fatalf("expected exactly 1 default port, got %d", len(defaults))
+	}
+	if defaults[0].Name != "success" {
+		t.Fatalf("expected default port named 'success', got %q", defaults[0].Name)
+	}
+}
+
 // =============================================================================
 
 type reserveInventorySeedData struct {
@@ -218,7 +249,7 @@ func reserveInventoryTests(busDomain dbtest.BusDomain, db *sqlx.DB, sd reserveIn
 		validateReserveConfig(sd),
 		executeBasicReserve(busDomain, sd),
 		executePartialReserve(sd),
-		executeInsufficientStrict(sd),
+		executeInsufficientStrict(busDomain, sd),
 		testReserveIdempotency(sd),
 		executeReserveSourceFromLineItem(sd),
 	}
@@ -373,7 +404,16 @@ func executePartialReserve(sd reserveInventorySeedData) unitest.Table {
 	}
 }
 
-func executeInsufficientStrict(sd reserveInventorySeedData) unitest.Table {
+// executeInsufficientStrict proves the soft-failure rework: an all-or-nothing
+// (allow_partial=false) reservation that can't be fully satisfied now returns a
+// soft "insufficient_stock" output port with NO error, instead of hard-erroring
+// the workflow run — so over-orders are alertable via the graph. It also asserts
+// the all-or-nothing guarantee: nothing remains reserved (the tx rolls back).
+//
+// Intentional behavior change vs. the previous expectation (which asserted
+// err != nil): reserve_inventory now reports a stock shortfall as a routable
+// business outcome (output port) rather than an infrastructure error.
+func executeInsufficientStrict(busDomain dbtest.BusDomain, sd reserveInventorySeedData) unitest.Table {
 	if len(sd.Products) < 3 || len(sd.InventoryItems) < 3 {
 		return unitest.Table{
 			Name:    "execute_insufficient_strict_skip",
@@ -385,9 +425,9 @@ func executeInsufficientStrict(sd reserveInventorySeedData) unitest.Table {
 
 	return unitest.Table{
 		Name:    "execute_insufficient_strict",
-		ExpResp: true,
+		ExpResp: "insufficient_stock",
 		ExcFunc: func(ctx context.Context) any {
-			// Third product has qty=75, reserve 10000 with allow_partial=false -> error.
+			// Third product has qty=75; request 10000 with allow_partial=false.
 			config := inventory.ReserveInventoryConfig{
 				ProductID:              sd.Products[2].ProductID.String(),
 				Quantity:               10000,
@@ -410,12 +450,30 @@ func executeInsufficientStrict(sd reserveInventorySeedData) unitest.Table {
 				TriggerSource: workflow.TriggerSourceAutomation,
 			}
 
-			_, err := sd.Handler.Execute(ctx, configJSON, execCtx)
-			if err == nil {
-				return fmt.Errorf("expected error but got nil")
+			result, err := sd.Handler.Execute(ctx, configJSON, execCtx)
+			if err != nil {
+				return fmt.Errorf("expected soft insufficient_stock result, got error: %w", err)
 			}
 
-			return true
+			reserveResult, ok := result.(inventory.ReserveInventoryResult)
+			if !ok {
+				return fmt.Errorf("expected ReserveInventoryResult, got %T", result)
+			}
+
+			if reserveResult.Status != "failed" {
+				return fmt.Errorf("expected status %q, got %q", "failed", reserveResult.Status)
+			}
+
+			// All-or-nothing: the greedy partial reservation must be rolled back.
+			item, err := busDomain.InventoryItem.QueryByID(ctx, sd.InventoryItems[2].ID)
+			if err != nil {
+				return err
+			}
+			if item.ReservedQuantity != 0 {
+				return fmt.Errorf("expected 0 reserved after all-or-nothing shortfall, got %d", item.ReservedQuantity)
+			}
+
+			return reserveResult.Output
 		},
 		CmpFunc: func(got any, exp any) string {
 			if got != exp {
