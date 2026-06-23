@@ -104,6 +104,40 @@ func TestRerunExecution_FreshIDAndDispatch(t *testing.T) {
 	}
 }
 
+func TestRerunExecution_EmptyGraph_Errors(t *testing.T) {
+	ruleID := uuid.New()
+	origExecID := uuid.New()
+	td, _ := json.Marshal(temporal.BuildTriggerData(workflow.TriggerEvent{
+		EventType: "on_create", EntityName: "order_line_items", EntityID: uuid.New(),
+		RawData: map[string]any{"product_id": "p1", "quantity": float64(7)},
+	}))
+
+	execStore := &mockExecutionStore{
+		byID: map[uuid.UUID]workflow.AutomationExecution{
+			origExecID: {ID: origExecID, AutomationRuleID: &ruleID, RuleName: "Granular Inventory Pipeline", EntityType: "order_line_items", TriggerData: td},
+		},
+	}
+	starter := newMockWorkflowStarter()
+
+	// Inverse of TestRerunExecution_FreshIDAndDispatch: the rule has NO actions, so
+	// startWorkflowForRule takes its empty-graph skip path and returns (uuid.Nil, nil).
+	// RerunExecution must turn that no-op into ErrExecutionNotRerunnable, not a fake success.
+	edges := newMockEdgeStore() // no actions/edges populated for ruleID -> empty graph
+
+	tr := newRerunTrigger(starter, edges, execStore)
+
+	newID, err := tr.RerunExecution(context.Background(), origExecID)
+	if !errors.Is(err, temporal.ErrExecutionNotRerunnable) {
+		t.Fatalf("err = %v, want ErrExecutionNotRerunnable", err)
+	}
+	if newID != uuid.Nil {
+		t.Fatalf("expected uuid.Nil on empty-graph rerun, got %v", newID)
+	}
+	if len(starter.calls) != 0 {
+		t.Fatalf("expected no dispatch on empty graph, got %d ExecuteWorkflow call(s)", len(starter.calls))
+	}
+}
+
 func TestRerunExecution_NoRule_Errors(t *testing.T) {
 	origExecID := uuid.New()
 	execStore := &mockExecutionStore{byID: map[uuid.UUID]workflow.AutomationExecution{

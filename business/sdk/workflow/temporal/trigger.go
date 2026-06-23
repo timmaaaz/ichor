@@ -181,9 +181,10 @@ func (t *WorkflowTrigger) OnEntityEvent(ctx context.Context, event workflow.Trig
 	return nil
 }
 
-// ErrExecutionNotRerunnable is returned when an execution has no automation
-// rule to re-fire (e.g. a manual execution).
-var ErrExecutionNotRerunnable = errors.New("execution has no automation rule to re-run")
+// ErrExecutionNotRerunnable is returned when an execution cannot be re-run:
+// it has no automation rule (e.g. a manual execution), or its rule has no
+// active graph left to dispatch.
+var ErrExecutionNotRerunnable = errors.New("execution is not re-runnable")
 
 // reconstructTriggerEvent reverses buildTriggerData from a persisted execution's
 // trigger_data. EventID is left zero so the dispatch mints a fresh dedup key
@@ -257,7 +258,7 @@ func (t *WorkflowTrigger) RerunExecution(ctx context.Context, executionID uuid.U
 		return uuid.Nil, fmt.Errorf("load execution %s: %w", executionID, err)
 	}
 	if exec.AutomationRuleID == nil {
-		return uuid.Nil, ErrExecutionNotRerunnable
+		return uuid.Nil, fmt.Errorf("execution %s has no automation rule: %w", executionID, ErrExecutionNotRerunnable)
 	}
 
 	event, err := reconstructTriggerEvent(exec.TriggerData)
@@ -274,6 +275,9 @@ func (t *WorkflowTrigger) RerunExecution(ctx context.Context, executionID uuid.U
 	newID, err := t.startWorkflowForRule(ctx, event, rm, WorkflowLineage{})
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("dispatch rerun: %w", err)
+	}
+	if newID == uuid.Nil {
+		return uuid.Nil, fmt.Errorf("rerun for rule %s dispatched nothing (no active graph): %w", *exec.AutomationRuleID, ErrExecutionNotRerunnable)
 	}
 	return newID, nil
 }
