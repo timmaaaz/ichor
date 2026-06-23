@@ -52,6 +52,7 @@ Both `seed_workflow.go` and the execution surface are **production** code: `seed
 | Q3 | Re-run keyed on **`execution_id`**, single-rule replay, fresh execution-id. | Unambiguous "re-run this run." The id is available from both the executions page and the `approval_requests` row. Avoids the surprising "re-evaluate every matching rule" scope of the entity+rule path. |
 | Q4 | `over_order` alert type (no migration), `high`/`critical` severity, `execution_id` in `context`. | `alert_type` and `context` are free-form (no migration). `high`/`critical` already differentiate; a new severity value would need an `ALTER TYPE` migration for no real gain. |
 | ★ | Implement "both" **sequentially** (alert → approval), not as a parallel fan-out. | A parallel fan-out has no convergence point, so the executor runs the branches as **fire-and-forget child workflows with `PARENT_CLOSE_POLICY_ABANDON`** (`workflow.go:286-337`): the parent completes immediately (status `completed`) while the approval lives in a detached child — bad for tracking and re-run. Sequential keeps it one clean run that holds at the approval (status `running`), which re-run-by-execution-id maps onto directly. The alert still fires first, preserving the "immediate visibility" intent. |
+| WS | Fold the typed `approval_request` WS emit into this PR (Deliverable E). | Verified small/additive (3 backend files, no new dependency); the default graph *creates* approvals, so a real-time "new approval pending" push (symmetric with `approval_resolved`) is on-feature for operator-actionability. |
 
 ---
 
@@ -79,9 +80,10 @@ New nodes added to Rule 5: `over_order_alert`, `approval_hold`, `approved_alert`
 
 Edges are added with the existing bus API — `busDomain.Workflow.CreateActionEdge(workflow.NewActionEdge{...})` — taking the address of a local port-string variable for `SourceOutput` (Go can't address a literal). The bus layer does not validate `SourceOutput` against declared ports (validation lives on the save/API path), so the seed accepts these edges; all the port strings used here are real declared ports.
 
-**Config notes:**
-- `seek_approval` config: `approvers` (a seeded role/admin user UUID — reuse the platform `admin_gopher` or a supervisor role already in the seed), `approval_type: "any"` (the only implemented mode; `all`/`majority` silently degrade to `any`), `timeout_hours` (set, but inert until the item-2 follow-up — documented).
-- `over_order_alert` recipients: a seeded supervisor role (≥1 recipient is required by `AlertConfig.Validate`).
+**Config notes (recipients/approvers verified against the seed):**
+- The platform seed has **no** "supervisor/operations" role — only `ZZZADMIN` (`54bb2165-71e1-41a6-af3e-7da4a0e1e2c1`) and `FLOOR_WORKER` (`b0000000-0000-4000-8000-000000000001`) (seed.sql:421-424). Every existing seeded `create_alert` in `seed_workflow.go` targets the **`admin_gopher` user** UUID `5cf37266-3473-4006-984f-9325122678b7` in `recipients.users[]` with empty `roles[]` (e.g. seed_workflow.go:489-492, 758-761). The new nodes match that established pattern.
+- `over_order_alert` / `approved_alert` / `rejected_alert` / `failure_alert` recipients: `users: ["5cf37266-3473-4006-984f-9325122678b7"]`, `roles: []` (≥1 recipient required by `AlertConfig.Validate`). `CreatedBy: adminID` per convention.
+- `seek_approval` config: `approvers: ["5cf37266-3473-4006-984f-9325122678b7"]` (admin_gopher — the only guaranteed-present user; no seed precedent for approvers exists). `approval_type: "any"` — **must** be one of `any|all|majority` (`seek.go:81-84`); only `any` is implemented (`all`/`majority` log a warning and degrade to `any`). `timeout_hours` is set but inert until the item-2 follow-up (documented). The over-order rule follows the seed convention `IsActive` per existing rules / `IsDefault: true`, `CreatedBy: adminID`.
 - `partial` port is intentionally left unwired in the default — it cannot fire while `allow_partial:false` (the default reserve config). A customer enabling `allow_partial` would wire it in their own graph (configurable principle).
 
 ---
@@ -104,12 +106,12 @@ A re-run reconstructs the original event and dispatches **only the one rule** th
 - **HTTP** — `api/domain/http/workflow/executionapi/route.go`: add `POST /v1/workflow/executions/{id}/rerun` (route table is GET-only today). `mid.Authenticate` + `mid.Authorize` (mutating write on `workflow.automation_executions`; exact rule confirmed against `docs/arch/auth.md` during impl). Handler in `executionapi.go` parses `{id}`, calls the app layer, returns the new execution id.
 - **App** — new thin `app/domain/workflow/executionapp/` (mirrors `actionapp`): `Rerun(ctx, executionID, userID) (newID, error)` — permission/authorization mapping + orchestration; `errs.*` mapping (e.g. `ErrNotFound` → 404, "no rule" → 400/422).
 - **Dispatch** — new exported method on `WorkflowTrigger` (`business/sdk/workflow/temporal/trigger.go`): `RerunExecution(ctx, executionID) (uuid.UUID, error)`:
-  1. Load the original execution by id (add `QueryExecutionByID` to the trigger's execution-store interface if absent).
+  1. Load the original execution by id. **The trigger's `ExecutionStore` interface (trigger.go:25-33) has only `CreateExecution`/`DeleteExecution` — confirmed no read-by-id, so we must widen it with `QueryExecutionByID(ctx, id) (workflow.AutomationExecution, error)`.** The concrete `stores/workflowdb.Store` already backs this (it's what `workflow.Business.QueryExecutionByID`, workflowbus.go:1237, calls), so this only widens the narrow interface — no new store code.
   2. If `AutomationRuleID == nil` → error (a manual/ruleless execution has no rule to re-fire).
-  3. Load the rule (name/id) to build the `RuleMatchResult`.
-  4. `reconstructTriggerEvent(execution)` — reverse `buildTriggerData`: parse `entity_id`/`user_id` UUIDs, pull `entity_name`/`event_type`, rebuild `FieldChanges` from `field_changes`, and treat the remaining keys (minus the metadata + cascade-lineage keys) as `RawData`. Set `EventID = uuid.Nil`, fresh lineage (a re-run starts a new cascade chain).
-  5. Call `startWorkflowForRule` → fresh execution-id, dispatch, return the new id.
-- **Wiring** — `api/cmd/services/ichor/build/all/all.go`: thread the already-built `WorkflowTrigger` (constructed inside `if cfg.TemporalClient != nil`) into `executionapi.Config`. When Temporal is disabled (trigger nil), the rerun route returns a clear "unavailable" error; the GET routes are unaffected.
+  3. Build the `RuleMatchResult` directly from the loaded record — **no separate rule fetch needed**: `QueryExecutionByID` already returns `RuleName` (LEFT JOIN). Construct `workflow.RuleMatchResult{Rule: workflow.AutomationRuleView{ID: *exec.AutomationRuleID, Name: exec.RuleName}}` — `startWorkflowForRule` reads *only* `rm.Rule.ID` and `rm.Rule.Name` (verified), so the match-metadata fields are left zero. (Note: `RuleMatchResult.Rule` is `AutomationRuleView`, not `AutomationRule`.)
+  4. `reconstructTriggerEvent(execution)` — reverse `buildTriggerData`: parse `entity_id`/`user_id` UUIDs, pull `entity_name`/`event_type`, rebuild `FieldChanges` (`map[string]FieldChange{OldValue,NewValue}`) from the nested `field_changes`, and treat the remaining keys (minus the 5 metadata keys + `CascadeLineageKey`) as `RawData`. Set `EventID = uuid.Nil` (so `startWorkflowForRule` falls back to the fresh per-dispatch executionID for the dedup key) and **re-stamp `Timestamp = time.Now()`** — the stored timestamp uses Go's `time.Time.String()` format (not RFC3339), so re-parsing it is fragile; a re-run is a new event anyway. Pass a fresh lineage (new cascade chain).
+  5. Call `startWorkflowForRule(ctx, event, rm, freshLineage)` → it mints `executionID := uuid.New()` (trigger.go:201), dispatches, returns. `RerunExecution` returns the new execution id. `startWorkflowForRule`, `WorkflowInput`, and the dispatch path are reused **untouched**.
+- **Wiring** — `api/cmd/services/ichor/build/all/all.go`: `WorkflowTrigger` is built at all.go:616-618 but `:=`-scoped inside the `if cfg.TemporalClient != nil` block (607-656), so it's unreachable at the `executionapi` registration site (1473, outside the guard). Hoist it: declare `var workflowTrigger *temporalpkg.WorkflowTrigger` in outer scope, change line 616 to `=`, and pass it (nil-able) into `executionapi.Config`. This mirrors the existing `asyncCompleter` nil-able-pointer pattern that `workflowapprovalapi` uses (all.go:1419-1434). When Temporal is disabled the trigger is nil and the route is **still registered** (the route block is unconditional), so the rerun handler must internally nil-guard and return a clear "unavailable" error; the GET routes are unaffected.
 - **Test infra** — `api/sdk/http/apitest/workflow.go`: expose the trigger so integration tests can exercise rerun.
 
 ### 5.4 Out of scope for v1 (deferred)
@@ -128,6 +130,12 @@ A re-run reconstructs the original event and dispatches **only the one rule** th
 ### Deliverable D — Approval heartbeat fix (verified bug)
 Delete `ao.HeartbeatTimeout = time.Hour` for human actions (`workflow.go:657`). The async-completion path returns `activity.ErrResultPending` immediately with **no heartbeating goroutine** (`activities.go:210`), so a 1h heartbeat timeout (enforced server-side from activity start) kills any hold longer than ~1h; with `MaxAttempts=1` the activity then fails and the held approval is orphaned. Async-completion activities should not set a heartbeat timeout — the 7-day `StartToCloseTimeout` is the real bound. This is load-bearing: the default graph holds at `seek_approval`, so without the fix the shipped default breaks after an hour. It is also a general correctness fix for every approval.
 
+### Deliverable E — typed `approval_request` WebSocket emit
+Today approval **resolution** emits a typed `approval_resolved` WS message, but approval **creation** only goes out as a generic `Type:"alert"` envelope — so a supervisor can't switch on a "new approval pending" event. Since the default graph *creates* approvals, close the asymmetry. Verified small and additive (3 backend files, no new dependency — `seek.go` already holds `h.workflowQueue`):
+- `foundation/websocket/message.go` — new const `MessageTypeApprovalRequest MessageType = "approval_request"`.
+- `api/domain/http/workflow/alertws/consumer.go` — new `case "approval_request": return websocket.MessageTypeApprovalRequest` in `messageTypeForAlert` (without it, the type silently falls through to `MessageTypeAlert`).
+- `business/sdk/workflow/workflowactions/approval/seek.go` — new `publishApprovalRequest` helper (twin of `publishApprovalResolved`), called right after the existing `PublishAlertToRecipients`, looping `req.Approvers` and publishing one `Type:"approval_request"` message per approver (`msg.UserID = approverID`) via `h.workflowQueue.Publish(ctx, rabbitmq.QueueTypeAlert, msg)`. Do **not** change the shared `communication/publish.go` generic helper — that would mis-route every other alert. Per-approver `UserID` targeting reuses the existing `BroadcastToUser` path (no new `alerthub.go` Broadcast method). The `"approval_request"` string is new (nothing in-repo expects it) and must be coordinated with the external frontend repo.
+
 ---
 
 ## 7. Testing (integration-primary; run only changed packages — never `go test ./...`)
@@ -137,6 +145,7 @@ Delete `ao.HeartbeatTimeout = time.Hour` for human actions (`workflow.go:657`). 
 - **Default seed graph:** load Rule 5 after seeding → assert the new nodes/edges exist with the correct `source_output` strings; the graph validates on the save path.
 - **Approval happy-path:** drive `seek_approval` → resolve `approved` then (separately) `rejected` → assert routing to `approved_alert` / `rejected_alert` through the sequential chain.
 - **Alert enrichment:** assert the `over_order` alert carries `execution_id` (+ product/qty/order) in `context` and is returned by `/workflow/alerts/mine?alertType=over_order`.
+- **Typed approval WS emit:** assert `seek_approval` creation publishes a `Type:"approval_request"` message per approver to `QueueTypeAlert`, and `messageTypeForAlert("approval_request")` maps to `MessageTypeApprovalRequest` (consumer-side mapping test; producer-side publish assertion).
 
 Packages touched (tests scoped to these): `business/sdk/dbtest`, `business/sdk/workflow/temporal`, `business/sdk/workflow/workflowactions/communication`, `app/domain/workflow/executionapp`, `api/domain/http/workflow/executionapi`, and the relevant `api/cmd/services/ichor/tests/workflow/...` integration harness.
 
@@ -155,7 +164,7 @@ Packages touched (tests scoped to these): `business/sdk/dbtest`, `business/sdk/w
 The backend contracts above are shaped to fit this work; none of it is in this PR.
 
 - **Re-run button** on `ExecutionDetailPanel.vue` → `POST /v1/workflow/executions/{id}/rerun`; on success, navigate to the returned new execution id. Show for failed/insufficient/awaiting-approval executions.
-- **WS approval push:** push a typed `approval_request` (created) event over the WebSocket to close the created-vs-resolved asymmetry — today only `approval_resolved` is typed; new approvals arrive only as a generic `alert`. Handle it in `composables/useAlertWebSocket.ts` and the approvals Pinia store. (Backend follow-up to emit the typed message is noted; the FE work consumes it.)
+- **WS approval push:** the backend now emits a typed `approval_request` (created) WS message (Deliverable E) — the FE just **consumes** it. Handle the `approval_request` message type in `composables/useAlertWebSocket.ts` and update the approvals Pinia store so a new pending approval appears in real time (symmetric with the existing `approval_resolved` handling). Coordinate the exact type string `"approval_request"` with the backend const.
 - **Exception Inbox surfacing:** filter `alertType=over_order` to give over-orders their own lane; deep-link an alert to its execution via `context.execution_id` (→ the Re-run button above).
 - **Editor PropertyPanel:** expose `check_inventory.threshold` / `reserve_inventory` config (e.g. `allow_partial`, `reservation_duration_hours`) so authors can tune the over-order thresholds without editing JSON.
 
@@ -169,7 +178,8 @@ The backend contracts above are shaped to fit this work; none of it is in this P
 - `app/domain/workflow/executionapp/` — new app layer for rerun (B).
 - `business/sdk/workflow/workflowactions/communication/alert.go` — `execution_id` enrichment (Deliverable C).
 - `business/sdk/workflow/temporal/workflow.go:657` — delete human-action heartbeat timeout (Deliverable D).
-- `api/cmd/services/ichor/build/all/all.go` — thread `WorkflowTrigger` into `executionapi.Config`.
+- `foundation/websocket/message.go`, `api/domain/http/workflow/alertws/consumer.go`, `business/sdk/workflow/workflowactions/approval/seek.go` — typed `approval_request` WS emit (Deliverable E).
+- `api/cmd/services/ichor/build/all/all.go` — thread `WorkflowTrigger` into `executionapi.Config` (hoist the `:=` at 616 to an outer `var`).
 - `api/sdk/http/apitest/workflow.go` — test infra for rerun.
 
 Reference (read before implementing): `docs/arch/workflow-engine.md`, `docs/arch/workflow-alerts.md`, `docs/arch/domain-template.md`, `docs/arch/auth.md`.
