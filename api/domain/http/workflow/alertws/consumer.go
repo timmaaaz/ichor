@@ -73,6 +73,8 @@ func messageTypeForAlert(rabbitType string) websocket.MessageType {
 		return websocket.MessageTypeAlertUpdated
 	case "approval_resolved":
 		return websocket.MessageTypeApprovalResolved
+	case "approval_request":
+		return websocket.MessageTypeApprovalRequest
 	default:
 		return websocket.MessageTypeAlert
 	}

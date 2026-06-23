@@ -14,6 +14,7 @@ func TestMessageTypeForAlert(t *testing.T) {
 		{rabbitType: "alert", want: websocket.MessageTypeAlert},
 		{rabbitType: "alert_updated", want: websocket.MessageTypeAlertUpdated},
 		{rabbitType: "approval_resolved", want: websocket.MessageTypeApprovalResolved},
+		{rabbitType: "approval_request", want: websocket.MessageTypeApprovalRequest},
 		{rabbitType: "", want: websocket.MessageTypeAlert},
 		{rabbitType: "unknown_type", want: websocket.MessageTypeAlert},
 	}
@@ -25,5 +26,11 @@ func TestMessageTypeForAlert(t *testing.T) {
 				t.Errorf("messageTypeForAlert(%q) = %q, want %q", tt.rabbitType, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestMessageTypeForAlert_ApprovalRequest(t *testing.T) {
+	if got := messageTypeForAlert("approval_request"); got != websocket.MessageTypeApprovalRequest {
+		t.Fatalf("messageTypeForAlert(approval_request) = %v, want MessageTypeApprovalRequest", got)
 	}
 }
