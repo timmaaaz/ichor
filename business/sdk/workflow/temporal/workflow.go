@@ -652,9 +652,10 @@ func activityOptions(actionType string) workflow.ActivityOptions {
 
 	// Human-in-the-loop actions (approvals, manual review) can take days.
 	// MaximumAttempts=1 prevents duplicate approval requests on retry.
+	// No HeartbeatTimeout: the async-completion path returns ErrResultPending with
+	// no heartbeating goroutine; the 7-day StartToCloseTimeout is the real bound.
 	if isHumanAction(actionType) {
 		ao.StartToCloseTimeout = 7 * 24 * time.Hour // 7 days
-		ao.HeartbeatTimeout = time.Hour
 		ao.RetryPolicy.MaximumAttempts = 1
 	}
 
