@@ -12,7 +12,7 @@ Three shared test containers. Each uses a distinct isolation strategy:
 | Container | Name | Image | Isolation strategy |
 |-----------|------|-------|-------------------|
 | Postgres | `servicetest` | postgres:16.4 | shared container, per-test PID-tagged DB + orphan reaper |
-| Temporal | `servicetest-temporal` | temporalio/temporal:latest | process-local singleton (mutex+flag) |
+| Temporal | `servicetest-temporal` | temporalio/temporal:latest | shared container (reused across processes), per-test task queue + process-local client cache |
 
 ### Postgres (the primary pattern)
 
@@ -47,8 +47,9 @@ var (
 ```
 
 key facts:
-  - mutex + `testStarted` flag: within a single process, only the first caller creates the container; all others return the cached pointer
-  - `docker.StopContainer(name)` runs once per process (inside `!testStarted` guard) — this is intentional: Temporal dev server uses SQLite in-memory, so a fresh container per test process is required for isolation
+  - mutex + `testStarted` flag: within a single process, only the first caller resolves the container; all others return the cached pointer
+  - the container is **shared and reused across processes**. Because the name is fixed (`servicetest-temporal`), there is only ever one container; `docker.StartContainer` returns the running one when it exists. Each test process attaches to that shared server rather than restarting it. Isolation comes from the **per-test task queue** (`"test-workflow-" + t.Name()`), not from a private server.
+  - ⚠ do NOT stop/recreate the container in the `!testStarted` guard. Under `go test -p N` each package runs in its own process; an unconditional `docker.StopContainer(name)` there tears down the Temporal server a sibling package is mid-test against — this was the cause of intermittent cross-package failures at `-p>1` (async cascade tests timing out). A stale (non-running) container squatting the name is force-cleared only when `StartContainer` fails, then retried once.
   - each test connects with its own `temporalclient.Client`; worker uses unique task queue per test (`"test-workflow-" + t.Name()`)
 
 ---
