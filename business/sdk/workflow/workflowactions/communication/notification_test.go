@@ -43,6 +43,7 @@ func notificationValidateTests(handler *communication.SendNotificationHandler) [
 		notifyValidateMissingRecipients(handler),
 		notifyValidateInvalidPriority(handler),
 		notifyValidateInvalidJSON(handler),
+		notifyValidateInvalidRecipientUUID(handler),
 	}
 }
 
@@ -158,6 +159,32 @@ func notifyValidateInvalidJSON(handler *communication.SendNotificationHandler) u
 				return false
 			}
 			return containsString(err.Error(), "invalid configuration format")
+		},
+		CmpFunc: func(got, exp any) string {
+			if got != exp {
+				return fmt.Sprintf("got %v, want %v", got, exp)
+			}
+			return ""
+		},
+	}
+}
+
+func notifyValidateInvalidRecipientUUID(handler *communication.SendNotificationHandler) unitest.Table {
+	return unitest.Table{
+		Name:    "invalid_recipient_uuid",
+		ExpResp: true,
+		ExcFunc: func(ctx context.Context) any {
+			config := json.RawMessage(`{
+				"recipients": ["not-a-uuid"],
+				"priority": "medium",
+				"message": "Test notification"
+			}`)
+
+			err := handler.Validate(config)
+			if err == nil {
+				return false
+			}
+			return containsString(err.Error(), "invalid recipient UUID")
 		},
 		CmpFunc: func(got, exp any) string {
 			if got != exp {

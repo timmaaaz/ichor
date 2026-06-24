@@ -66,6 +66,15 @@ func (h *SendNotificationHandler) Validate(config json.RawMessage) error {
 		return fmt.Errorf("recipients list is required and must not be empty")
 	}
 
+	// Recipients must be valid user UUIDs. Execute hard-fails on a bad UUID, so
+	// catch it here too — otherwise a malformed config passes validation, is
+	// persisted, and then fails on every trigger with no way to self-heal.
+	for _, u := range cfg.Recipients {
+		if _, err := uuid.Parse(u); err != nil {
+			return fmt.Errorf("invalid recipient UUID %q: %w", u, err)
+		}
+	}
+
 	if cfg.Message == "" {
 		return fmt.Errorf("notification message is required")
 	}
@@ -111,16 +120,17 @@ func (h *SendNotificationHandler) Execute(ctx context.Context, config json.RawMe
 	}
 
 	alert := alertbus.Alert{
-		ID:           uuid.New(),
-		AlertType:    "notification",
-		Severity:     severity,
-		Title:        resolveTemplateVars(cfg.Title, execCtx.RawData),
-		Message:      resolveTemplateVars(cfg.Message, execCtx.RawData),
-		Context:      json.RawMessage(`{}`),
-		SourceRuleID: sourceRuleID,
-		Status:       alertbus.StatusActive,
-		CreatedDate:  now,
-		UpdatedDate:  now,
+		ID:               uuid.New(),
+		AlertType:        "notification",
+		Severity:         severity,
+		Title:            resolveTemplateVars(cfg.Title, execCtx.RawData),
+		Message:          resolveTemplateVars(cfg.Message, execCtx.RawData),
+		Context:          json.RawMessage(`{}`),
+		SourceEntityName: execCtx.EntityName,
+		SourceRuleID:     sourceRuleID,
+		Status:           alertbus.StatusActive,
+		CreatedDate:      now,
+		UpdatedDate:      now,
 	}
 
 	// Notifications target users only (no role fan-out). Validate all UUIDs first.

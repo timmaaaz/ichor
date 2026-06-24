@@ -535,6 +535,11 @@ func TestSendNotificationPersistence(t *testing.T) {
 	if got.Message != wantMsg {
 		t.Errorf("Message: got %q, want %q", got.Message, wantMsg)
 	}
+	// Carries the triggering entity's name (like create_alert) so the frontend
+	// can show context. SourceEntityID stays nil on purpose (bundling).
+	if got.SourceEntityName != execCtx.EntityName {
+		t.Errorf("SourceEntityName: got %q, want %q", got.SourceEntityName, execCtx.EntityName)
+	}
 
 	// Verify the recipient row was created for the seeded user.
 	recipients, err := alertsBus.QueryRecipientsByAlertID(ctx, got.ID)
