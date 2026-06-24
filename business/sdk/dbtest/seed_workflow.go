@@ -213,7 +213,7 @@ func seedWorkflow(ctx context.Context, log *logger.Logger, busDomain BusDomain, 
 			log.Error(ctx, "Failed to create lookup_entity template", "error", err)
 		}
 
-		_, err = busDomain.Workflow.CreateActionTemplate(ctx, workflow.NewActionTemplate{
+		seekApprovalTemplate, err := busDomain.Workflow.CreateActionTemplate(ctx, workflow.NewActionTemplate{
 			Name:          "Seek Approval",
 			Description:   "Creates an approval request for specified users",
 			ActionType:    "seek_approval",
@@ -625,7 +625,8 @@ func seedWorkflow(ctx context.Context, log *logger.Logger, busDomain BusDomain, 
 		//          │                                                             └── [ok] -> (end)
 		//          └── [insufficient]  -> insufficient_stock_alert
 		if checkInventoryTemplate.ID != uuid.Nil && reserveInventoryTemplate.ID != uuid.Nil &&
-			createAlertTemplate.ID != uuid.Nil && checkReorderPointTemplate.ID != uuid.Nil {
+			createAlertTemplate.ID != uuid.Nil && checkReorderPointTemplate.ID != uuid.Nil &&
+			seekApprovalTemplate.ID != uuid.Nil {
 
 			granularRule, err := busDomain.Workflow.CreateRule(ctx, workflow.NewAutomationRule{
 				Name:          "Line Item Created - Granular Inventory Pipeline",
@@ -774,6 +775,134 @@ func seedWorkflow(ctx context.Context, log *logger.Logger, busDomain BusDomain, 
 					log.Error(ctx, "Failed to create insufficient stock alert action for granular pipeline", "error", err)
 				}
 
+				// Over-order remediation branch (Deliverable A) ----------------------
+				// reserve_inventory.insufficient_stock surfaces an operator-actionable
+				// over_order alert (deep-linked to its execution), then holds the line
+				// for a human approve/reject decision; reserve.failure raises a
+				// critical infrastructure alert.
+
+				// Action 7: over_order alert (on reserve.insufficient_stock)
+				overOrderAlertCfg := map[string]interface{}{
+					"alert_type": "over_order",
+					"severity":   "high",
+					"title":      "Over-order: insufficient stock",
+					"message":    "Order line {{order_id}}: requested {{quantity}} of product {{product_id}} exceeds available stock.",
+					"action_url": "/workflow/executions/{{execution_id}}",
+					"recipients": map[string]interface{}{
+						"users": []string{"5cf37266-3473-4006-984f-9325122678b7"}, // Admin Gopher
+						"roles": []string{},
+					},
+				}
+				overOrderAlertCfgJSON, _ := json.Marshal(overOrderAlertCfg)
+
+				overOrderAlertAction, err := busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
+					AutomationRuleID: granularRule.ID,
+					Name:             "Alert - Over-Order Shortfall",
+					Description:      "Alert ops that an over-order shortfall was detected (deep-linked to the execution)",
+					ActionConfig:     json.RawMessage(overOrderAlertCfgJSON),
+					IsActive:         true,
+					TemplateID:       &createAlertTemplate.ID,
+				})
+				if err != nil {
+					log.Error(ctx, "Failed to create over_order alert action for granular pipeline", "error", err)
+				}
+
+				// Action 8: approval hold (seek_approval, on over_order_alert success)
+				approvalHoldCfg := map[string]interface{}{
+					"approvers":        []string{"5cf37266-3473-4006-984f-9325122678b7"}, // Admin Gopher
+					"approval_type":    "any",
+					"timeout_hours":    72,
+					"approval_message": "Approve or reject this over-order",
+				}
+				approvalHoldCfgJSON, _ := json.Marshal(approvalHoldCfg)
+
+				approvalHoldAction, err := busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
+					AutomationRuleID: granularRule.ID,
+					Name:             "Over-Order Approval Hold",
+					Description:      "Hold the over-order for a human approve/reject decision",
+					ActionConfig:     json.RawMessage(approvalHoldCfgJSON),
+					IsActive:         true,
+					TemplateID:       &seekApprovalTemplate.ID,
+				})
+				if err != nil {
+					log.Error(ctx, "Failed to create approval hold action for granular pipeline", "error", err)
+				}
+
+				// Action 9: over_order approved alert (on approval_hold approved)
+				approvedAlertCfg := map[string]interface{}{
+					"alert_type": "over_order",
+					"severity":   "medium",
+					"title":      "Over-order approved",
+					"message":    "Over-order on order line {{order_id}} approved by {{resolved_by}}.",
+					"recipients": map[string]interface{}{
+						"users": []string{"5cf37266-3473-4006-984f-9325122678b7"}, // Admin Gopher
+						"roles": []string{},
+					},
+				}
+				approvedAlertCfgJSON, _ := json.Marshal(approvedAlertCfg)
+
+				approvedAlertAction, err := busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
+					AutomationRuleID: granularRule.ID,
+					Name:             "Alert - Over-Order Approved",
+					Description:      "Notify ops that the over-order was approved",
+					ActionConfig:     json.RawMessage(approvedAlertCfgJSON),
+					IsActive:         true,
+					TemplateID:       &createAlertTemplate.ID,
+				})
+				if err != nil {
+					log.Error(ctx, "Failed to create over_order approved alert action for granular pipeline", "error", err)
+				}
+
+				// Action 10: over_order rejected alert (on approval_hold rejected)
+				rejectedAlertCfg := map[string]interface{}{
+					"alert_type": "over_order",
+					"severity":   "medium",
+					"title":      "Over-order rejected",
+					"message":    "Over-order on order line {{order_id}} rejected by {{resolved_by}} — hold/cancel the line.",
+					"recipients": map[string]interface{}{
+						"users": []string{"5cf37266-3473-4006-984f-9325122678b7"}, // Admin Gopher
+						"roles": []string{},
+					},
+				}
+				rejectedAlertCfgJSON, _ := json.Marshal(rejectedAlertCfg)
+
+				rejectedAlertAction, err := busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
+					AutomationRuleID: granularRule.ID,
+					Name:             "Alert - Over-Order Rejected",
+					Description:      "Notify ops that the over-order was rejected",
+					ActionConfig:     json.RawMessage(rejectedAlertCfgJSON),
+					IsActive:         true,
+					TemplateID:       &createAlertTemplate.ID,
+				})
+				if err != nil {
+					log.Error(ctx, "Failed to create over_order rejected alert action for granular pipeline", "error", err)
+				}
+
+				// Action 11: reservation failure alert (on reserve.failure — infra error)
+				reserveFailureAlertCfg := map[string]interface{}{
+					"alert_type": "over_order",
+					"severity":   "critical",
+					"title":      "Reservation failed (infrastructure)",
+					"message":    "Reservation failed for order line {{order_id}} — investigate.",
+					"recipients": map[string]interface{}{
+						"users": []string{"5cf37266-3473-4006-984f-9325122678b7"}, // Admin Gopher
+						"roles": []string{},
+					},
+				}
+				reserveFailureAlertCfgJSON, _ := json.Marshal(reserveFailureAlertCfg)
+
+				reserveFailureAlertAction, err := busDomain.Workflow.CreateRuleAction(ctx, workflow.NewRuleAction{
+					AutomationRuleID: granularRule.ID,
+					Name:             "Alert - Reservation Failure",
+					Description:      "Critical alert when reserve_inventory fails for an infrastructure reason",
+					ActionConfig:     json.RawMessage(reserveFailureAlertCfgJSON),
+					IsActive:         true,
+					TemplateID:       &createAlertTemplate.ID,
+				})
+				if err != nil {
+					log.Error(ctx, "Failed to create reservation failure alert action for granular pipeline", "error", err)
+				}
+
 				// Create edges for the workflow graph
 				if checkAction.ID != uuid.Nil && reserveAction.ID != uuid.Nil &&
 					successAlertAction.ID != uuid.Nil && reorderCheckAction.ID != uuid.Nil &&
@@ -819,12 +948,16 @@ func seedWorkflow(ctx context.Context, log *logger.Logger, busDomain BusDomain, 
 						log.Error(ctx, "Failed to create insufficient output edge for granular pipeline", "error", err)
 					}
 
-					// Edge 4: reserve_inventory --sequence--> success_alert
+					// Edge 4: reserve_inventory --[success]--> success_alert
+					// Gated on the success output port so the insufficient_stock /
+					// failure ports can route to the over-order remediation branch.
+					successOutput := "success"
 					_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
 						RuleID:         granularRule.ID,
 						SourceActionID: &reserveAction.ID,
 						TargetActionID: successAlertAction.ID,
 						EdgeType:       "sequence",
+						SourceOutput:   &successOutput,
 						EdgeOrder:      0,
 					})
 					if err != nil {
@@ -857,7 +990,83 @@ func seedWorkflow(ctx context.Context, log *logger.Logger, busDomain BusDomain, 
 						log.Error(ctx, "Failed to create needs_reorder output edge for low stock alert", "error", err)
 					}
 
-					log.Info(ctx, "Created 'Line Item Created - Granular Inventory Pipeline' rule with 6 actions and 6 edges")
+					// Over-order remediation branch edges (Deliverable A).
+					if overOrderAlertAction.ID != uuid.Nil && approvalHoldAction.ID != uuid.Nil &&
+						approvedAlertAction.ID != uuid.Nil && rejectedAlertAction.ID != uuid.Nil &&
+						reserveFailureAlertAction.ID != uuid.Nil {
+
+						// Edge 7: reserve_inventory --[insufficient_stock]--> over_order_alert
+						insufficientStockOutput := "insufficient_stock"
+						_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
+							RuleID:         granularRule.ID,
+							SourceActionID: &reserveAction.ID,
+							TargetActionID: overOrderAlertAction.ID,
+							EdgeType:       "sequence",
+							SourceOutput:   &insufficientStockOutput,
+							EdgeOrder:      0,
+						})
+						if err != nil {
+							log.Error(ctx, "Failed to create insufficient_stock edge for over-order branch", "error", err)
+						}
+
+						// Edge 8: over_order_alert --[success]--> approval_hold
+						overOrderSuccessOutput := "success"
+						_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
+							RuleID:         granularRule.ID,
+							SourceActionID: &overOrderAlertAction.ID,
+							TargetActionID: approvalHoldAction.ID,
+							EdgeType:       "sequence",
+							SourceOutput:   &overOrderSuccessOutput,
+							EdgeOrder:      0,
+						})
+						if err != nil {
+							log.Error(ctx, "Failed to create over_order_alert->approval_hold edge", "error", err)
+						}
+
+						// Edge 9: approval_hold --[approved]--> approved_alert
+						approvedOutput := "approved"
+						_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
+							RuleID:         granularRule.ID,
+							SourceActionID: &approvalHoldAction.ID,
+							TargetActionID: approvedAlertAction.ID,
+							EdgeType:       "sequence",
+							SourceOutput:   &approvedOutput,
+							EdgeOrder:      0,
+						})
+						if err != nil {
+							log.Error(ctx, "Failed to create approval_hold->approved_alert edge", "error", err)
+						}
+
+						// Edge 10: approval_hold --[rejected]--> rejected_alert
+						rejectedOutput := "rejected"
+						_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
+							RuleID:         granularRule.ID,
+							SourceActionID: &approvalHoldAction.ID,
+							TargetActionID: rejectedAlertAction.ID,
+							EdgeType:       "sequence",
+							SourceOutput:   &rejectedOutput,
+							EdgeOrder:      1,
+						})
+						if err != nil {
+							log.Error(ctx, "Failed to create approval_hold->rejected_alert edge", "error", err)
+						}
+
+						// Edge 11: reserve_inventory --[failure]--> reserve_failure_alert
+						failureOutput := "failure"
+						_, err = busDomain.Workflow.CreateActionEdge(ctx, workflow.NewActionEdge{
+							RuleID:         granularRule.ID,
+							SourceActionID: &reserveAction.ID,
+							TargetActionID: reserveFailureAlertAction.ID,
+							EdgeType:       "sequence",
+							SourceOutput:   &failureOutput,
+							EdgeOrder:      1,
+						})
+						if err != nil {
+							log.Error(ctx, "Failed to create failure edge for over-order branch", "error", err)
+						}
+					}
+
+					log.Info(ctx, "Created 'Line Item Created - Granular Inventory Pipeline' rule with 11 actions and 11 edges")
 				}
 			}
 		}
