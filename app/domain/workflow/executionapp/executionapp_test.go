@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/temporal"
 )
 
@@ -57,10 +58,14 @@ func TestRerun_NotRerunnable_FailedPrecondition(t *testing.T) {
 }
 
 func TestRerun_NotFound(t *testing.T) {
-	app := NewApp(&fakeReranner{err: errors.New("not found test")})
+	app := NewApp(&fakeReranner{err: workflow.ErrNotFound})
 	_, err := app.Rerun(context.Background(), uuid.New())
 	if err == nil {
 		t.Fatal("expected error")
+	}
+	var appErr *errs.Error
+	if !errors.As(err, &appErr) || appErr.Code != errs.NotFound {
+		t.Fatalf("expected NotFound error, got %v", err)
 	}
 }
 

@@ -28,9 +28,3 @@ func TestMessageTypeForAlert(t *testing.T) {
 		})
 	}
 }
-
-func TestMessageTypeForAlert_ApprovalRequest(t *testing.T) {
-	if got := messageTypeForAlert("approval_request"); got != websocket.MessageTypeApprovalRequest {
-		t.Fatalf("messageTypeForAlert(approval_request) = %v, want MessageTypeApprovalRequest", got)
-	}
-}

@@ -698,7 +698,9 @@ func isLongRunningAction(actionType string) bool {
 }
 
 // isHumanAction returns true for actions that require human interaction.
-// These get multi-day timeouts (7 days), heartbeat requirements, and no retries.
+// These get multi-day timeouts (7 days) and no retries — and no heartbeat: the
+// async-completion path returns ErrResultPending with no heartbeating goroutine,
+// so the 7-day StartToCloseTimeout is the real bound (see activityOptions).
 func isHumanAction(actionType string) bool {
 	return humanActionTypes[actionType]
 }

@@ -366,6 +366,9 @@ func (h *ReserveInventoryHandler) processReservation(
 	// all-or-nothing guarantee exactly as the previous hard-error path did.
 	// (A genuine infrastructure failure — e.g. the Update error above — still
 	// returns a hard error and is retried/failed by Temporal.)
+	// This block is reached only after the reservation loop ran; the zero-inventory
+	// case is excluded by the len(result.FailedItems) == 0 guard and handled by the
+	// len(items) == 0 branch above, which writes nothing and commits a cached result.
 	if remaining > 0 && !cfg.AllowPartial && len(result.FailedItems) == 0 {
 		result.TotalReserved = 0
 		result.ReservedItems = []ReservedItem{}
