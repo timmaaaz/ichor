@@ -577,6 +577,9 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	// creates real alert records.
 	actionRegistry.Register(communication.NewCreateAlertHandler(cfg.Log, alertBus, nil))
 
+	// Upgrade send_notification handler with the real alert bus (core path used nil).
+	actionRegistry.Register(communication.NewSendNotificationHandler(cfg.Log, alertBus, nil))
+
 	// Upgrade send_email handler with real Resend client if credentials are configured.
 	// If ResendAPIKey is empty, the nil-client version from RegisterCoreActions stays,
 	// which logs a warning and skips delivery (graceful degradation).
