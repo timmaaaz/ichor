@@ -7,13 +7,41 @@
 
 ## Pipeline
 
-create_alert ActionHandler → RabbitMQ (QueueTypeAlert) → AlertConsumer.handleAlert()
+create_alert ActionHandler → alertbus.Create + CreateRecipients → PublishAlertToRecipients
+      → RabbitMQ (QueueTypeAlert) → AlertConsumer.handleAlert()
       → AlertHub.BroadcastToUser/Role/All() → foundation/websocket.Hub → WebSocket clients
+
+send_notification ActionHandler → same pipeline (see below)
 
 key facts:
   - Real-time alert delivery via WebSocket
   - Targeting is user- or role-scoped using string ID prefixes ("user:{uuid}" / "role:{uuid}")
   - Alert consumer still uses RabbitMQ (QueueTypeAlert) — separate from main workflow engine queue
+
+---
+
+## send_notification as an alert producer
+
+file: business/sdk/workflow/workflowactions/communication/notification.go
+
+send_notification is NOT a separate inbox store — it rides the full alert pipeline above.
+For each configured recipient it calls alertbus.Create + CreateRecipients + PublishAlertToRecipients
+identically to create_alert, with:
+
+  alert_type  = "notification"
+  severity    = config priority field (default "low")
+  status      = active
+  recipient_type = "user"   (one recipient per configured user — never role-targeted)
+
+⊕ workflow.alerts + workflow.alert_recipients (via alertbus)
+
+⚠ source_entity_id is left nil (uuid.Nil) on purpose. The frontend alert-bundling view
+  groups alerts by (source_entity_id, alert_type); leaving it nil prevents personal
+  notifications from collapsing into a bundle — each notification appears as a discrete item.
+
+There is no separate workflow.notifications table, notificationbus, notificationapp,
+or QueueTypeNotification queue — those were removed. The GET /v1/workflow/notifications/summary
+endpoint (notificationsapi) is unrelated: it reads alertbus + approvalrequestbus and is kept.
 
 ---
 
