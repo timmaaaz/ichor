@@ -282,4 +282,43 @@ func (h *SeekApprovalHandler) createApprovalAlert(ctx context.Context, req appro
 	// The DB write above is the source of truth; WS delivery is best-effort
 	// and a nil workflowQueue is a no-op (core registration / offline tests).
 	communication.PublishAlertToRecipients(ctx, h.workflowQueue, h.log, alert, recipients)
+
+	// Emit a typed "approval_request" creation event alongside the generic
+	// alert so supervisors get a real-time "new approval pending" event,
+	// targeted per approver. Mirrors the resolved-path emit
+	// (approvalapi.publishApprovalResolved).
+	h.publishApprovalRequest(ctx, req.ID, sourceRuleID, execCtx.ActionName, req.Approvers)
+}
+
+// buildApprovalRequestMessages builds one typed "approval_request" WS message
+// per approver so each is targeted via msg.UserID (BroadcastToUser path).
+func buildApprovalRequestMessages(approvalID, ruleID uuid.UUID, actionName string, approvers []uuid.UUID) []*rabbitmq.Message {
+	msgs := make([]*rabbitmq.Message, 0, len(approvers))
+	for _, approverID := range approvers {
+		msgs = append(msgs, &rabbitmq.Message{
+			Type:       "approval_request",
+			EntityName: "workflow.approval_requests",
+			EntityID:   approvalID,
+			UserID:     approverID,
+			Payload: map[string]any{
+				"approvalId": approvalID.String(),
+				"ruleId":     ruleID.String(),
+				"actionName": actionName,
+			},
+		})
+	}
+	return msgs
+}
+
+// publishApprovalRequest emits the typed creation event (best-effort, mirrors
+// publishApprovalResolved). Nil queue (Temporal/MQ disabled) is a no-op.
+func (h *SeekApprovalHandler) publishApprovalRequest(ctx context.Context, approvalID, ruleID uuid.UUID, actionName string, approvers []uuid.UUID) {
+	if h.workflowQueue == nil {
+		return
+	}
+	for _, msg := range buildApprovalRequestMessages(approvalID, ruleID, actionName, approvers) {
+		if err := h.workflowQueue.Publish(ctx, rabbitmq.QueueTypeAlert, msg); err != nil {
+			h.log.Error(ctx, "failed to publish approval_request event", "approval_id", approvalID, "error", err)
+		}
+	}
 }

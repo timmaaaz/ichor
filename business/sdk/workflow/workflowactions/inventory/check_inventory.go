@@ -124,12 +124,22 @@ func (h *CheckInventoryHandler) Execute(ctx context.Context, config json.RawMess
 
 	// Extract product_id from RawData if sourcing from line item.
 	productIDStr := cfg.ProductID
+	requiredQty := cfg.Threshold
 	if cfg.SourceFromLineItem {
 		raw, _ := execContext.RawData["product_id"].(string)
 		if raw == "" {
 			return nil, errors.New("product_id not found in line item RawData")
 		}
 		productIDStr = raw
+
+		// The line's requested quantity is the real requirement. Checking only
+		// the static threshold lets an over-order (requested >> available) take
+		// the "sufficient" port and then hard-fail downstream at
+		// reserve_inventory with no alertable path. Require
+		// available >= max(threshold, requested).
+		if qty, ok := quantityFromRawData(execContext.RawData); ok && qty > requiredQty {
+			requiredQty = qty
+		}
 	}
 
 	productID, err := uuid.Parse(productIDStr)
@@ -165,7 +175,7 @@ func (h *CheckInventoryHandler) Execute(ctx context.Context, config json.RawMess
 	}
 	available := totalOnHand - totalReserved - totalAllocated
 
-	sufficient := available >= cfg.Threshold
+	sufficient := available >= requiredQty
 
 	output := "insufficient"
 	if sufficient {
@@ -176,17 +186,19 @@ func (h *CheckInventoryHandler) Execute(ctx context.Context, config json.RawMess
 		"product_id", productID,
 		"available", available,
 		"threshold", cfg.Threshold,
+		"required", requiredQty,
 		"sufficient", sufficient,
 		"output", output)
 
 	return map[string]any{
-		"available":    available,
-		"threshold":    cfg.Threshold,
-		"sufficient":   sufficient,
+		"available":     available,
+		"threshold":     cfg.Threshold,
+		"required":      requiredQty,
+		"sufficient":    sufficient,
 		"total_on_hand": totalOnHand,
-		"reserved":     totalReserved,
-		"allocated":    totalAllocated,
-		"output":       output,
+		"reserved":      totalReserved,
+		"allocated":     totalAllocated,
+		"output":        output,
 	}, nil
 }
 

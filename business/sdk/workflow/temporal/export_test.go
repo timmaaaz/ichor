@@ -2,6 +2,7 @@ package temporal
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/timmaaaz/ichor/business/sdk/outbox"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
@@ -27,4 +28,16 @@ func (r *Relay) BuildEvent(ctx context.Context, row outbox.Outbox) (workflow.Tri
 // DecodeLineage exposes the unexported decodeLineage for the external relay test.
 func DecodeLineage(b []byte) WorkflowLineage {
 	return decodeLineage(b)
+}
+
+// BuildTriggerData exposes the unexported buildTriggerData for the external rerun
+// test, which round-trips it against ReconstructTriggerEvent.
+func BuildTriggerData(event workflow.TriggerEvent) map[string]any {
+	return buildTriggerData(event)
+}
+
+// ReconstructTriggerEvent exposes the unexported reconstructTriggerEvent for the
+// external rerun test.
+func ReconstructTriggerEvent(triggerData json.RawMessage) (workflow.TriggerEvent, error) {
+	return reconstructTriggerEvent(triggerData)
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -621,5 +622,26 @@ func TestParseDelayConfig(t *testing.T) {
 				require.NoError(t, err)
 			}
 		})
+	}
+}
+
+// =============================================================================
+// Activity Options Tests
+// =============================================================================
+
+func TestActivityOptions_HumanAction_NoHeartbeatTimeout(t *testing.T) {
+	ao := activityOptions("seek_approval")
+
+	// Human actions hold for days via async completion; they must NOT set a
+	// heartbeat timeout (the async activity never heartbeats — see activities.go).
+	if ao.HeartbeatTimeout != 0 {
+		t.Fatalf("seek_approval HeartbeatTimeout = %v, want 0", ao.HeartbeatTimeout)
+	}
+	// The real bound stays the 7-day start-to-close.
+	if ao.StartToCloseTimeout != 7*24*time.Hour {
+		t.Fatalf("seek_approval StartToCloseTimeout = %v, want 168h", ao.StartToCloseTimeout)
+	}
+	if ao.RetryPolicy.MaximumAttempts != 1 {
+		t.Fatalf("seek_approval MaximumAttempts = %d, want 1", ao.RetryPolicy.MaximumAttempts)
 	}
 }

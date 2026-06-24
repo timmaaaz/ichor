@@ -15,6 +15,8 @@ const (
 	MessageTypeAlertUpdated MessageType = "alert_updated"
 	// MessageTypeApprovalResolved signals that an approval request was resolved (approved or rejected).
 	MessageTypeApprovalResolved MessageType = "approval_resolved"
+	// MessageTypeApprovalRequest signals that a new approval request was created and is pending.
+	MessageTypeApprovalRequest MessageType = "approval_request"
 	// MessageTypePing is a heartbeat ping message.
 	MessageTypePing MessageType = "ping"
 	// MessageTypePong is a heartbeat pong response message.

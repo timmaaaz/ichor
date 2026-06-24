@@ -34,6 +34,7 @@ type ReserveInventoryConfig struct {
 type ReserveInventoryResult struct {
 	ReservationID   uuid.UUID      `json:"reservation_id"`
 	Status          string         `json:"status"` // "success", "partial", "failed"
+	Output          string         `json:"output"` // graph output port: success|partial|insufficient_stock|failure
 	ReservedItems   []ReservedItem `json:"reserved_items"`
 	FailedItems     []FailedItem   `json:"failed_items"`
 	TotalRequested  int            `json:"total_requested"`
@@ -142,6 +143,20 @@ func (h *ReserveInventoryHandler) Validate(config json.RawMessage) error {
 	return nil
 }
 
+// GetOutputPorts implements workflow.OutputPortProvider. Reserve mirrors
+// allocate: a stock shortfall is a routable business outcome
+// ("insufficient_stock"), not a hard error — so graphs can wire an alert off
+// that port instead of the run dying. Declaring the ports here is also what
+// makes an "insufficient_stock"/"partial" edge valid at save time.
+func (h *ReserveInventoryHandler) GetOutputPorts() []workflow.OutputPort {
+	return []workflow.OutputPort{
+		{Name: "success", Description: "All requested quantity reserved", IsDefault: true},
+		{Name: "partial", Description: "Some quantity reserved, remainder unavailable"},
+		{Name: "insufficient_stock", Description: "Insufficient inventory to reserve the requested quantity"},
+		{Name: "failure", Description: "Reservation failed due to an error"},
+	}
+}
+
 // Execute reserves inventory with idempotency.
 func (h *ReserveInventoryHandler) Execute(ctx context.Context, config json.RawMessage, execContext workflow.ActionExecutionContext) (any, error) {
 	var cfg ReserveInventoryConfig
@@ -167,18 +182,13 @@ func (h *ReserveInventoryHandler) Execute(ctx context.Context, config json.RawMe
 			return ReserveInventoryResult{}, fmt.Errorf("invalid product_id in line item: %w", err)
 		}
 
-		quantity, ok := execContext.RawData["quantity"].(float64)
-		if !ok || quantity <= 0 {
-			if qInt, ok := execContext.RawData["quantity"].(int); ok {
-				quantity = float64(qInt)
-			}
-		}
-		if quantity <= 0 {
+		qty, ok := quantityFromRawData(execContext.RawData)
+		if !ok || qty <= 0 {
 			return ReserveInventoryResult{}, errors.New("quantity must be greater than 0")
 		}
 
 		cfg.ProductID = productID.String()
-		cfg.Quantity = int(quantity)
+		cfg.Quantity = qty
 
 		orderIDStr, _ := execContext.RawData["order_id"].(string)
 		cfg.ReferenceID = orderIDStr
@@ -348,10 +358,31 @@ func (h *ReserveInventoryHandler) processReservation(
 		}
 	}
 
-	// Check if we need all and couldn't get it.
+	// All-or-nothing requested but stock can't fully satisfy it. Report this as
+	// a soft business outcome ("insufficient_stock" output port) with no error,
+	// so a graph can route to an alert instead of the workflow run hard-failing.
+	// Returning here, before tx.Commit, lets the deferred tx.Rollback undo the
+	// greedy partial reservations written in the loop above — preserving the
+	// all-or-nothing guarantee exactly as the previous hard-error path did.
+	// (A genuine infrastructure failure — e.g. the Update error above — still
+	// returns a hard error and is retried/failed by Temporal.)
+	// This block is reached only after the reservation loop ran; the zero-inventory
+	// case is excluded by the len(result.FailedItems) == 0 guard and handled by the
+	// len(items) == 0 branch above, which writes nothing and commits a cached result.
 	if remaining > 0 && !cfg.AllowPartial && len(result.FailedItems) == 0 {
-		return nil, fmt.Errorf("insufficient inventory: requested %d, available %d",
-			cfg.Quantity, cfg.Quantity-remaining)
+		result.TotalReserved = 0
+		result.ReservedItems = []ReservedItem{}
+		result.FailedItems = append(result.FailedItems, FailedItem{
+			ProductID:         productID,
+			RequestedQuantity: cfg.Quantity,
+			AvailableQuantity: cfg.Quantity - remaining,
+			Reason:            "insufficient_inventory",
+			ErrorMessage: fmt.Sprintf("insufficient inventory: requested %d, available %d",
+				cfg.Quantity, cfg.Quantity-remaining),
+		})
+		result.Status = "failed"
+		result.Output = reserveOutputPort(result.Status, result.FailedItems)
+		return result, nil
 	}
 
 	// Handle remaining as a failed item for partial.
@@ -374,6 +405,10 @@ func (h *ReserveInventoryHandler) processReservation(
 	} else {
 		result.Status = "failed"
 	}
+
+	// Map the final status to a graph output port (mirrors allocate.go) so
+	// downstream edges can route on partial / insufficient_stock outcomes.
+	result.Output = reserveOutputPort(result.Status, result.FailedItems)
 
 	// Carry the reference id (e.g. order id) into the persisted blob so the M2 delegate
 	// event surfaces it for {{reference_id}} in cascaded rules (PL.M2).
@@ -413,6 +448,24 @@ func (h *ReserveInventoryHandler) processReservation(
 		"execution_time_ms", result.ExecutionTimeMs)
 
 	return result, nil
+}
+
+// reserveOutputPort maps a reservation status to the graph output-port name,
+// mirroring allocate.go. A "failed" status caused by a stock shortfall routes to
+// "insufficient_stock"; any other failure falls back to the generic "failure"
+// port.
+func reserveOutputPort(status string, failed []FailedItem) string {
+	switch status {
+	case "success":
+		return "success"
+	case "partial":
+		return "partial"
+	case "failed":
+		if len(failed) > 0 && failed[0].Reason == "insufficient_inventory" {
+			return "insufficient_stock"
+		}
+	}
+	return "failure"
 }
 
 // GetEntityModifications implements workflow.EntityModifier.

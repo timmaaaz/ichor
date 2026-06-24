@@ -444,25 +444,33 @@ type automationExecution struct {
 	RuleName          sql.NullString  `db:"rule_name"`           // From LEFT JOIN with automation_rules
 	EntityType        string          `db:"entity_type"`
 	TriggerData       json.RawMessage `db:"trigger_data"`
-	ActionsExecuted   json.RawMessage `db:"actions_executed"`
-	Status            string          `db:"status"` // 'success', 'failed', 'partial'
-	ErrorMessage      sql.NullString  `db:"error_message"`
-	ExecutionTimeMs   sql.NullInt32   `db:"execution_time_ms"`
-	ExecutedAt        time.Time       `db:"executed_at"`
-	TriggerSource     sql.NullString  `db:"trigger_source"` // 'automation' or 'manual'
-	ExecutedBy        sql.NullString  `db:"executed_by"`    // User who triggered manual execution
-	ActionType        sql.NullString  `db:"action_type"`    // For manual executions
+	// actions_executed is JSONB with no default, so a trigger-created execution
+	// (CreateExecution does not set it — status pending/running, e.g. an over-order
+	// run parked on seek_approval) stores SQL NULL. A plain json.RawMessage cannot
+	// Scan NULL ("unsupported Scan, storing <nil> into *json.RawMessage"), which
+	// broke every read of such a row — list, detail, history, AND rerun's
+	// QueryExecutionByID. NullRawMessage scans NULL cleanly.
+	ActionsExecuted nulltypes.NullRawMessage `db:"actions_executed"`
+	Status          string                   `db:"status"` // 'success', 'failed', 'partial'
+	ErrorMessage    sql.NullString           `db:"error_message"`
+	ExecutionTimeMs sql.NullInt32            `db:"execution_time_ms"`
+	ExecutedAt      time.Time                `db:"executed_at"`
+	TriggerSource   sql.NullString           `db:"trigger_source"` // 'automation' or 'manual'
+	ExecutedBy      sql.NullString           `db:"executed_by"`    // User who triggered manual execution
+	ActionType      sql.NullString           `db:"action_type"`    // For manual executions
 }
 
 // toCoreAutomationExecution converts a store automationExecution to core AutomationExecution
 func toCoreAutomationExecution(dbExec automationExecution) workflow.AutomationExecution {
 	ae := workflow.AutomationExecution{
-		ID:              uuid.MustParse(dbExec.ID),
-		EntityType:      dbExec.EntityType,
-		TriggerData:     dbExec.TriggerData,
-		ActionsExecuted: dbExec.ActionsExecuted,
-		Status:          workflow.ExecutionStatus(dbExec.Status),
-		ExecutedAt:      dbExec.ExecutedAt,
+		ID:          uuid.MustParse(dbExec.ID),
+		EntityType:  dbExec.EntityType,
+		TriggerData: dbExec.TriggerData,
+		Status:      workflow.ExecutionStatus(dbExec.Status),
+		ExecutedAt:  dbExec.ExecutedAt,
+	}
+	if dbExec.ActionsExecuted.Valid {
+		ae.ActionsExecuted = dbExec.ActionsExecuted.Data
 	}
 	// Handle nullable AutomationRuleID
 	if dbExec.AutomationRulesID.Valid {
@@ -502,12 +510,16 @@ func toCoreAutomationExecutionSlice(dbExecs []automationExecution) []workflow.Au
 // toDBAutomationExecution converts a core AutomationExecution to store values
 func toDBAutomationExecution(ae workflow.AutomationExecution) automationExecution {
 	dbExec := automationExecution{
-		ID:              ae.ID.String(),
-		EntityType:      ae.EntityType,
-		TriggerData:     ae.TriggerData,
-		ActionsExecuted: ae.ActionsExecuted,
-		Status:          string(ae.Status),
-		ExecutedAt:      time.Now(),
+		ID:          ae.ID.String(),
+		EntityType:  ae.EntityType,
+		TriggerData: ae.TriggerData,
+		Status:      string(ae.Status),
+		ExecutedAt:  time.Now(),
+	}
+	// Preserve NULL semantics: an unset ActionsExecuted (e.g. a freshly-created
+	// trigger execution) writes SQL NULL rather than an empty-but-non-null value.
+	if len(ae.ActionsExecuted) > 0 {
+		dbExec.ActionsExecuted = nulltypes.NullRawMessage{Data: ae.ActionsExecuted, Valid: true}
 	}
 	// Handle nullable AutomationRuleID
 	if ae.AutomationRuleID != nil {
@@ -636,9 +648,9 @@ type ruleActionView struct {
 	ActionConfig     json.RawMessage `db:"action_config"`
 	IsActive         sql.NullBool    `db:"is_active"`
 	// Template information
-	TemplateID            sql.NullString         `db:"template_id"`
-	TemplateName          sql.NullString         `db:"template_name"`
-	TemplateActionType    sql.NullString         `db:"template_action_type"`
+	TemplateID            sql.NullString           `db:"template_id"`
+	TemplateName          sql.NullString           `db:"template_name"`
+	TemplateActionType    sql.NullString           `db:"template_action_type"`
 	TemplateDefaultConfig nulltypes.NullRawMessage `db:"template_default_config"`
 }
 

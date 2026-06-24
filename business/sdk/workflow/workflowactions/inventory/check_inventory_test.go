@@ -216,6 +216,7 @@ func checkInventoryTests(sd checkInventorySeedData) []unitest.Table {
 		executeCheckInventorySufficient(sd),
 		executeCheckInventoryInsufficient(sd),
 		executeCheckInventorySourceFromLineItem(sd),
+		executeCheckInventoryOverOrder(sd),
 		executeCheckInventoryNoInventory(sd),
 	}
 }
@@ -361,6 +362,73 @@ func executeCheckInventorySourceFromLineItem(sd checkInventorySeedData) unitest.
 				RawData: map[string]interface{}{
 					"product_id": sd.Products[0].ProductID.String(),
 					"quantity":   float64(5),
+				},
+			}
+
+			result, err := sd.Handler.Execute(ctx, configJSON, execContext)
+			if err != nil {
+				return err
+			}
+
+			resultMap, ok := result.(map[string]any)
+			if !ok {
+				return fmt.Errorf("expected map[string]any, got %T", result)
+			}
+
+			return resultMap["output"].(string)
+		},
+		CmpFunc: func(got any, exp any) string {
+			if got != exp {
+				return fmt.Sprintf("got %v, want %v", got, exp)
+			}
+			return ""
+		},
+	}
+}
+
+// executeCheckInventoryOverOrder proves the quantity-aware check: when sourcing
+// from a line item, the requested quantity (not just the static threshold) must
+// gate the "sufficient" port. Products[0] has available=100; an order for 150
+// units clears the threshold of 50 but exceeds stock, so it must route to
+// "insufficient" (otherwise it sails through here and hard-fails downstream at
+// reserve_inventory with no alertable path). RED before the fix: the old code
+// compared only against the threshold and returned "sufficient".
+func executeCheckInventoryOverOrder(sd checkInventorySeedData) unitest.Table {
+	if len(sd.Products) == 0 || len(sd.InventoryItems) == 0 {
+		return unitest.Table{
+			Name:    "execute_over_order_skip",
+			ExpResp: "skipped",
+			ExcFunc: func(ctx context.Context) any { return "skipped" },
+			CmpFunc: func(got any, exp any) string { return "" },
+		}
+	}
+
+	return unitest.Table{
+		Name:    "execute_over_order",
+		ExpResp: "insufficient",
+		ExcFunc: func(ctx context.Context) any {
+			// Products[0] available=100. Threshold=50 (stock clears it), but the
+			// line requests 150 (> stock) -> must be insufficient.
+			config := inventory.CheckInventoryConfig{
+				SourceFromLineItem: true,
+				Threshold:          50,
+			}
+			configJSON, _ := json.Marshal(config)
+
+			overOrderRuleID := uuid.New()
+			execContext := workflow.ActionExecutionContext{
+				EntityID:      uuid.New(),
+				EntityName:    "order_line_items",
+				EventType:     "on_create",
+				UserID:        sd.Admins[0].ID,
+				RuleID:        &overOrderRuleID,
+				RuleName:      "Test Over Order Check",
+				ExecutionID:   uuid.New(),
+				Timestamp:     time.Now().UTC(),
+				TriggerSource: workflow.TriggerSourceAutomation,
+				RawData: map[string]interface{}{
+					"product_id": sd.Products[0].ProductID.String(),
+					"quantity":   float64(150),
 				},
 			}
 

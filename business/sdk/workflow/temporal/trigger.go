@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"time"
 
 	"github.com/google/uuid"
 	enumspb "go.temporal.io/api/enums/v1"
@@ -30,6 +31,12 @@ type ExecutionStore interface {
 	// fails or is rejected as a duplicate, the orphaned record is reclaimed via this so
 	// execution-record dedup is record-level, not just run-level.
 	DeleteExecution(ctx context.Context, id uuid.UUID) error
+
+	// QueryExecutionByID loads a single execution record by id. Used by RerunExecution
+	// to recover an execution's originating rule + persisted trigger_data so the rule
+	// can be re-fired against a freshly reconstructed event. Backed by workflowdb.Store
+	// (it also backs workflow.Business.QueryExecutionByID).
+	QueryExecutionByID(ctx context.Context, id uuid.UUID) (workflow.AutomationExecution, error)
 }
 
 // EdgeStore loads graph definitions (actions + edges) from the database.
@@ -160,7 +167,7 @@ func (t *WorkflowTrigger) OnEntityEvent(ctx context.Context, event workflow.Trig
 		// Seed the next generation: parent set extended with this (rule, entity).
 		childLineage := parentLineage.With(rm.Rule.ID, event.EntityID)
 
-		if err := t.startWorkflowForRule(ctx, event, rm, childLineage); err != nil {
+		if _, err := t.startWorkflowForRule(ctx, event, rm, childLineage); err != nil {
 			t.log.Error(ctx, "Failed to start workflow for rule",
 				"rule_id", rm.Rule.ID,
 				"rule_name", rm.Rule.Name,
@@ -174,18 +181,122 @@ func (t *WorkflowTrigger) OnEntityEvent(ctx context.Context, event workflow.Trig
 	return nil
 }
 
+// ErrExecutionNotRerunnable is returned when an execution cannot be re-run:
+// it has no automation rule (e.g. a manual execution), or its rule has no
+// active graph left to dispatch.
+var ErrExecutionNotRerunnable = errors.New("execution is not re-runnable")
+
+// reconstructTriggerEvent reverses buildTriggerData from a persisted execution's
+// trigger_data. EventID is left zero so the dispatch mints a fresh dedup key
+// (clearing the Temporal workflow-id REJECT_DUPLICATE wall), and Timestamp is
+// re-stamped (the stored value is a time.Time.String() rendering, not RFC3339,
+// so it cannot be round-tripped into a time.Time — re-stamping is correct for a
+// replay anyway).
+func reconstructTriggerEvent(triggerData json.RawMessage) (workflow.TriggerEvent, error) {
+	var m map[string]any
+	if err := json.Unmarshal(triggerData, &m); err != nil {
+		return workflow.TriggerEvent{}, fmt.Errorf("parse trigger_data: %w", err)
+	}
+
+	ev := workflow.TriggerEvent{Timestamp: time.Now()}
+	if s, ok := m["event_type"].(string); ok {
+		ev.EventType = s
+	}
+	if s, ok := m["entity_name"].(string); ok {
+		ev.EntityName = s
+	}
+	if s, ok := m["entity_id"].(string); ok {
+		if id, err := uuid.Parse(s); err == nil {
+			ev.EntityID = id
+		}
+	}
+	if s, ok := m["user_id"].(string); ok {
+		if id, err := uuid.Parse(s); err == nil {
+			ev.UserID = id
+		}
+	}
+	if fcRaw, ok := m["field_changes"].(map[string]any); ok {
+		fc := make(map[string]workflow.FieldChange, len(fcRaw))
+		for field, v := range fcRaw {
+			if inner, ok := v.(map[string]any); ok {
+				fc[field] = workflow.FieldChange{OldValue: inner["old_value"], NewValue: inner["new_value"]}
+			}
+		}
+		if len(fc) > 0 {
+			ev.FieldChanges = fc
+		}
+	}
+
+	// RawData = everything except the metadata + cascade-lineage keys.
+	raw := make(map[string]any, len(m))
+	for k, v := range m {
+		switch k {
+		case "event_type", "entity_name", "entity_id", "user_id", "timestamp", "field_changes", CascadeLineageKey:
+			continue
+		}
+		raw[k] = v
+	}
+	if len(raw) > 0 {
+		ev.RawData = raw
+	}
+	return ev, nil
+}
+
+// RerunExecution re-fires the single rule that produced executionID against a
+// fresh event reconstructed from its persisted trigger_data, minting a brand-new
+// execution id. The fresh id clears all three dedup walls: the allocation_results
+// idempotency key, the Temporal workflow-id REJECT_DUPLICATE guard (workflow id is
+// keyed on a fresh dedup key because the reconstructed event has a zero EventID),
+// and the execution-record upsert. Returns the new execution id.
+//
+// A fresh cascade lineage (empty WorkflowLineage) is seeded so the replay starts a
+// clean chain rooted at the new execution. Returns ErrExecutionNotRerunnable when
+// the execution has no originating rule (e.g. a manual execution).
+func (t *WorkflowTrigger) RerunExecution(ctx context.Context, executionID uuid.UUID) (uuid.UUID, error) {
+	exec, err := t.executionStore.QueryExecutionByID(ctx, executionID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("load execution %s: %w", executionID, err)
+	}
+	if exec.AutomationRuleID == nil {
+		return uuid.Nil, fmt.Errorf("execution %s has no automation rule: %w", executionID, ErrExecutionNotRerunnable)
+	}
+
+	event, err := reconstructTriggerEvent(exec.TriggerData)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("reconstruct event: %w", err)
+	}
+
+	rm := workflow.RuleMatchResult{
+		Rule: workflow.AutomationRuleView{ID: *exec.AutomationRuleID, Name: exec.RuleName},
+	}
+
+	// startWorkflowForRule mints a fresh executionID and returns it. A fresh
+	// (empty) lineage seeds a clean cascade chain rooted at the new execution.
+	newID, err := t.startWorkflowForRule(ctx, event, rm, WorkflowLineage{})
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("dispatch rerun: %w", err)
+	}
+	if newID == uuid.Nil {
+		return uuid.Nil, fmt.Errorf("rerun for rule %s dispatched nothing (no active graph): %w", *exec.AutomationRuleID, ErrExecutionNotRerunnable)
+	}
+	return newID, nil
+}
+
 // startWorkflowForRule loads the graph definition and starts a Temporal workflow
 // for a single matched rule.
+//
+// On success it returns the freshly minted execution id (uuid.New()), which lets
+// RerunExecution surface the new id to its caller; OnEntityEvent ignores it.
 func (t *WorkflowTrigger) startWorkflowForRule(
 	ctx context.Context,
 	event workflow.TriggerEvent,
 	rm workflow.RuleMatchResult,
 	lineage WorkflowLineage,
-) error {
+) (uuid.UUID, error) {
 	// Load graph definition from database.
 	graph, err := t.loadGraphDefinition(ctx, rm.Rule.ID)
 	if err != nil {
-		return fmt.Errorf("load graph for rule %s: %w", rm.Rule.ID, err)
+		return uuid.Nil, fmt.Errorf("load graph for rule %s: %w", rm.Rule.ID, err)
 	}
 
 	// Skip rules with empty graphs (no actions configured).
@@ -194,7 +305,7 @@ func (t *WorkflowTrigger) startWorkflowForRule(
 			"rule_id", rm.Rule.ID,
 			"rule_name", rm.Rule.Name,
 		)
-		return nil
+		return uuid.Nil, nil
 	}
 
 	// Generate unique execution ID.
@@ -236,7 +347,7 @@ func (t *WorkflowTrigger) startWorkflowForRule(
 	// can reference the row immediately.
 	triggerDataJSON, err := json.Marshal(triggerData)
 	if err != nil {
-		return fmt.Errorf("marshal trigger data: %w", err)
+		return uuid.Nil, fmt.Errorf("marshal trigger data: %w", err)
 	}
 
 	if err := t.executionStore.CreateExecution(ctx, workflow.AutomationExecution{
@@ -247,7 +358,7 @@ func (t *WorkflowTrigger) startWorkflowForRule(
 		Status:           workflow.StatusPending,
 		TriggerSource:    workflow.TriggerSourceAutomation,
 	}); err != nil {
-		return fmt.Errorf("creating execution record: %w", err)
+		return uuid.Nil, fmt.Errorf("creating execution record: %w", err)
 	}
 
 	// If ExecuteWorkflow below fails — or is rejected as a duplicate (a relay re-delivery
@@ -304,9 +415,9 @@ func (t *WorkflowTrigger) startWorkflowForRule(
 				"rule_id", rm.Rule.ID,
 				"workflow_id", workflowID,
 			)
-			return nil
+			return uuid.Nil, nil
 		}
-		return fmt.Errorf("execute workflow: %w", err)
+		return uuid.Nil, fmt.Errorf("execute workflow: %w", err)
 	}
 
 	t.log.Info(ctx, "Started Temporal workflow",
@@ -316,7 +427,7 @@ func (t *WorkflowTrigger) startWorkflowForRule(
 		"run_id", we.GetRunID(),
 	)
 
-	return nil
+	return executionID, nil
 }
 
 // loadGraphDefinition loads actions and edges from the EdgeStore

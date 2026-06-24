@@ -14,6 +14,7 @@ func TestMessageTypeForAlert(t *testing.T) {
 		{rabbitType: "alert", want: websocket.MessageTypeAlert},
 		{rabbitType: "alert_updated", want: websocket.MessageTypeAlertUpdated},
 		{rabbitType: "approval_resolved", want: websocket.MessageTypeApprovalResolved},
+		{rabbitType: "approval_request", want: websocket.MessageTypeApprovalRequest},
 		{rabbitType: "", want: websocket.MessageTypeAlert},
 		{rabbitType: "unknown_type", want: websocket.MessageTypeAlert},
 	}

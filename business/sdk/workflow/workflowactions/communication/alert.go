@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/domain/products/productbus"
+	"github.com/timmaaaz/ichor/business/domain/sales/ordersbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/foundation/logger"
@@ -40,14 +43,22 @@ type CreateAlertHandler struct {
 	log           *logger.Logger
 	alertBus      *alertbus.Business
 	workflowQueue *rabbitmq.WorkflowQueue
+	// ordersBus and productBus are optional (nil-tolerant): when wired, the handler
+	// resolves order_id -> order_number and product_id -> product_name so alert
+	// messages render human labels instead of UUIDs.
+	ordersBus  *ordersbus.Business
+	productBus *productbus.Business
 }
 
-// NewCreateAlertHandler creates a new create alert handler.
-func NewCreateAlertHandler(log *logger.Logger, alertBus *alertbus.Business, workflowQueue *rabbitmq.WorkflowQueue) *CreateAlertHandler {
+// NewCreateAlertHandler creates a new create alert handler. ordersBus/productBus
+// may be nil (e.g. core/test registration); FK-label resolution is then skipped.
+func NewCreateAlertHandler(log *logger.Logger, alertBus *alertbus.Business, workflowQueue *rabbitmq.WorkflowQueue, ordersBus *ordersbus.Business, productBus *productbus.Business) *CreateAlertHandler {
 	return &CreateAlertHandler{
 		log:           log,
 		alertBus:      alertBus,
 		workflowQueue: workflowQueue,
+		ordersBus:     ordersBus,
+		productBus:    productBus,
 	}
 }
 
@@ -111,16 +122,27 @@ func (h *CreateAlertHandler) Execute(ctx context.Context, config json.RawMessage
 		severity = alertbus.SeverityMedium
 	}
 
-	// Default context to empty JSON object if not provided
-	context := cfg.Context
-	if len(context) == 0 {
-		context = json.RawMessage(`{}`)
-	}
-
 	// Handle pointer-based RuleID (nil for manual executions)
 	sourceRuleID := uuid.Nil
 	if execCtx.RuleID != nil {
 		sourceRuleID = *execCtx.RuleID
+	}
+
+	// Augment template data + context with execution_id / rule_id (deep-linking).
+	tmplData := buildAlertTemplateData(execCtx.RawData, execCtx.ExecutionID, execCtx.RuleID)
+
+	// Resolve FK ids referenced by the templates into human labels (order_number,
+	// product_name) so messages render names instead of UUIDs. Mirrors the alert
+	// domain's rule/acknowledger-name resolution; fail-open (leaves the literal id).
+	h.resolveEntityLabels(ctx, tmplData, cfg.Title, cfg.Message, cfg.ActionURL)
+
+	rawContext := cfg.Context
+	if len(rawContext) == 0 {
+		rawContext = json.RawMessage(`{}`)
+	}
+	enrichedContext, err := enrichAlertContext(rawContext, execCtx.ExecutionID, execCtx.RuleID)
+	if err != nil {
+		return nil, err
 	}
 
 	// Build Alert struct
@@ -128,9 +150,9 @@ func (h *CreateAlertHandler) Execute(ctx context.Context, config json.RawMessage
 		ID:               uuid.New(),
 		AlertType:        cfg.AlertType,
 		Severity:         severity,
-		Title:            resolveTemplateVars(cfg.Title, execCtx.RawData),
-		Message:          resolveTemplateVars(cfg.Message, execCtx.RawData),
-		Context:          context,
+		Title:            resolveTemplateVars(cfg.Title, tmplData),
+		Message:          resolveTemplateVars(cfg.Message, tmplData),
+		Context:          enrichedContext,
 		SourceEntityName: execCtx.EntityName,
 		SourceEntityID:   execCtx.EntityID,
 		SourceRuleID:     sourceRuleID,
@@ -141,7 +163,7 @@ func (h *CreateAlertHandler) Execute(ctx context.Context, config json.RawMessage
 
 	// Set action URL with template variable substitution
 	if cfg.ActionURL != "" {
-		alert.ActionURL = resolveTemplateVars(cfg.ActionURL, execCtx.RawData)
+		alert.ActionURL = resolveTemplateVars(cfg.ActionURL, tmplData)
 	}
 
 	// Build recipients slice - validate all UUIDs first (fail fast on invalid config)
@@ -224,6 +246,93 @@ func (h *CreateAlertHandler) Execute(ctx context.Context, config json.RawMessage
 		"status":         "created",
 		"resolved_count": resolvedCount,
 	}, nil
+}
+
+// buildAlertTemplateData returns a copy of rawData with execution_id and
+// rule_id added, so {{execution_id}} / {{rule_id}} resolve in alert templates.
+// It never mutates the caller's map.
+func buildAlertTemplateData(rawData map[string]any, execID uuid.UUID, ruleID *uuid.UUID) map[string]any {
+	out := make(map[string]any, len(rawData)+2)
+	for k, v := range rawData {
+		out[k] = v
+	}
+	if execID != uuid.Nil {
+		out["execution_id"] = execID.String()
+	}
+	if ruleID != nil {
+		out["rule_id"] = ruleID.String()
+	}
+	return out
+}
+
+// resolveEntityLabels enriches the template data with human-readable labels for FK
+// ids that the alert templates reference — order_id -> order_number and
+// product_id -> product_name. A lookup runs only when (a) the relevant bus is
+// wired, (b) some template actually references the label key (so non-over-order
+// alerts incur no DB cost), and (c) the id is present and parseable. Lookup
+// failures are logged and skipped, leaving the literal placeholder — they never
+// fail the alert. Resolved values are written onto data (a copy of RawData).
+func (h *CreateAlertHandler) resolveEntityLabels(ctx context.Context, data map[string]any, templates ...string) {
+	referenced := func(key string) bool {
+		needle := "{{" + key + "}}"
+		for _, t := range templates {
+			if strings.Contains(t, needle) {
+				return true
+			}
+		}
+		return false
+	}
+
+	if h.ordersBus != nil && referenced("order_number") {
+		if id, ok := uuidFromData(data, "order_id"); ok {
+			if order, err := h.ordersBus.QueryByID(ctx, id); err != nil {
+				h.log.Error(ctx, "create_alert: resolve order_number failed", "order_id", id, "error", err)
+			} else {
+				data["order_number"] = order.Number
+			}
+		}
+	}
+
+	if h.productBus != nil && referenced("product_name") {
+		if id, ok := uuidFromData(data, "product_id"); ok {
+			if product, err := h.productBus.QueryByID(ctx, id); err != nil {
+				h.log.Error(ctx, "create_alert: resolve product_name failed", "product_id", id, "error", err)
+			} else {
+				data["product_name"] = product.Name
+			}
+		}
+	}
+}
+
+// uuidFromData parses data[key] as a UUID. Trigger-data ids arrive as strings.
+func uuidFromData(data map[string]any, key string) (uuid.UUID, bool) {
+	s, ok := data[key].(string)
+	if !ok {
+		return uuid.Nil, false
+	}
+	id, err := uuid.Parse(s)
+	if err != nil {
+		return uuid.Nil, false
+	}
+	return id, true
+}
+
+// enrichAlertContext merges execution_id and rule_id into the alert's context
+// JSON object so the frontend can deep-link an alert to its execution.
+func enrichAlertContext(ctx json.RawMessage, execID uuid.UUID, ruleID *uuid.UUID) (json.RawMessage, error) {
+	m := map[string]any{}
+	if len(ctx) > 0 {
+		if err := json.Unmarshal(ctx, &m); err != nil {
+			return nil, fmt.Errorf("parse alert context: %w", err)
+		}
+	}
+	if execID != uuid.Nil {
+		m["execution_id"] = execID.String()
+	}
+	if ruleID != nil {
+		m["rule_id"] = ruleID.String()
+	}
+	return json.Marshal(m)
 }
 
 // resolveTemplateVars replaces {{variable_name}} patterns with values from the data map.

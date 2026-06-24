@@ -60,6 +60,13 @@ type mockExecutionStore struct {
 	createErr error
 	created   []uuid.UUID // ids of records inserted
 	deleted   []uuid.UUID // ids of records reclaimed via DeleteExecution
+
+	// byID backs QueryExecutionByID for the rerun tests; queryErr forces a load
+	// failure. lastCreated is the most recent record passed to CreateExecution
+	// (lets the rerun test recover the fresh execution id minted internally).
+	byID        map[uuid.UUID]workflow.AutomationExecution
+	queryErr    error
+	lastCreated workflow.AutomationExecution
 }
 
 func (m *mockExecutionStore) CreateExecution(_ context.Context, exec workflow.AutomationExecution) error {
@@ -67,12 +74,24 @@ func (m *mockExecutionStore) CreateExecution(_ context.Context, exec workflow.Au
 		return m.createErr
 	}
 	m.created = append(m.created, exec.ID)
+	m.lastCreated = exec
 	return nil
 }
 
 func (m *mockExecutionStore) DeleteExecution(_ context.Context, id uuid.UUID) error {
 	m.deleted = append(m.deleted, id)
 	return nil
+}
+
+func (m *mockExecutionStore) QueryExecutionByID(_ context.Context, id uuid.UUID) (workflow.AutomationExecution, error) {
+	if m.queryErr != nil {
+		return workflow.AutomationExecution{}, m.queryErr
+	}
+	exec, ok := m.byID[id]
+	if !ok {
+		return workflow.AutomationExecution{}, errors.New("execution not found")
+	}
+	return exec, nil
 }
 
 // =============================================================================

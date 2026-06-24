@@ -356,7 +356,7 @@ func TestSendNotificationAction(t *testing.T) {
 
 	registry := workflow.NewActionRegistry()
 	registry.Register(communication.NewSendNotificationHandler(db.Log, alertsBus, nil))
-	registry.Register(communication.NewCreateAlertHandler(db.Log, alertsBus, nil))
+	registry.Register(communication.NewCreateAlertHandler(db.Log, alertsBus, nil, nil, nil))
 
 	activities := &workflowtemporal.Activities{
 		Registry:      registry,

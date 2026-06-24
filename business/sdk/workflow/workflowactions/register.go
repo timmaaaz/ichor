@@ -131,7 +131,7 @@ func RegisterAll(registry *workflow.ActionRegistry, config ActionConfig) {
 	// Communication actions
 	registry.Register(communication.NewSendEmailHandler(config.Log, config.DB, config.EmailClient, config.EmailFrom))
 	registry.Register(communication.NewSendNotificationHandler(config.Log, config.Buses.Alert, config.QueueClient))
-	registry.Register(communication.NewCreateAlertHandler(config.Log, config.Buses.Alert, config.QueueClient))
+	registry.Register(communication.NewCreateAlertHandler(config.Log, config.Buses.Alert, config.QueueClient, config.Buses.Orders, config.Buses.Product))
 
 	// Inventory actions - need additional dependencies
 	registry.Register(inventory.NewAllocateInventoryHandler(
@@ -274,7 +274,7 @@ func RegisterCoreActions(registry *workflow.ActionRegistry, log *logger.Logger, 
 	// Communication actions that don't need queue or email client (nil = graceful degradation)
 	registry.Register(communication.NewSendEmailHandler(log, db, nil, ""))
 	registry.Register(communication.NewSendNotificationHandler(log, nil, nil))
-	registry.Register(communication.NewCreateAlertHandler(log, nil, nil))
+	registry.Register(communication.NewCreateAlertHandler(log, nil, nil, nil, nil))
 
 	// Inventory actions - nil buses for core path (cascade detection via EntityModifier)
 	registry.Register(inventory.NewCreatePutAwayTaskHandler(log, db, nil, nil, nil))
