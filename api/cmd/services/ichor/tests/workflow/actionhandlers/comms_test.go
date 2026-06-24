@@ -331,8 +331,8 @@ func TestSendEmailAction(t *testing.T) {
 // send_notification Action Test
 // =============================================================================
 
-// TestSendNotificationAction verifies that the send_notification handler, when
-// registered with a nil queue client, does not panic when a workflow triggers it.
+// TestSendNotificationAction verifies that the send_notification handler, registered
+// with a real alertBus and a nil queue client, completes when a workflow triggers it.
 func TestSendNotificationAction(t *testing.T) {
 	t.Parallel()
 
@@ -430,7 +430,7 @@ func TestSendNotificationAction(t *testing.T) {
 	if !completed {
 		t.Fatal("timeout: send_notification workflow did not complete within 15s")
 	}
-	t.Log("SUCCESS: send_notification with nil queue client completed without error")
+	t.Log("SUCCESS: send_notification (real alertBus, nil queue client) completed without error")
 }
 
 // =============================================================================
