@@ -184,6 +184,22 @@ func Test_OverOrder_RerunSucceedsAfterRestock(t *testing.T) {
 	t.Logf("over_order alert created: id=%s title=%q action_url=%q source_rule=%s",
 		alert.ID, alert.Title, alert.ActionURL, alert.SourceRuleID)
 
+	// The shortfall message renders {{product_name}} via the alert handler's
+	// write-time FK resolution (StartTestWithTemporalGranular wires the real
+	// productBus). Assert it resolved to the seeded product's name rather than the
+	// literal placeholder — proving resolveEntityLabels' happy path end-to-end.
+	// (order_id here is synthetic, so {{order_number}} fails-open to the literal;
+	// that the alert was still created proves the fail-open path doesn't break it.)
+	prod, err := db.BusDomain.Product.QueryByID(ctx, productID)
+	if err != nil {
+		t.Fatalf("querying seeded product: %v", err)
+	}
+	if !strings.Contains(alert.Message, prod.Name) {
+		t.Fatalf("over_order alert message did not resolve product_name: got %q, want it to contain %q",
+			alert.Message, prod.Name)
+	}
+	t.Logf("over_order alert message resolved product_name: %q", alert.Message)
+
 	// Find the ORIGINATING execution: the over_order alert deep-links to it via
 	// its ActionURL "/workflow/executions/{{execution_id}}" (Task 2 enrichment).
 	// This is the operator's path too (click the alert -> open the execution ->

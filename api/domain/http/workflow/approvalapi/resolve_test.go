@@ -170,13 +170,19 @@ func TestRetryTemporalCompletion_TokenPresentCompleteSucceeds(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected temporal.ActionActivityOutput, got %T", completer.capturedOut)
 	}
-	for _, key := range []string{"output", "approval_id", "resolved_by", "reason"} {
+	for _, key := range []string{"output", "approval_id", "resolved_by", "resolved_by_name", "reason"} {
 		if _, present := out.Result[key]; !present {
 			t.Errorf("retry payload missing key %q; primary resolve path sets it", key)
 		}
 	}
 	if got := out.Result["resolved_by"]; got != approval.ResolvedBy.String() {
 		t.Errorf("resolved_by = %v, want %s", got, approval.ResolvedBy.String())
+	}
+	// userBus is not wired in this unit test, so resolveUserName degrades to "" —
+	// the key must still be present (contract above) and must not panic. The real
+	// "First Last" value is covered by the approvalapi DB integration test.
+	if got := out.Result["resolved_by_name"]; got != "" {
+		t.Errorf("resolved_by_name = %v, want empty string (nil userBus → graceful)", got)
 	}
 	if got := out.Result["reason"]; got != approval.ResolutionReason {
 		t.Errorf("reason = %v, want %q", got, approval.ResolutionReason)

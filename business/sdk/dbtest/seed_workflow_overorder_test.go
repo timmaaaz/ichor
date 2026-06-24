@@ -3,6 +3,7 @@ package dbtest
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
@@ -127,6 +128,23 @@ func Test_Seed_OverOrderGraph(t *testing.T) {
 	if _, ok := actionByID[failTargetID]; !ok {
 		t.Fatalf("failure edge target %s is not a Rule 5 action", failTargetID)
 	}
+
+	// (e) over-order alert messages must render human labels, not raw UUIDs: no
+	// {{order_id}}/{{product_id}}/{{resolved_by}} placeholders survive in any
+	// over_order alert message. The alert handler resolves order_number/product_name
+	// at write time; resolved_by_name comes from the namespaced seek_approval output.
+	rawIDPlaceholders := []string{"{{order_id}}", "{{product_id}}", "{{resolved_by}}"}
+	for _, a := range actions {
+		if alertTypeOf(t, a.ActionConfig) != "over_order" {
+			continue
+		}
+		msg := messageOf(t, a.ActionConfig)
+		for _, ph := range rawIDPlaceholders {
+			if strings.Contains(msg, ph) {
+				t.Errorf("over_order alert %q message still contains raw-id placeholder %s: %q", a.Name, ph, msg)
+			}
+		}
+	}
 }
 
 func alertTypeOf(t *testing.T, cfg json.RawMessage) string {
@@ -149,4 +167,15 @@ func approversOf(t *testing.T, cfg json.RawMessage) []string {
 		t.Fatalf("parse approval config: %v", err)
 	}
 	return m.Approvers
+}
+
+func messageOf(t *testing.T, cfg json.RawMessage) string {
+	t.Helper()
+	var m struct {
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(cfg, &m); err != nil {
+		t.Fatalf("parse alert config: %v", err)
+	}
+	return m.Message
 }
