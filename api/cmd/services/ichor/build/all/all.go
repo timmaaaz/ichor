@@ -604,6 +604,11 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	// Initialize Temporal Workflow Infrastructure
 	// =========================================================================
 
+	// Nil-able trigger pointer hoisted to the outer scope (mirrors the asyncCompleter
+	// pattern below) so it is reachable at the executionapi.Routes site. It stays nil
+	// when Temporal is disabled, in which case executionapp.Rerun returns an Internal
+	// error; it is assigned inside the guard when Temporal is enabled.
+	var workflowTrigger *temporalpkg.WorkflowTrigger
 	if cfg.TemporalClient != nil {
 		edgeStore := edgedb.NewStore(cfg.Log, cfg.DB)
 
@@ -613,7 +618,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 				"temporal: trigger processor init failed", "error", err,
 			)
 		} else {
-			workflowTrigger := temporalpkg.NewWorkflowTrigger(
+			workflowTrigger = temporalpkg.NewWorkflowTrigger(
 				cfg.Log, cfg.TemporalClient, triggerProcessor, edgeStore, workflowStore,
 			)
 
@@ -1471,9 +1476,11 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	})
 
 	executionapi.Routes(app, executionapi.Config{
-		Log:         cfg.Log,
-		WorkflowBus: workflowBus,
-		AuthClient:  cfg.AuthClient,
+		Log:            cfg.Log,
+		WorkflowBus:    workflowBus,
+		AuthClient:     cfg.AuthClient,
+		PermissionsBus: permissionsBus,
+		Trigger:        workflowTrigger, // nil when Temporal disabled -> rerun returns Internal
 	})
 
 	workflowsaveapi.Routes(app, workflowsaveapi.Config{

@@ -16,26 +16,29 @@ import (
 // =============================================================================
 // Workflow Execution Re-run Integration Tests
 //
-// ⚠ RED-PENDING-TASK-7: this test drives the shared ichor mux built by
-// api/cmd/services/ichor/build/all/all.go. In Task 6 that composition root has
-// NOT yet been updated to pass executionapi.Config.Trigger or .PermissionsBus,
-// so the POST /rerun route runs with a nil Reranner and a nil PermissionsBus.
-// The happy-path 200 and the unknown-id 404 therefore FAIL until Task 7 wires
-// the trigger + permissions bus into all.go and flips this green (the nil
-// PermissionsBus authorize panics for an admin token; mid.Panics recovers it to
-// 500, and the nil Reranner would likewise yield 500). The non-admin/no-token
-// 401 cases already pass — OPA RuleAdminOnly rejects before any nil deref.
+// This test drives the shared ichor mux built by
+// api/cmd/services/ichor/build/all/all.go via StartTestWithTemporal, which feeds
+// a real Temporal client into mux.Config. Task 7 wired all.go's WorkflowTrigger
+// into executionapi.Config.Trigger (and permissionsBus into .PermissionsBus), so
+// the POST /rerun route now runs with a live Reranner and a non-nil PermissionsBus.
+// The happy-path 200 returns a fresh execution id (proving dispatch succeeded);
+// the unknown-id 404 maps workflow.ErrNotFound; the non-admin/no-token 401 cases
+// are rejected by OPA RuleAdminOnly before reaching the handler.
 //
 // The happy path reuses sd.Executions[0]: insertSeedData seeds it via
 // TestSeedRuleActions, which attaches a start edge to rule[0]'s first action, so
 // the rule has a non-empty active graph (Task 4's empty-graph guard would
-// otherwise return 422). Its TriggerData carries entity_id + status + total.
+// otherwise return FailedPrecondition). Its TriggerData carries entity_id + status + total.
 // =============================================================================
 
 func Test_Execution_Rerun(t *testing.T) {
 	t.Parallel()
 
-	test := apitest.StartTest(t, "Test_Execution_Rerun")
+	// StartTestWithTemporal stands up a real Temporal client and wires all.go's
+	// WorkflowTrigger into executionapi.Config.Trigger (Task 7). The plain StartTest
+	// mux has no Temporal, so the rerun route would run with a nil Reranner and the
+	// happy path could only ever surface Internal — see the package doc above.
+	test := apitest.StartTestWithTemporal(t, "Test_Execution_Rerun")
 
 	sd, err := insertSeedData(test.DB, test.Auth)
 	if err != nil {
