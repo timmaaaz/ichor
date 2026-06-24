@@ -399,7 +399,7 @@ func seedWorkflow(ctx context.Context, log *logger.Logger, busDomain BusDomain, 
 				TriggerTypeID:     onCreateTrigger.ID,
 				TriggerConditions: &successConditionRaw,
 				IsActive:          false,
-				IsDefault:     true,
+				IsDefault:         true,
 				CreatedBy:         adminID,
 			})
 			if err != nil {
@@ -501,7 +501,7 @@ func seedWorkflow(ctx context.Context, log *logger.Logger, busDomain BusDomain, 
 				TriggerTypeID:     onCreateTrigger.ID,
 				TriggerConditions: &failedConditionRaw,
 				IsActive:          false,
-				IsDefault:     true,
+				IsDefault:         true,
 				CreatedBy:         adminID,
 			})
 			if err != nil {
@@ -786,7 +786,7 @@ func seedWorkflow(ctx context.Context, log *logger.Logger, busDomain BusDomain, 
 					"alert_type": "over_order",
 					"severity":   "high",
 					"title":      "Over-order: insufficient stock",
-					"message":    "Order line {{order_id}}: requested {{quantity}} of product {{product_id}} exceeds available stock.",
+					"message":    "Over-order on {{order_number}}: requested {{quantity}} of {{product_name}} exceeds available stock.",
 					"action_url": "/workflow/executions/{{execution_id}}",
 					"recipients": map[string]interface{}{
 						"users": []string{"5cf37266-3473-4006-984f-9325122678b7"}, // Admin Gopher
@@ -833,7 +833,7 @@ func seedWorkflow(ctx context.Context, log *logger.Logger, busDomain BusDomain, 
 					"alert_type": "over_order",
 					"severity":   "medium",
 					"title":      "Over-order approved",
-					"message":    "Over-order on order line {{order_id}} approved by {{resolved_by}}.",
+					"message":    "Over-order on {{order_number}} approved by {{Over-Order Approval Hold.resolved_by_name}}.",
 					"recipients": map[string]interface{}{
 						"users": []string{"5cf37266-3473-4006-984f-9325122678b7"}, // Admin Gopher
 						"roles": []string{},
@@ -858,7 +858,7 @@ func seedWorkflow(ctx context.Context, log *logger.Logger, busDomain BusDomain, 
 					"alert_type": "over_order",
 					"severity":   "medium",
 					"title":      "Over-order rejected",
-					"message":    "Over-order on order line {{order_id}} rejected by {{resolved_by}} — hold/cancel the line.",
+					"message":    "Over-order on {{order_number}} rejected by {{Over-Order Approval Hold.resolved_by_name}} — hold/cancel the line.",
 					"recipients": map[string]interface{}{
 						"users": []string{"5cf37266-3473-4006-984f-9325122678b7"}, // Admin Gopher
 						"roles": []string{},
@@ -883,7 +883,7 @@ func seedWorkflow(ctx context.Context, log *logger.Logger, busDomain BusDomain, 
 					"alert_type": "over_order",
 					"severity":   "critical",
 					"title":      "Reservation failed (infrastructure)",
-					"message":    "Reservation failed for order line {{order_id}} — investigate.",
+					"message":    "Reservation failed for {{order_number}} ({{product_name}}) — investigate.",
 					"recipients": map[string]interface{}{
 						"users": []string{"5cf37266-3473-4006-984f-9325122678b7"}, // Admin Gopher
 						"roles": []string{},

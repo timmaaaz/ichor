@@ -221,8 +221,9 @@ func registerGranularWorkerActions(db *dbtest.Database, reg *workflow.ActionRegi
 	reg.Register(inventory.NewReserveInventoryHandler(db.Log, db.DB, db.BusDomain.InventoryItem, db.BusDomain.Workflow))
 
 	// create_alert with the real alert bus so the over_order alert row persists
-	// (scoped/queryable by SourceRuleID).
-	reg.Register(communication.NewCreateAlertHandler(db.Log, db.BusDomain.Alert, nil))
+	// (scoped/queryable by SourceRuleID). Orders + Product buses let the over-order
+	// alert resolve order_id->order_number and product_id->product_name for rendering.
+	reg.Register(communication.NewCreateAlertHandler(db.Log, db.BusDomain.Alert, nil, db.BusDomain.Order, db.BusDomain.Product))
 
 	// seek_approval is async; give it the real approval + alert buses so the hold
 	// record is created when the over_order alert routes into it.

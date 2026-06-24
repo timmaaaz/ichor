@@ -575,7 +575,7 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	// The core registration uses nil buses (graceful degradation); replace it here
 	// so that manual execution via POST /v1/workflow/actions/create_alert/execute
 	// creates real alert records.
-	actionRegistry.Register(communication.NewCreateAlertHandler(cfg.Log, alertBus, nil))
+	actionRegistry.Register(communication.NewCreateAlertHandler(cfg.Log, alertBus, nil, ordersBus, productBus))
 
 	// Upgrade send_email handler with real Resend client if credentials are configured.
 	// If ResendAPIKey is empty, the nil-client version from RegisterCoreActions stays,

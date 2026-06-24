@@ -63,7 +63,7 @@ func InitWorkflowInfra(t *testing.T, db *dbtest.Database) *WorkflowInfra {
 	// accumulate state from prior tests in the same DB). Seek_approval
 	// activities also require a live approvalRequestBus to create DB records.
 	alertBus := alertbus.NewBusiness(db.Log, alertdb.NewStore(db.Log, db.DB))
-	registry.Register(communication.NewCreateAlertHandler(db.Log, alertBus, nil))
+	registry.Register(communication.NewCreateAlertHandler(db.Log, alertBus, nil, nil, nil))
 	registry.Register(control.NewEvaluateConditionHandler(db.Log))
 	registry.Register(integration.NewCallWebhookHandler(db.Log))
 

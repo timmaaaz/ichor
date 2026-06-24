@@ -204,12 +204,13 @@ func (a *api) resolve(ctx context.Context, r *http.Request) web.Encoder {
 // path and retryTemporalCompletion must go through this so downstream workflow
 // steps observe identical keys regardless of which path completed the activity.
 // Adding a field here forces every caller to supply it.
-func buildResolveResult(output, approvalID, resolvedBy, reason string) map[string]any {
+func buildResolveResult(output, approvalID, resolvedBy, resolvedByName, reason string) map[string]any {
 	return map[string]any{
-		"output":      output,
-		"approval_id": approvalID,
-		"resolved_by": resolvedBy,
-		"reason":      reason,
+		"output":           output,
+		"approval_id":      approvalID,
+		"resolved_by":      resolvedBy,
+		"resolved_by_name": resolvedByName,
+		"reason":           reason,
 	}
 }
 
@@ -229,7 +230,7 @@ func (a *api) completeAndClear(ctx context.Context, id uuid.UUID, approval appro
 	}
 	output := temporal.ActionActivityOutput{
 		ActionName: approval.ActionName,
-		Result:     buildResolveResult(req.Resolution, approval.ID.String(), userID.String(), req.Reason),
+		Result:     buildResolveResult(req.Resolution, approval.ID.String(), userID.String(), a.resolveUserName(ctx, userID), req.Reason),
 		Success:    true,
 	}
 	if err := a.asyncCompleter.Complete(ctx, taskToken, output); err != nil {
@@ -330,16 +331,27 @@ func (a *api) enrichSingleApproval(ctx context.Context, bus approvalrequestbus.A
 	}
 }
 
+// resolveUserName fetches the "First Last" display name for a single user id,
+// best-effort: returns "" when the user bus is unavailable or the lookup fails.
+func (a *api) resolveUserName(ctx context.Context, id uuid.UUID) string {
+	if a.userBus == nil {
+		return ""
+	}
+	user, err := a.userBus.QueryByID(ctx, id)
+	if err != nil {
+		a.log.Error(ctx, "failed to resolve user name", "user_id", id, "error", err)
+		return ""
+	}
+	return fmt.Sprintf("%s %s", user.FirstName, user.LastName)
+}
+
 // resolveUserNames fetches display names for a set of user UUIDs.
 func (a *api) resolveUserNames(ctx context.Context, ids map[uuid.UUID]bool) map[uuid.UUID]string {
 	nameMap := make(map[uuid.UUID]string, len(ids))
 	for id := range ids {
-		user, err := a.userBus.QueryByID(ctx, id)
-		if err != nil {
-			a.log.Error(ctx, "failed to resolve approver name", "user_id", id, "error", err)
-			continue
+		if name := a.resolveUserName(ctx, id); name != "" {
+			nameMap[id] = name
 		}
-		nameMap[id] = fmt.Sprintf("%s %s", user.FirstName, user.LastName)
 	}
 	return nameMap
 }
@@ -422,13 +434,15 @@ func (a *api) retryTemporalCompletion(ctx context.Context, id uuid.UUID) web.Enc
 	}
 
 	resolvedBy := ""
+	resolvedByName := ""
 	if approval.ResolvedBy != nil {
 		resolvedBy = approval.ResolvedBy.String()
+		resolvedByName = a.resolveUserName(ctx, *approval.ResolvedBy)
 	}
 
 	output := temporal.ActionActivityOutput{
 		ActionName: approval.ActionName,
-		Result:     buildResolveResult(approval.Status, approval.ID.String(), resolvedBy, approval.ResolutionReason),
+		Result:     buildResolveResult(approval.Status, approval.ID.String(), resolvedBy, resolvedByName, approval.ResolutionReason),
 		Success:    true,
 	}
 
