@@ -7,21 +7,27 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/foundation/logger"
 	"github.com/timmaaaz/ichor/foundation/rabbitmq"
 )
 
-// SendNotificationHandler handles send_notification actions
+// SendNotificationHandler handles send_notification actions. A notification is a
+// single-user, informational alert that rides the durable alert pipeline.
 type SendNotificationHandler struct {
 	log           *logger.Logger
+	alertBus      *alertbus.Business
 	workflowQueue *rabbitmq.WorkflowQueue
 }
 
-// NewSendNotificationHandler creates a new send notification handler
-func NewSendNotificationHandler(log *logger.Logger, workflowQueue *rabbitmq.WorkflowQueue) *SendNotificationHandler {
+// NewSendNotificationHandler creates a new send notification handler.
+// alertBus persists the notification as a single-user alert (nil = no
+// persistence, e.g. validation-only registries).
+func NewSendNotificationHandler(log *logger.Logger, alertBus *alertbus.Business, workflowQueue *rabbitmq.WorkflowQueue) *SendNotificationHandler {
 	return &SendNotificationHandler{
 		log:           log,
+		alertBus:      alertBus,
 		workflowQueue: workflowQueue,
 	}
 }
@@ -85,52 +91,84 @@ func (h *SendNotificationHandler) Execute(ctx context.Context, config json.RawMe
 		return nil, fmt.Errorf("failed to parse notification config: %w", err)
 	}
 
-	notificationID := uuid.New()
 	now := time.Now()
 
-	// Resolve template variables in message and title
-	message := resolveTemplateVars(cfg.Message, execCtx.RawData)
-	title := resolveTemplateVars(cfg.Title, execCtx.RawData)
+	// A notification is a single-user informational alert riding the same durable
+	// pipeline (alertbus -> RabbitMQ -> AlertHub -> WebSocket) the frontend already
+	// consumes. Severity carries the config priority: low = silent inbox entry,
+	// high/critical interrupt (frontend toast gating). alert_type "notification"
+	// lets the UI treat these distinctly later. SourceEntityID is deliberately
+	// left nil so personal notifications are NOT collapsed in the frontend's alert
+	// bundling view (bundle key = source_entity_id:alert_type).
+	severity := cfg.Priority
+	if severity == "" {
+		severity = alertbus.SeverityLow
+	}
 
-	// Publish to RabbitMQ for WebSocket delivery (ephemeral — no DB persistence)
-	if h.workflowQueue != nil {
-		for _, recipientID := range cfg.Recipients {
-			uid, err := uuid.Parse(recipientID)
-			if err != nil {
-				h.log.Warn(ctx, "send_notification: invalid recipient UUID", "recipient", recipientID)
-				continue
-			}
+	sourceRuleID := uuid.Nil
+	if execCtx.RuleID != nil {
+		sourceRuleID = *execCtx.RuleID
+	}
 
-			msg := &rabbitmq.Message{
-				Type:       "notification",
-				EntityName: "workflow.notifications",
-				EntityID:   notificationID,
-				EventType:  "send",
-				UserID:     uid,
-				Payload: map[string]interface{}{
-					"notification_id": notificationID.String(),
-					"title":           title,
-					"message":         message,
-					"priority":        cfg.Priority,
-					"created_date":    now.Format(time.RFC3339),
-				},
-			}
-			if err := h.workflowQueue.Publish(ctx, rabbitmq.QueueTypeNotification, msg); err != nil {
-				h.log.Error(ctx, "send_notification: publish failed",
-					"recipient", recipientID, "error", err)
-			}
+	alert := alertbus.Alert{
+		ID:           uuid.New(),
+		AlertType:    "notification",
+		Severity:     severity,
+		Title:        resolveTemplateVars(cfg.Title, execCtx.RawData),
+		Message:      resolveTemplateVars(cfg.Message, execCtx.RawData),
+		Context:      json.RawMessage(`{}`),
+		SourceRuleID: sourceRuleID,
+		Status:       alertbus.StatusActive,
+		CreatedDate:  now,
+		UpdatedDate:  now,
+	}
+
+	// Notifications target users only (no role fan-out). Validate all UUIDs first.
+	var recipients []alertbus.AlertRecipient
+	for _, u := range cfg.Recipients {
+		uid, err := uuid.Parse(u)
+		if err != nil {
+			return nil, fmt.Errorf("invalid recipient UUID %q: %w", u, err)
 		}
+		recipients = append(recipients, alertbus.AlertRecipient{
+			ID:            uuid.New(),
+			AlertID:       alert.ID,
+			RecipientType: "user",
+			RecipientID:   uid,
+			CreatedDate:   now,
+		})
+	}
+
+	// Graceful degradation when no alert bus is wired (validation-only registries).
+	if h.alertBus == nil {
+		h.log.Warn(ctx, "send_notification: alertBus not configured, skipping notification")
+		return map[string]interface{}{
+			"notification_id": uuid.Nil.String(),
+			"status":          "skipped",
+			"recipients":      0,
+		}, nil
+	}
+
+	if err := h.alertBus.Create(ctx, alert); err != nil {
+		return nil, fmt.Errorf("create notification alert: %w", err)
+	}
+	if err := h.alertBus.CreateRecipients(ctx, recipients); err != nil {
+		return nil, fmt.Errorf("create notification recipients: %w", err)
+	}
+
+	// Publish for real-time WebSocket delivery via the shared alert publish seam.
+	if h.workflowQueue != nil {
+		PublishAlertToRecipients(ctx, h.workflowQueue, h.log, alert, recipients)
 	}
 
 	h.log.Info(ctx, "send_notification executed",
-		"notification_id", notificationID,
-		"recipients", len(cfg.Recipients),
-		"priority", cfg.Priority)
+		"notification_id", alert.ID,
+		"recipients", len(recipients),
+		"severity", severity)
 
 	return map[string]interface{}{
-		"notification_id": notificationID.String(),
+		"notification_id": alert.ID.String(),
 		"status":          "sent",
-		"sent_at":         now.Format(time.RFC3339),
-		"recipients":      len(cfg.Recipients),
+		"recipients":      len(recipients),
 	}, nil
 }
