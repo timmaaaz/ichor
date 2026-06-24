@@ -305,12 +305,16 @@ func TestError_RetryPolicy_AsyncAction_Config(t *testing.T) {
 }
 
 func TestError_RetryPolicy_HumanAction_Config(t *testing.T) {
-	// Human actions: MaximumAttempts=1, multi-day timeout.
+	// Human actions: MaximumAttempts=1, multi-day timeout, NO heartbeat timeout.
 	opts := activityOptions("manager_approval")
 	require.Equal(t, int32(1), opts.RetryPolicy.MaximumAttempts,
 		"human action should NOT retry (MaximumAttempts=1)")
 	require.Equal(t, 7*24*time.Hour, opts.StartToCloseTimeout)
-	require.Equal(t, time.Hour, opts.HeartbeatTimeout)
+	// Human actions hold via async completion, which never heartbeats; a heartbeat
+	// timeout orphaned holds longer than ~1h, so it was removed (the 7-day
+	// StartToCloseTimeout is the real bound). See TestActivityOptions_HumanAction_NoHeartbeatTimeout.
+	require.Zero(t, opts.HeartbeatTimeout,
+		"human action must NOT set a heartbeat timeout")
 }
 
 func TestError_RetryPolicy_AllLongRunningTypes(t *testing.T) {
