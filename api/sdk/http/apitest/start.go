@@ -193,7 +193,7 @@ func startTestWithTemporal(
 // record's eventual status, so the MarkExecution* lifecycle activities can no-op.
 func registerCoreWorkerActions(db *dbtest.Database, reg *workflow.ActionRegistry, _ *temporal.AsyncRegistry) temporal.ExecutionLifecycleStore {
 	reg.Register(communication.NewSendEmailHandler(db.Log, db.DB, nil, ""))
-	reg.Register(communication.NewSendNotificationHandler(db.Log, nil))
+	reg.Register(communication.NewSendNotificationHandler(db.Log, nil, nil))
 	reg.Register(control.NewEvaluateConditionHandler(db.Log))
 	reg.Register(integration.NewCallWebhookHandler(db.Log))
 	return nil

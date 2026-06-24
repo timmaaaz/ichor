@@ -55,7 +55,6 @@ func InitWorkflowInfra(t *testing.T, db *dbtest.Database) *WorkflowInfra {
 	// 3. Build action registry (same 4 handlers as before).
 	registry := workflow.NewActionRegistry()
 	registry.Register(communication.NewSendEmailHandler(db.Log, db.DB, nil, ""))
-	registry.Register(communication.NewSendNotificationHandler(db.Log, nil))
 	// alertBus and approvalRequestBus are constructed independently (not from
 	// db.BusDomain) so each test gets its own bus instance. This ensures
 	// approval request and alert state is not shared across test runs that
@@ -63,6 +62,7 @@ func InitWorkflowInfra(t *testing.T, db *dbtest.Database) *WorkflowInfra {
 	// accumulate state from prior tests in the same DB). Seek_approval
 	// activities also require a live approvalRequestBus to create DB records.
 	alertBus := alertbus.NewBusiness(db.Log, alertdb.NewStore(db.Log, db.DB))
+	registry.Register(communication.NewSendNotificationHandler(db.Log, alertBus, nil))
 	registry.Register(communication.NewCreateAlertHandler(db.Log, alertBus, nil, nil, nil))
 	registry.Register(control.NewEvaluateConditionHandler(db.Log))
 	registry.Register(integration.NewCallWebhookHandler(db.Log))

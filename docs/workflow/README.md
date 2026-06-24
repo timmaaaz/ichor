@@ -47,7 +47,7 @@ The Ichor workflow engine provides event-driven automation for business processe
 | `create_alert` | Creates in-app alerts for users/roles |
 | `update_field` | Updates database fields dynamically |
 | `send_email` | Sends email notifications |
-| `send_notification` | Multi-channel notifications (email, SMS, push, in-app) |
+| `send_notification` | Persists a single-user informational alert (`alert_type='notification'`, severity = configured priority, default `low`) via `alertbus` and delivers it over the shared WebSocket alert pipeline — identical to `create_alert` but recipient-scoped to an individual user. No separate notification store. |
 | `seek_approval` | Initiates approval workflows |
 | `allocate_inventory` | Reserves or allocates inventory |
 | `evaluate_condition` | Evaluates conditions for branching workflows |

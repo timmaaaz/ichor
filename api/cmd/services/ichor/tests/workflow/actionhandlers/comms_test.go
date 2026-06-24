@@ -26,6 +26,8 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus/stores/alertdb"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest"
+	"github.com/timmaaaz/ichor/business/sdk/order"
+	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/stores/workflowdb"
 	workflowtemporal "github.com/timmaaaz/ichor/business/sdk/workflow/temporal"
@@ -329,8 +331,8 @@ func TestSendEmailAction(t *testing.T) {
 // send_notification Action Test
 // =============================================================================
 
-// TestSendNotificationAction verifies that the send_notification handler, when
-// registered with a nil queue client, does not panic when a workflow triggers it.
+// TestSendNotificationAction verifies that the send_notification handler, registered
+// with a real alertBus and a nil queue client, completes when a workflow triggers it.
 func TestSendNotificationAction(t *testing.T) {
 	t.Parallel()
 
@@ -348,12 +350,12 @@ func TestSendNotificationAction(t *testing.T) {
 	w.RegisterWorkflow(workflowtemporal.ExecuteGraphWorkflow)
 	w.RegisterWorkflow(workflowtemporal.ExecuteBranchUntilConvergence)
 
-	// send_notification with nil queue → logs a warning and returns without error.
+	// send_notification with real alertBus → persists notification alert row.
 	alertsStore := alertdb.NewStore(db.Log, db.DB)
 	alertsBus := alertbus.NewBusiness(db.Log, alertsStore)
 
 	registry := workflow.NewActionRegistry()
-	registry.Register(communication.NewSendNotificationHandler(db.Log, nil))
+	registry.Register(communication.NewSendNotificationHandler(db.Log, alertsBus, nil))
 	registry.Register(communication.NewCreateAlertHandler(db.Log, alertsBus, nil, nil, nil))
 
 	activities := &workflowtemporal.Activities{
@@ -428,7 +430,133 @@ func TestSendNotificationAction(t *testing.T) {
 	if !completed {
 		t.Fatal("timeout: send_notification workflow did not complete within 15s")
 	}
-	t.Log("SUCCESS: send_notification with nil queue client completed without error")
+	t.Log("SUCCESS: send_notification (real alertBus, nil queue client) completed without error")
+}
+
+// =============================================================================
+// send_notification Persistence Test
+// =============================================================================
+
+// TestSendNotificationPersistence is the DB-backed behavioral proof that
+// send_notification persists a real alert row of type "notification" via the
+// alertBus, including template substitution in the message field.
+// It does NOT use Temporal — it calls the handler directly — to keep the test
+// focused on the persistence guarantee rather than the full execution pipeline.
+func TestSendNotificationPersistence(t *testing.T) {
+	t.Parallel()
+
+	db := dbtest.NewDatabase(t, "Test_SendNotificationPersistence")
+	ctx := context.Background()
+
+	// Seed one real user to act as the notification recipient.
+	users, err := userbus.TestSeedUsersWithNoFKs(ctx, 1, userbus.Roles.User, db.BusDomain.User)
+	if err != nil {
+		t.Fatalf("seeding users: %v", err)
+	}
+	recipientID := users[0].ID
+
+	// Build a real alertBus backed by the test DB.
+	alertsStore := alertdb.NewStore(db.Log, db.DB)
+	alertsBus := alertbus.NewBusiness(db.Log, alertsStore)
+
+	// Construct handler with real alertBus; nil workflowQueue is intentional —
+	// this test proves persistence, not WebSocket delivery.
+	handler := communication.NewSendNotificationHandler(db.Log, alertsBus, nil)
+
+	// Seed a real rule so source_rule_id satisfies the FK on workflow.alerts.
+	workflowStore := workflowdb.NewStore(db.Log, db.DB)
+	workflowBus := workflow.NewBusiness(db.Log, db.BusDomain.Delegate, workflowStore)
+	_, rule, _ := seedCommsActionRule(t, ctx, workflowBus, db.BusDomain.User, "send_notification",
+		fmt.Sprintf(`{"recipients":["%s"],"priority":"high","message":"Order {{order_number}} shipped","title":"Shipped"}`, recipientID))
+	ruleID := rule.ID
+
+	config := json.RawMessage(fmt.Sprintf(`{
+		"recipients": ["%s"],
+		"priority": "high",
+		"message": "Order {{order_number}} shipped",
+		"title": "Shipped"
+	}`, recipientID))
+
+	execCtx := workflow.ActionExecutionContext{
+		EntityID:    uuid.New(),
+		EntityName:  "orders",
+		EventType:   "on_update",
+		UserID:      recipientID,
+		RuleID:      &ruleID,
+		RuleName:    rule.Name,
+		ExecutionID: uuid.New(),
+		RawData: map[string]interface{}{
+			"order_number": "ORD-7",
+		},
+	}
+
+	result, err := handler.Execute(ctx, config, execCtx)
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	resultMap, ok := result.(map[string]interface{})
+	if !ok {
+		t.Fatalf("unexpected result type: %T", result)
+	}
+
+	if resultMap["status"] != "sent" {
+		t.Fatalf("expected status=sent, got %v", resultMap["status"])
+	}
+
+	// Query alerts scoped to the rule — proves the row was persisted.
+	alerts, err := alertsBus.Query(
+		ctx,
+		alertbus.QueryFilter{SourceRuleID: &ruleID},
+		order.NewBy(alertbus.OrderByCreatedDate, order.DESC),
+		page.MustParse("1", "10"),
+	)
+	if err != nil {
+		t.Fatalf("querying alerts: %v", err)
+	}
+
+	if len(alerts) != 1 {
+		t.Fatalf("expected 1 alert, got %d", len(alerts))
+	}
+
+	got := alerts[0]
+
+	if got.AlertType != "notification" {
+		t.Errorf("AlertType: got %q, want %q", got.AlertType, "notification")
+	}
+	if got.Severity != alertbus.SeverityHigh {
+		t.Errorf("Severity: got %q, want %q", got.Severity, alertbus.SeverityHigh)
+	}
+	if got.Status != alertbus.StatusActive {
+		t.Errorf("Status: got %q, want %q", got.Status, alertbus.StatusActive)
+	}
+	// Proves template substitution: {{order_number}} → ORD-7
+	wantMsg := "Order ORD-7 shipped"
+	if got.Message != wantMsg {
+		t.Errorf("Message: got %q, want %q", got.Message, wantMsg)
+	}
+	// Carries the triggering entity's name (like create_alert) so the frontend
+	// can show context. SourceEntityID stays nil on purpose (bundling).
+	if got.SourceEntityName != execCtx.EntityName {
+		t.Errorf("SourceEntityName: got %q, want %q", got.SourceEntityName, execCtx.EntityName)
+	}
+
+	// Verify the recipient row was created for the seeded user.
+	recipients, err := alertsBus.QueryRecipientsByAlertID(ctx, got.ID)
+	if err != nil {
+		t.Fatalf("querying recipients: %v", err)
+	}
+	if len(recipients) != 1 {
+		t.Fatalf("expected 1 recipient row, got %d", len(recipients))
+	}
+	if recipients[0].RecipientID != recipientID {
+		t.Errorf("RecipientID: got %v, want %v", recipients[0].RecipientID, recipientID)
+	}
+	if recipients[0].RecipientType != "user" {
+		t.Errorf("RecipientType: got %q, want %q", recipients[0].RecipientType, "user")
+	}
+
+	t.Logf("SUCCESS: send_notification persisted alert %s with message %q and 1 recipient", got.ID, got.Message)
 }
 
 // =============================================================================
