@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/timmaaaz/ichor/business/sdk/sqldb"
+	"github.com/timmaaaz/ichor/business/sdk/sqldb/nulltypes"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
@@ -313,13 +315,18 @@ func (s *ActionService) GetExecutionStatus(ctx context.Context, executionID uuid
 		WHERE id = :execution_id
 	`
 
+	// action_type, actions_executed, and error_message are all nullable columns:
+	// a trigger-created automation execution (no manual action_type, no
+	// actions_executed until it runs, no error on success) stores SQL NULL in
+	// each. Scanning NULL into a plain string / json.RawMessage fails, so use
+	// nullable types (mirrors the workflowdb automationExecution model).
 	var row struct {
-		ID              uuid.UUID       `db:"id"`
-		ActionType      string          `db:"action_type"`
-		Status          string          `db:"status"`
-		ActionsExecuted json.RawMessage `db:"actions_executed"`
-		ErrorMessage    string          `db:"error_message"`
-		ExecutedAt      time.Time       `db:"executed_at"`
+		ID              uuid.UUID                `db:"id"`
+		ActionType      sql.NullString           `db:"action_type"`
+		Status          string                   `db:"status"`
+		ActionsExecuted nulltypes.NullRawMessage `db:"actions_executed"`
+		ErrorMessage    sql.NullString           `db:"error_message"`
+		ExecutedAt      time.Time                `db:"executed_at"`
 	}
 
 	if err := sqldb.NamedQueryStruct(ctx, s.log, s.db, query, map[string]any{"execution_id": executionID}, &row); err != nil {
@@ -331,16 +338,16 @@ func (s *ActionService) GetExecutionStatus(ctx context.Context, executionID uuid
 
 	statusInfo := &ExecutionStatusInfo{
 		ExecutionID: row.ID,
-		ActionType:  row.ActionType,
+		ActionType:  row.ActionType.String,
 		Status:      row.Status,
-		Error:       row.ErrorMessage,
+		Error:       row.ErrorMessage.String,
 		StartedAt:   row.ExecutedAt,
 	}
 
 	// Parse the result from actions_executed if present
-	if len(row.ActionsExecuted) > 0 {
+	if row.ActionsExecuted.Valid && len(row.ActionsExecuted.Data) > 0 {
 		var result interface{}
-		if err := json.Unmarshal(row.ActionsExecuted, &result); err == nil {
+		if err := json.Unmarshal(row.ActionsExecuted.Data, &result); err == nil {
 			statusInfo.Result = result
 		}
 	}
