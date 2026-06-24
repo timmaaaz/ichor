@@ -311,12 +311,11 @@ const (
 type QueueType string
 
 const (
-	QueueTypeWorkflow     QueueType = "workflow"
-	QueueTypeApproval     QueueType = "approval"
-	QueueTypeNotification QueueType = "notification"
-	QueueTypeInventory    QueueType = "inventory"
-	QueueTypeEmail        QueueType = "email"
-	QueueTypeAlert        QueueType = "alert"
+	QueueTypeWorkflow  QueueType = "workflow"
+	QueueTypeApproval  QueueType = "approval"
+	QueueTypeInventory QueueType = "inventory"
+	QueueTypeEmail     QueueType = "email"
+	QueueTypeAlert     QueueType = "alert"
 )
 
 // =============================================================================
@@ -407,16 +406,6 @@ func (wq *WorkflowQueue) setupDefaultQueues() {
 		MaxPriority:       10,
 		MessageTTL:        72 * time.Hour, // 3 days for approvals
 		MaxRetries:        5,
-		DeadLetterEnabled: true,
-		Durable:           true,
-	}
-
-	wq.queues[QueueTypeNotification] = QueueConfig{
-		Name:              p + "workflow.notification",
-		RoutingKey:        p + "notification.*",
-		MaxPriority:       5,
-		MessageTTL:        1 * time.Hour,
-		MaxRetries:        3,
 		DeadLetterEnabled: true,
 		Durable:           true,
 	}

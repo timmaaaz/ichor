@@ -2725,3 +2725,7 @@ CREATE INDEX idx_cascade_outbox_pending
 CREATE INDEX idx_automation_executions_stale
     ON workflow.automation_executions (executed_at)
     WHERE status = 'pending';
+
+-- Version: 2.44
+-- Description: Drop dead workflow.notifications inbox (send_notification now rides the alert pipeline)
+DROP TABLE IF EXISTS workflow.notifications;
