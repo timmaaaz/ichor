@@ -85,7 +85,6 @@ import (
 	workflowapprovalapi "github.com/timmaaaz/ichor/api/domain/http/workflow/approvalapi"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/edgeapi"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/executionapi"
-	"github.com/timmaaaz/ichor/api/domain/http/workflow/notificationinboxapi"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/notificationsapi"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/referenceapi"
 	"github.com/timmaaaz/ichor/api/domain/http/workflow/ruleapi"
@@ -339,8 +338,6 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/workflow/alertbus/stores/alertdb"
 	"github.com/timmaaaz/ichor/business/domain/workflow/approvalrequestbus"
 	"github.com/timmaaaz/ichor/business/domain/workflow/approvalrequestbus/stores/approvalrequestdb"
-	"github.com/timmaaaz/ichor/business/domain/workflow/notificationbus"
-	"github.com/timmaaaz/ichor/business/domain/workflow/notificationbus/stores/notificationdb"
 	"github.com/timmaaaz/ichor/business/sdk/agenttools"
 	"github.com/timmaaaz/ichor/business/sdk/delegate"
 	"github.com/timmaaaz/ichor/business/sdk/llm"
@@ -520,7 +517,6 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 
 	// Workflow domain
 	alertBus := alertbus.NewBusiness(cfg.Log, alertdb.NewStore(cfg.Log, cfg.DB))
-	notificationBus := notificationbus.NewBusiness(cfg.Log, notificationdb.NewStore(cfg.Log, cfg.DB))
 	approvalRequestBus := approvalrequestbus.NewBusiness(cfg.Log, delegate, approvalrequestdb.NewStore(cfg.Log, cfg.DB))
 	actionPermBus := actionpermissionsbus.NewBusiness(cfg.Log, actionpermissionsdb.NewStore(cfg.Log, cfg.DB))
 
@@ -576,6 +572,9 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 	// so that manual execution via POST /v1/workflow/actions/create_alert/execute
 	// creates real alert records.
 	actionRegistry.Register(communication.NewCreateAlertHandler(cfg.Log, alertBus, nil))
+
+	// Upgrade send_notification handler with the real alert bus (core path used nil).
+	actionRegistry.Register(communication.NewSendNotificationHandler(cfg.Log, alertBus, nil))
 
 	// Upgrade send_email handler with real Resend client if credentials are configured.
 	// If ResendAPIKey is empty, the nil-client version from RegisterCoreActions stays,
@@ -1439,12 +1438,6 @@ func (a add) Add(app *web.App, cfg mux.Config) {
 		ApprovalBus: approvalRequestBus,
 		UserRoleBus: userRoleBus,
 		AuthClient:  cfg.AuthClient,
-	})
-
-	notificationinboxapi.Routes(app, notificationinboxapi.Config{
-		Log:             cfg.Log,
-		NotificationBus: notificationBus,
-		AuthClient:      cfg.AuthClient,
 	})
 
 	referenceapi.Routes(app, referenceapi.Config{

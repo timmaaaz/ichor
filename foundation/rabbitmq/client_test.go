@@ -337,7 +337,6 @@ func TestWorkflowQueue_MultipleQueueTypes(t *testing.T) {
 	queueTypes := []rabbitmq.QueueType{
 		rabbitmq.QueueTypeWorkflow,
 		rabbitmq.QueueTypeApproval,
-		rabbitmq.QueueTypeNotification,
 	}
 
 	for _, qt := range queueTypes {

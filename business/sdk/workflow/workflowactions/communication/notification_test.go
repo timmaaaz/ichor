@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
 	"github.com/timmaaaz/ichor/business/sdk/unitest"
 	"github.com/timmaaaz/ichor/business/sdk/workflow"
 	"github.com/timmaaaz/ichor/business/sdk/workflow/workflowactions/communication"
@@ -17,10 +18,19 @@ import (
 func Test_SendNotificationHandler(t *testing.T) {
 	log := logger.New(os.Stdout, logger.LevelInfo, "notification_test", func(context.Context) string { return "00000000-0000-0000-0000-000000000000" })
 
-	handler := communication.NewSendNotificationHandler(log, nil)
+	handler := communication.NewSendNotificationHandler(log, nil, nil)
 
 	unitest.Run(t, notificationValidateTests(handler), "validate")
 	unitest.Run(t, notificationExecuteTests(handler), "execute")
+}
+
+func Test_SendNotification_NilBus_Skips(t *testing.T) {
+	log := logger.New(os.Stdout, logger.LevelInfo, "notif", func(context.Context) string { return "00000000-0000-0000-0000-000000000000" })
+	handler := communication.NewSendNotificationHandler(log, nil, nil)
+	cfg := []byte(`{"recipients":["` + uuid.NewString() + `"],"priority":"low","message":"hi"}`)
+	out, err := handler.Execute(context.Background(), cfg, workflow.ActionExecutionContext{RawData: map[string]any{}})
+	require.NoError(t, err)
+	require.Equal(t, "skipped", out.(map[string]interface{})["status"])
 }
 
 // =============================================================================
@@ -33,6 +43,7 @@ func notificationValidateTests(handler *communication.SendNotificationHandler) [
 		notifyValidateMissingRecipients(handler),
 		notifyValidateInvalidPriority(handler),
 		notifyValidateInvalidJSON(handler),
+		notifyValidateInvalidRecipientUUID(handler),
 	}
 }
 
@@ -158,8 +169,39 @@ func notifyValidateInvalidJSON(handler *communication.SendNotificationHandler) u
 	}
 }
 
+func notifyValidateInvalidRecipientUUID(handler *communication.SendNotificationHandler) unitest.Table {
+	return unitest.Table{
+		Name:    "invalid_recipient_uuid",
+		ExpResp: true,
+		ExcFunc: func(ctx context.Context) any {
+			config := json.RawMessage(`{
+				"recipients": ["not-a-uuid"],
+				"priority": "medium",
+				"message": "Test notification"
+			}`)
+
+			err := handler.Validate(config)
+			if err == nil {
+				return false
+			}
+			return containsString(err.Error(), "invalid recipient UUID")
+		},
+		CmpFunc: func(got, exp any) string {
+			if got != exp {
+				return fmt.Sprintf("got %v, want %v", got, exp)
+			}
+			return ""
+		},
+	}
+}
+
 // =============================================================================
 // Execute Tests
+//
+// All execute tests use a nil-bus handler (no alertBus wired), so Execute always
+// returns status "skipped" via the graceful-degradation path. The DB-backed
+// integration test (status "sent" + real alert row) lives in a separate package
+// and is added in the next task once call sites are updated.
 
 func notificationExecuteTests(handler *communication.SendNotificationHandler) []unitest.Table {
 	return []unitest.Table{
@@ -173,7 +215,7 @@ func notificationExecuteTests(handler *communication.SendNotificationHandler) []
 func notifyExecuteBasic(handler *communication.SendNotificationHandler) unitest.Table {
 	return unitest.Table{
 		Name:    "basic_execution",
-		ExpResp: "sent",
+		ExpResp: "skipped",
 		ExcFunc: func(ctx context.Context) any {
 			config := json.RawMessage(fmt.Sprintf(`{
 				"recipients": ["%s"],
@@ -239,15 +281,13 @@ func notifyExecuteTemplateSubstitution(handler *communication.SendNotificationHa
 				return false
 			}
 
-			// The handler resolves templates internally before publishing.
-			// With nil workflowQueue, we can't inspect the published message,
-			// but we can verify execution succeeds without error.
+			// With nil alertBus the handler returns graceful-degradation skipped output.
+			// Verify the result has the expected fields.
 			resultMap, ok := result.(map[string]interface{})
 			if !ok {
 				return false
 			}
 
-			// Verify result has expected fields
 			_, hasID := resultMap["notification_id"]
 			_, hasStatus := resultMap["status"]
 			return hasID && hasStatus
@@ -293,7 +333,7 @@ func notifyExecuteResultFields(handler *communication.SendNotificationHandler) u
 				return false
 			}
 
-			// Verify notification_id is a valid UUID
+			// With nil alertBus, degraded output: notification_id=uuid.Nil, status="skipped", recipients=0.
 			idStr, ok := resultMap["notification_id"].(string)
 			if !ok {
 				return false
@@ -302,18 +342,12 @@ func notifyExecuteResultFields(handler *communication.SendNotificationHandler) u
 				return false
 			}
 
-			// Verify status
-			if resultMap["status"] != "sent" {
+			if resultMap["status"] != "skipped" {
 				return false
 			}
 
-			// Verify sent_at exists
-			if _, ok := resultMap["sent_at"].(string); !ok {
-				return false
-			}
-
-			// Verify recipients count matches input
-			if resultMap["recipients"] != 2 {
+			// recipients count is 0 in skipped mode (no alertBus to persist them).
+			if resultMap["recipients"] != 0 {
 				return false
 			}
 
@@ -330,10 +364,11 @@ func notifyExecuteResultFields(handler *communication.SendNotificationHandler) u
 
 func notifyExecuteInvalidRecipientUUID(handler *communication.SendNotificationHandler) unitest.Table {
 	return unitest.Table{
-		Name:    "invalid_recipient_uuid_skipped",
-		ExpResp: "sent",
+		Name:    "invalid_recipient_uuid_errors",
+		ExpResp: true,
 		ExcFunc: func(ctx context.Context) any {
-			// Mix valid and invalid UUIDs — handler should skip invalid ones gracefully
+			// The new alertbus-based handler validates all UUIDs before persisting
+			// (fail-fast). An invalid UUID now returns an error rather than skipping.
 			config := json.RawMessage(fmt.Sprintf(`{
 				"recipients": ["not-a-uuid", "%s"],
 				"priority": "medium",
@@ -348,18 +383,8 @@ func notifyExecuteInvalidRecipientUUID(handler *communication.SendNotificationHa
 				ExecutionID: uuid.New(),
 			}
 
-			result, err := handler.Execute(ctx, config, execCtx)
-			if err != nil {
-				return err
-			}
-
-			resultMap, ok := result.(map[string]interface{})
-			if !ok {
-				return "unexpected result type"
-			}
-
-			// Should still succeed — invalid UUIDs are warned and skipped
-			return resultMap["status"]
+			_, err := handler.Execute(ctx, config, execCtx)
+			return err != nil
 		},
 		CmpFunc: func(got, exp any) string {
 			if got != exp {

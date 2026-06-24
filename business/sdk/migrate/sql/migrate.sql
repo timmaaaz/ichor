@@ -2725,3 +2725,10 @@ CREATE INDEX idx_cascade_outbox_pending
 CREATE INDEX idx_automation_executions_stale
     ON workflow.automation_executions (executed_at)
     WHERE status = 'pending';
+
+-- Version: 2.44
+-- Description: Drop dead workflow.notifications inbox (send_notification now rides the alert pipeline)
+-- v2.22 granted every role table_access on this table; remove those rows so they
+-- don't linger as orphans (the table_name admin view reads core.table_access).
+DELETE FROM core.table_access WHERE table_name = 'workflow.notifications';
+DROP TABLE IF EXISTS workflow.notifications;
