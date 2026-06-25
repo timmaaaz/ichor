@@ -91,8 +91,9 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (ExecutionSeedData, err
 		return ExecutionSeedData{}, fmt.Errorf("seeding actions: %w", err)
 	}
 
-	// Seed executions for testing
-	executions, err := seedExecutions(ctx, rules, busDomain.Workflow)
+	// Seed executions for testing. The manual execution is attributed to the admin
+	// user so the executed_by -> core.users join (executed_by_name) is exercised.
+	executions, err := seedExecutions(ctx, rules, admins[0].ID, busDomain.Workflow)
 	if err != nil {
 		return ExecutionSeedData{}, fmt.Errorf("seeding executions: %w", err)
 	}
@@ -145,8 +146,9 @@ func insertSeedData(db *dbtest.Database, ath *auth.Auth) (ExecutionSeedData, err
 	}, nil
 }
 
-// seedExecutions creates test execution records
-func seedExecutions(ctx context.Context, rules []workflow.AutomationRule, bus *workflow.Business) ([]workflow.AutomationExecution, error) {
+// seedExecutions creates test execution records. executedBy is the user attributed
+// to the manual execution (so executed_by_name resolves through the core.users join).
+func seedExecutions(ctx context.Context, rules []workflow.AutomationRule, executedBy uuid.UUID, bus *workflow.Business) ([]workflow.AutomationExecution, error) {
 	if len(rules) == 0 {
 		return []workflow.AutomationExecution{}, nil
 	}
@@ -201,7 +203,8 @@ func seedExecutions(ctx context.Context, rules []workflow.AutomationRule, bus *w
 	}
 	executions = append(executions, exec2)
 
-	// Create a manual execution (no rule ID)
+	// Create a manual execution (no rule ID) attributed to a real user so the
+	// executed_by -> core.users join resolves a non-empty executed_by_name.
 	exec3, err := bus.CreateExecution(ctx, workflow.NewAutomationExecution{
 		AutomationRuleID: nil, // Manual execution - no associated rule
 		EntityType:       "manual",
@@ -210,6 +213,7 @@ func seedExecutions(ctx context.Context, rules []workflow.AutomationRule, bus *w
 		Status:           workflow.StatusCompleted,
 		ExecutionTimeMs:  100,
 		TriggerSource:    workflow.TriggerSourceManual,
+		ExecutedBy:       &executedBy,
 		ActionType:       "send_notification",
 	})
 	if err != nil {

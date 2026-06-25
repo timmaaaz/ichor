@@ -1548,9 +1548,11 @@ func (s *Store) QueryExecutionByID(ctx context.Context, id uuid.UUID) (workflow.
 		ae.executed_at,
 		ae.trigger_source,
 		ae.executed_by,
+		u.first_name || ' ' || u.last_name AS executed_by_name,
 		ae.action_type
 	FROM workflow.automation_executions ae
 	LEFT JOIN workflow.automation_rules ar ON ae.automation_rules_id = ar.id
+	LEFT JOIN core.users u ON ae.executed_by = u.id
 	WHERE ae.id = :id`
 
 	var dbExecution automationExecution

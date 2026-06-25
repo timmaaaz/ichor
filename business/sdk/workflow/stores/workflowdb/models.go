@@ -455,9 +455,10 @@ type automationExecution struct {
 	ErrorMessage    sql.NullString           `db:"error_message"`
 	ExecutionTimeMs sql.NullInt32            `db:"execution_time_ms"`
 	ExecutedAt      time.Time                `db:"executed_at"`
-	TriggerSource   sql.NullString           `db:"trigger_source"` // 'automation' or 'manual'
-	ExecutedBy      sql.NullString           `db:"executed_by"`    // User who triggered manual execution
-	ActionType      sql.NullString           `db:"action_type"`    // For manual executions
+	TriggerSource   sql.NullString           `db:"trigger_source"`   // 'automation' or 'manual'
+	ExecutedBy      sql.NullString           `db:"executed_by"`      // User who triggered manual execution
+	ExecutedByName  sql.NullString           `db:"executed_by_name"` // From LEFT JOIN with core.users (detail query only)
+	ActionType      sql.NullString           `db:"action_type"`      // For manual executions
 }
 
 // toCoreAutomationExecution converts a store automationExecution to core AutomationExecution
@@ -492,6 +493,9 @@ func toCoreAutomationExecution(dbExec automationExecution) workflow.AutomationEx
 	if dbExec.ExecutedBy.Valid {
 		executedBy := uuid.MustParse(dbExec.ExecutedBy.String)
 		ae.ExecutedBy = &executedBy
+	}
+	if dbExec.ExecutedByName.Valid {
+		ae.ExecutedByName = dbExec.ExecutedByName.String
 	}
 	if dbExec.ActionType.Valid {
 		ae.ActionType = dbExec.ActionType.String
