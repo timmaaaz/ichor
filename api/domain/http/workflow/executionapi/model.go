@@ -18,6 +18,7 @@ import (
 type ExecutionResponse struct {
 	ID              uuid.UUID       `json:"id"`
 	AutomationRuleID *uuid.UUID     `json:"automation_rule_id,omitempty"`
+	RuleName        string          `json:"rule_name,omitempty"` // Human-readable rule name (empty for manual executions)
 	EntityType      string          `json:"entity_type"`
 	Status          string          `json:"status"`
 	ErrorMessage    string          `json:"error_message,omitempty"`
@@ -47,6 +48,7 @@ type ExecutionDetail struct {
 	ExecutedAt       time.Time             `json:"executed_at"`
 	TriggerSource    string                `json:"trigger_source"`
 	ExecutedBy       *uuid.UUID            `json:"executed_by,omitempty"`
+	ExecutedByName   string                `json:"executed_by_name,omitempty"` // Joined executor name from core.users
 	ActionType       string                `json:"action_type,omitempty"`
 	ActionResults    []ActionResultDetail  `json:"action_results"`
 }
@@ -88,6 +90,7 @@ func toExecutionResponse(exec workflow.AutomationExecution) ExecutionResponse {
 	return ExecutionResponse{
 		ID:               exec.ID,
 		AutomationRuleID: exec.AutomationRuleID,
+		RuleName:         exec.RuleName,
 		EntityType:       exec.EntityType,
 		Status:           string(exec.Status),
 		ErrorMessage:     exec.ErrorMessage,
@@ -122,6 +125,7 @@ func toExecutionDetail(exec workflow.AutomationExecution) ExecutionDetail {
 		ExecutedAt:       exec.ExecutedAt,
 		TriggerSource:    exec.TriggerSource,
 		ExecutedBy:       exec.ExecutedBy,
+		ExecutedByName:   exec.ExecutedByName,
 		ActionType:       exec.ActionType,
 		ActionResults:    parseActionResults(exec.ActionsExecuted),
 	}
