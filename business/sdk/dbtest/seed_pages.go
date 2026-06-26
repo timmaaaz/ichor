@@ -1443,10 +1443,10 @@ func seedPages(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 	// Seed the execute_action buttons on the detail pages. These are seeded separately
 	// (not via seedPageActionButtons) because execute_action buttons have no target_path,
 	// which the generic nav-button loop rejects. Each carries "{{entity_id}}" (the page
-	// entity) and, where the backing statuses exist, a valid_from_statuses visibility gate;
-	// the workflow action resolves everything else at runtime. The status lookups degrade to
-	// omitting the gate, so these still seed on every path, including the platform-config
-	// path with no sales/inventory data.
+	// entity); the workflow action resolves everything else at runtime. Both seed on every
+	// path, including the platform-config path with no sales/inventory data. Each gates its
+	// own visibility via valid_from_statuses — see each function's doc for how that gate is
+	// populated (they differ).
 	if err := seedReleaseToPickingButton(ctx, log, busDomain, ordersDetailPage.ID); err != nil {
 		return fmt.Errorf("seeding release-to-picking button: %w", err)
 	}
@@ -1561,8 +1561,10 @@ func seedReleaseToPickingButton(ctx context.Context, log *logger.Logger, busDoma
 // seedTransferOrderButtons seeds the "Claim Transfer" and "Execute Transfer" execute_action
 // buttons on the transfer orders detail page. Both are wired to their respective workflow
 // actions (claim_transfer_order / execute_transfer_order), which resolve the transfer order
-// from "{{entity_id}}" (the page entity) and record the acting user. Like the release button
-// they carry no domain UUIDs, so they seed on every path.
+// from "{{entity_id}}" (the page entity) and record the acting user. Their valid_from_statuses
+// gates are hardcoded enum strings (approved / in_transit), not resolved UUIDs, so — unlike the
+// release button, which embeds PENDING/PROCESSING status IDs — they need no status lookup and
+// seed on every path.
 func seedTransferOrderButtons(ctx context.Context, log *logger.Logger, busDomain BusDomain, pageConfigID uuid.UUID) error {
 	// Claim is valid only when the transfer is APPROVED; Execute only when IN_TRANSIT.
 	// valid_from_statuses gates button visibility in the frontend (string match against the
