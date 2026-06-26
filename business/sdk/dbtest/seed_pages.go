@@ -11,7 +11,9 @@ import (
 	"github.com/timmaaaz/ichor/business/domain/config/pagecontentbus"
 	"github.com/timmaaaz/ichor/business/domain/core/rolebus"
 	"github.com/timmaaaz/ichor/business/domain/core/rolepagebus"
+	"github.com/timmaaaz/ichor/business/domain/sales/orderfulfillmentstatusbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest/seedmodels"
+	"github.com/timmaaaz/ichor/business/sdk/page"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
@@ -1440,9 +1442,11 @@ func seedPages(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 
 	// Seed the execute_action buttons on the detail pages. These are seeded separately
 	// (not via seedPageActionButtons) because execute_action buttons have no target_path,
-	// which the generic nav-button loop rejects. Each button carries only "{{entity_id}}"
-	// (the page entity) — the workflow action resolves everything else at runtime — so they
-	// seed on every path, including the platform-config path with no sales/inventory data.
+	// which the generic nav-button loop rejects. Each carries "{{entity_id}}" (the page
+	// entity) and, where the backing statuses exist, a valid_from_statuses visibility gate;
+	// the workflow action resolves everything else at runtime. The status lookups degrade to
+	// omitting the gate, so these still seed on every path, including the platform-config
+	// path with no sales/inventory data.
 	if err := seedReleaseToPickingButton(ctx, log, busDomain, ordersDetailPage.ID); err != nil {
 		return fmt.Errorf("seeding release-to-picking button: %w", err)
 	}
@@ -1486,11 +1490,51 @@ func seedPages(ctx context.Context, log *logger.Logger, busDomain BusDomain) err
 // orders detail page. The button is wired to the release_to_picking workflow action, which
 // is self-contained: it resolves the PENDING/PROCESSING/PICKING fulfillment statuses by name
 // at runtime, flips the order to PICKING, and fans its line items into inventory.pick_tasks.
-// The button therefore carries only the order id ("{{entity_id}}" — the page entity), with no
-// embedded status UUIDs, so it seeds on every path (including the platform-config path that
-// has no sales data).
+//
+// valid_from_statuses gates the button's visibility in the frontend (canShowExecute string-
+// matches it against the order's order_fulfillment_status_id). release_to_picking only accepts
+// PENDING/PROCESSING orders and rejects the rest with the invalid_status edge, so we resolve
+// those two statuses by name and embed their UUIDs (order fulfillment status IDs are random per
+// environment — see docs/arch/seeding.md). On the platform-config path (InsertPlatformConfig)
+// no order fulfillment statuses are seeded, so the lookup yields nothing and we omit
+// valid_from_statuses entirely, leaving the button visible as before; the release_to_picking
+// handler still guards server-side regardless.
 func seedReleaseToPickingButton(ctx context.Context, log *logger.Logger, busDomain BusDomain, pageConfigID uuid.UUID) error {
-	cfgBytes, err := json.Marshal(map[string]any{"order_id": "{{entity_id}}"})
+	cfg := map[string]any{"order_id": "{{entity_id}}"}
+
+	// release_to_picking only accepts orders in these statuses (it rejects the rest with
+	// the invalid_status edge), so the button is visible only from these.
+	releasable := []string{"PENDING", "PROCESSING"}
+	validFrom := make([]string, 0, len(releasable))
+	for _, name := range releasable {
+		n := name
+		statuses, err := busDomain.OrderFulfillmentStatus.Query(ctx, orderfulfillmentstatusbus.QueryFilter{Name: &n}, orderfulfillmentstatusbus.DefaultOrderBy, page.MustParse("1", "1"))
+		if err != nil {
+			return fmt.Errorf("resolving %q fulfillment status for release button: %w", name, err)
+		}
+		if len(statuses) == 1 {
+			validFrom = append(validFrom, statuses[0].ID.String())
+		}
+	}
+	// Only gate when the full releasable set resolved. Otherwise omit valid_from_statuses
+	// (the button stays visible; the release_to_picking handler still guards server-side) —
+	// never seed a partial gate, which could hide the button for a legitimately releasable
+	// order.
+	switch len(validFrom) {
+	case len(releasable):
+		cfg["valid_from_statuses"] = validFrom
+	case 0:
+		// Platform-config path (InsertPlatformConfig) seeds pages without sales data, so no
+		// order fulfillment statuses exist — expected; seed the button ungated.
+		log.Info(ctx, "release-to-picking button: no order fulfillment statuses found (platform-config path); seeding without valid_from_statuses")
+	default:
+		// Unreachable in practice: PENDING and PROCESSING are created together in seedSales,
+		// so a partial resolve would mean seedSales failed and aborted the run before
+		// seedPages. If it ever happens, fail open rather than seed a lopsided gate.
+		log.Warn(ctx, "release-to-picking button: resolved only some releasable statuses; omitting valid_from_statuses (fail open)", "resolved", len(validFrom), "expected", len(releasable))
+	}
+
+	cfgBytes, err := json.Marshal(cfg)
 	if err != nil {
 		return fmt.Errorf("marshal release button config: %w", err)
 	}
