@@ -7,10 +7,12 @@ import (
 
 	"github.com/timmaaaz/ichor/business/domain/assets/approvalstatusbus"
 	"github.com/timmaaaz/ichor/business/domain/assets/fulfillmentstatusbus"
+	"github.com/timmaaaz/ichor/business/domain/config/pageactionbus"
 	"github.com/timmaaaz/ichor/business/domain/config/settingsbus"
 	"github.com/timmaaaz/ichor/business/domain/config/settingsbus/levers"
 	"github.com/timmaaaz/ichor/business/domain/labels/labelbus"
 	"github.com/timmaaaz/ichor/business/domain/products/productbus"
+	"github.com/timmaaaz/ichor/business/domain/sales/orderfulfillmentstatusbus"
 	"github.com/timmaaaz/ichor/business/sdk/dbtest/seedmodels"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -22,6 +24,7 @@ import (
 //   - 40 products with tracking distribution {28 none, 8 lot, 4 serial}
 //   - ≥1 user with assigned_zones containing "STG-A"
 //   - ≥1 user with assigned_zones containing "STG-C"
+//   - the Release-to-Picking button gated on the PENDING/PROCESSING status UUIDs
 func Test_Seed_Integration(t *testing.T) {
 	t.Parallel()
 
@@ -159,5 +162,59 @@ func Test_Seed_Integration(t *testing.T) {
 	}
 	if got, want := len(fulfillments), len(seedmodels.FulfillmentStatusNames); got != want {
 		t.Errorf("fulfillment_status count: got %d, want %d (seed.sql owns these; seed-frontend must not duplicate)", got, want)
+	}
+
+	// --- Release-to-Picking button gates on PENDING/PROCESSING status UUIDs -----
+	// The button's visibility is driven by valid_from_statuses in its action_config
+	// (frontend canShowExecute string-matches it against the order's
+	// order_fulfillment_status_id UUID). release_to_picking only accepts PENDING or
+	// PROCESSING orders, so seedReleaseToPickingButton must resolve those two statuses
+	// by name (IDs are random per environment) and embed their UUIDs.
+	wantStatusIDs := map[string]bool{}
+	for _, name := range []string{"PENDING", "PROCESSING"} {
+		n := name
+		st, err := db.BusDomain.OrderFulfillmentStatus.Query(ctx, orderfulfillmentstatusbus.QueryFilter{Name: &n}, orderfulfillmentstatusbus.DefaultOrderBy, page.MustParse("1", "1"))
+		if err != nil {
+			t.Fatalf("query %q fulfillment status: %v", name, err)
+		}
+		if len(st) != 1 {
+			t.Fatalf("expected exactly 1 %q fulfillment status, got %d", name, len(st))
+		}
+		wantStatusIDs[st[0].ID.String()] = true
+	}
+
+	actions, err := db.BusDomain.PageAction.Query(ctx, pageactionbus.QueryFilter{}, pageactionbus.DefaultOrderBy, page.MustParse("1", "1000"))
+	if err != nil {
+		t.Fatalf("query page actions: %v", err)
+	}
+	var releaseBtn *pageactionbus.ButtonAction
+	for i := range actions {
+		if b := actions[i].Button; b != nil && b.ActionType == "release_to_picking" {
+			releaseBtn = b
+			break
+		}
+	}
+	if releaseBtn == nil {
+		t.Fatalf("release_to_picking button not found among %d page actions", len(actions))
+	}
+	var releaseCfg struct {
+		OrderID           string   `json:"order_id"`
+		ValidFromStatuses []string `json:"valid_from_statuses"`
+	}
+	if err := json.Unmarshal(releaseBtn.ActionConfig, &releaseCfg); err != nil {
+		t.Fatalf("unmarshal release button action_config: %v", err)
+	}
+	// order_id is what the release_to_picking handler actually consumes; the gate must not
+	// have displaced it.
+	if releaseCfg.OrderID != "{{entity_id}}" {
+		t.Errorf("release button order_id: got %q, want %q", releaseCfg.OrderID, "{{entity_id}}")
+	}
+	if got, want := len(releaseCfg.ValidFromStatuses), len(wantStatusIDs); got != want {
+		t.Fatalf("release button valid_from_statuses: got %d entries %v, want %d (PENDING/PROCESSING IDs)", got, releaseCfg.ValidFromStatuses, want)
+	}
+	for _, id := range releaseCfg.ValidFromStatuses {
+		if !wantStatusIDs[id] {
+			t.Errorf("release button valid_from_statuses contains unexpected id %q (want PENDING/PROCESSING status IDs %v)", id, wantStatusIDs)
+		}
 	}
 }
