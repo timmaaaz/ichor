@@ -15,6 +15,10 @@ func TestScrubQuery(t *testing.T) {
 		{"access_token redacted", "access_token=secret", "access_token=REDACTED"},
 		{"case-insensitive key", "Token=secret", "Token=REDACTED"},
 		{"key substring is not redacted", "mytoken=keepme", "mytoken=keepme"},
+		{"oauth code redacted", "code=4%2F0AY0e-x", "code=REDACTED"},
+		{"oauth state redacted", "state=abc123", "state=REDACTED"},
+		{"oauth callback redacts code and state, keeps scope", "code=4%2F0AY0e-x&state=abc123&scope=email", "code=REDACTED&state=REDACTED&scope=email"},
+		{"barcode key substring is not redacted", "barcode=012345", "barcode=012345"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -106,6 +106,7 @@ Phases 1–2 of a planned 13-phase audit have been completed. Additional issues 
       path = fmt.Sprintf("%s?%s", path, scrubQuery(rawQuery))
   }
   ```
+- **Implemented (PR #201):** Shipped as an anchored regex `(?i)(^|&)(token|access_token|code|state)=[^&]*` instead of `url.ParseQuery`, so original key order is preserved and only whole keys match (e.g. `?barcode=` is left untouched). The redaction list was corrected versus this proposal: `code` and `state` were **added** because the OAuth callback (`/api/auth/{provider}/callback`) reads them via the vendored `goth` library and `mid.Logger` logs that route raw — the original `token`/`access_token`/`jwt` list missed them. `jwt` was dropped (never used as a query key here); `access_token` is kept as harmless defense-in-depth though it is not currently read anywhere.
 
 ---
 

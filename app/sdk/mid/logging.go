@@ -11,9 +11,13 @@ import (
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
-// sensitiveQueryParam matches token-bearing query keys whose values must never
-// reach the logs (e.g. the WebSocket connection passes the JWT as ?token=).
-var sensitiveQueryParam = regexp.MustCompile(`(?i)(^|&)(token|access_token)=[^&]*`)
+// sensitiveQueryParam matches credential-bearing query keys whose values must
+// never reach the logs: the WebSocket upgrade passes the JWT as ?token=, and the
+// OAuth callback (/api/auth/{provider}/callback) carries the authorization
+// ?code= and CSRF ?state= — all otherwise logged raw by the access logger below.
+// The (^|&) anchor keeps matching to whole keys so substrings like ?barcode= are
+// left untouched.
+var sensitiveQueryParam = regexp.MustCompile(`(?i)(^|&)(token|access_token|code|state)=[^&]*`)
 
 // scrubQuery redacts the values of sensitive query parameters so bearer tokens
 // are never written to access logs. Key names and parameter order are kept;
