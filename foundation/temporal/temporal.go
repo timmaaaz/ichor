@@ -131,9 +131,6 @@ func GetTestContainer(t *testing.T) Container {
 		const name = "servicetest-temporal"
 		const port = "7233"
 
-		// Clean up any existing container
-		docker.StopContainer(name)
-
 		// The temporalio/temporal image does not EXPOSE ports, so docker -P
 		// won't publish anything. We explicitly map port 7233 to a random
 		// host port with -p 0:7233.
@@ -141,9 +138,24 @@ func GetTestContainer(t *testing.T) Container {
 
 		appArgs := []string{"server", "start-dev", "--ip", "0.0.0.0"}
 
+		// Reuse an already-running container rather than restarting it. Each test
+		// package runs in its own process, so under `go test -p N` several
+		// processes reach this concurrently. The previous code unconditionally
+		// stopped the fixed-name container before starting a fresh one — so a
+		// process spinning up would tear down the Temporal server a sibling
+		// package was mid-test against, the root cause of intermittent
+		// cross-package failures at -p>1 (e.g. async cascade tests timing out).
+		// StartContainer already returns the existing container when one is
+		// running, and the rigs use per-test task queues so a shared server is
+		// safe. We only force-clear a stale (non-running) container squatting the
+		// name and try once more.
 		c, err := docker.StartContainer(image, name, port, dockerArgs, appArgs)
 		if err != nil {
-			t.Fatalf("starting temporal container: %s", err)
+			docker.StopContainer(name)
+			c, err = docker.StartContainer(image, name, port, dockerArgs, appArgs)
+			if err != nil {
+				t.Fatalf("starting temporal container: %s", err)
+			}
 		}
 
 		// Fix the host address if it's 0.0.0.0
@@ -157,15 +169,16 @@ func GetTestContainer(t *testing.T) Container {
 			HostPort:  hostPort,
 		}
 
+		// Health-check the (possibly reused) server. Do not stop it on failure —
+		// a sibling process may depend on it; a genuine fault surfaces here.
 		if err := waitForReady(hostPort); err != nil {
-			docker.StopContainer(c.Name)
 			t.Fatalf("waiting for temporal: %s", err)
 		}
 
 		testContainer = &container
 		testStarted = true
 
-		t.Logf("Temporal Started: %s at %s", c.Name, hostPort)
+		t.Logf("Temporal Ready: %s at %s", c.Name, hostPort)
 	}
 
 	return *testContainer
