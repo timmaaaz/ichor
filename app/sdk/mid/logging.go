@@ -4,18 +4,34 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
+// sensitiveQueryParam matches credential-bearing query keys whose values must
+// never reach the logs: the WebSocket upgrade passes the JWT as ?token=, and the
+// OAuth callback (/api/auth/{provider}/callback) carries the authorization
+// ?code= and CSRF ?state= — all otherwise logged raw by the access logger below.
+// The (^|&) anchor keeps matching to whole keys so substrings like ?barcode= are
+// left untouched.
+var sensitiveQueryParam = regexp.MustCompile(`(?i)(^|&)(token|access_token|code|state)=[^&]*`)
+
+// scrubQuery redacts the values of sensitive query parameters so bearer tokens
+// are never written to access logs. Key names and parameter order are kept;
+// only the value is replaced with REDACTED.
+func scrubQuery(rawQuery string) string {
+	return sensitiveQueryParam.ReplaceAllString(rawQuery, "${1}${2}=REDACTED")
+}
+
 // Logger writes information about the request to the logs.
 func Logger(ctx context.Context, log *logger.Logger, path string, rawQuery string, method string, remoteAddr string, next HandlerFunc) Encoder {
 	now := time.Now()
 
 	if rawQuery != "" {
-		path = fmt.Sprintf("%s?%s", path, rawQuery)
+		path = fmt.Sprintf("%s?%s", path, scrubQuery(rawQuery))
 	}
 
 	log.Info(ctx, "request started", "method", method, "path", path, "remoteaddr", remoteAddr)
