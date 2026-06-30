@@ -4,18 +4,30 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/timmaaaz/ichor/app/sdk/errs"
 	"github.com/timmaaaz/ichor/foundation/logger"
 )
 
+// sensitiveQueryParam matches token-bearing query keys whose values must never
+// reach the logs (e.g. the WebSocket connection passes the JWT as ?token=).
+var sensitiveQueryParam = regexp.MustCompile(`(?i)(^|&)(token|access_token)=[^&]*`)
+
+// scrubQuery redacts the values of sensitive query parameters so bearer tokens
+// are never written to access logs. Key names and parameter order are kept;
+// only the value is replaced with REDACTED.
+func scrubQuery(rawQuery string) string {
+	return sensitiveQueryParam.ReplaceAllString(rawQuery, "${1}${2}=REDACTED")
+}
+
 // Logger writes information about the request to the logs.
 func Logger(ctx context.Context, log *logger.Logger, path string, rawQuery string, method string, remoteAddr string, next HandlerFunc) Encoder {
 	now := time.Now()
 
 	if rawQuery != "" {
-		path = fmt.Sprintf("%s?%s", path, rawQuery)
+		path = fmt.Sprintf("%s?%s", path, scrubQuery(rawQuery))
 	}
 
 	log.Info(ctx, "request started", "method", method, "path", path, "remoteaddr", remoteAddr)
