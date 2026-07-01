@@ -58,9 +58,7 @@ func (a *App) GetAll(ctx context.Context, userID uuid.UUID) (UserPreferences, er
 		return UserPreferences{}, fmt.Errorf("getall: %w", err)
 	}
 
-	return UserPreferences{
-		Items: ToAppUserPreferences(prefs),
-	}, nil
+	return UserPreferences(ToAppUserPreferences(prefs)), nil
 }
 
 // Delete removes a single preference by user ID and key.

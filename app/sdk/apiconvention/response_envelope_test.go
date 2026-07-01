@@ -31,8 +31,7 @@ import (
 // allowlist would silently exempt an unrelated, newly-introduced type in a
 // different package that happens to share one of these names.
 var grandfathered = map[string]bool{
-	"userpreferencesapp.UserPreferences": true, // app/domain/core/userpreferencesapp
-	"dataapp.TableConfigList":            true, // app/domain/dataapp
+	"dataapp.TableConfigList": true, // app/domain/dataapp
 }
 
 // Test_ResponseEnvelope_ItemsRequiresTotal enforces that any app-layer response
