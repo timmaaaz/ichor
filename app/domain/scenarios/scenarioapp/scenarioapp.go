@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/app/sdk/query"
 	"github.com/timmaaaz/ichor/business/domain/scenarios/scenariobus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -85,28 +86,35 @@ func (a *App) QueryByID(ctx context.Context, scenarioID uuid.UUID) (Scenario, er
 	return toAppScenario(s), nil
 }
 
-// Query returns scenarios matching the optional name-prefix filter.
-func (a *App) Query(ctx context.Context, qp QueryParams) (Scenarios, error) {
+// Query returns scenarios matching the optional name-prefix filter as a
+// paginated result.
+func (a *App) Query(ctx context.Context, qp QueryParams) (query.Result[Scenario], error) {
 	pg, err := page.Parse(qp.Page, qp.Rows)
 	if err != nil {
-		return nil, errs.NewFieldsError("page", err)
+		return query.Result[Scenario]{}, errs.NewFieldsError("page", err)
 	}
 
 	filter, err := parseFilter(qp)
 	if err != nil {
-		return nil, errs.NewFieldsError("filter", err)
+		return query.Result[Scenario]{}, errs.NewFieldsError("filter", err)
 	}
 
 	orderBy, err := order.Parse(orderByFields, qp.OrderBy, defaultOrderBy)
 	if err != nil {
-		return nil, errs.NewFieldsError("orderby", err)
+		return query.Result[Scenario]{}, errs.NewFieldsError("orderby", err)
 	}
 
 	scenarios, err := a.bus.Query(ctx, filter, orderBy, pg)
 	if err != nil {
-		return nil, errs.Newf(errs.Internal, "query: %s", err)
+		return query.Result[Scenario]{}, errs.Newf(errs.Internal, "query: %s", err)
 	}
-	return toAppScenarios(scenarios), nil
+
+	total, err := a.bus.Count(ctx, filter)
+	if err != nil {
+		return query.Result[Scenario]{}, errs.Newf(errs.Internal, "count: %s", err)
+	}
+
+	return query.NewResult(toAppScenarios(scenarios), total, pg), nil
 }
 
 // Fixtures returns all fixture rows for the given scenario grouped by target_table.

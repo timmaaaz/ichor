@@ -8,6 +8,7 @@ import (
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 	"github.com/timmaaaz/ichor/app/domain/scenarios/scenarioapp"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/app/sdk/query"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -20,14 +21,14 @@ func query200(sd apitest.SeedData) []apitest.Table {
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodGet,
 			StatusCode: http.StatusOK,
-			GotResp:    &scenarioapp.Scenarios{},
+			GotResp:    &query.Result[scenarioapp.Scenario]{},
 			ExpResp:    nil,
 			// The seeder may add baseline scenarios in addition to the three
 			// we TestSeed here, so assert inclusion rather than exact equality.
 			CmpFunc: func(got, _ any) string {
-				gotResp := got.(*scenarioapp.Scenarios)
-				seen := make(map[string]bool, len(*gotResp))
-				for _, s := range *gotResp {
+				gotResp := got.(*query.Result[scenarioapp.Scenario])
+				seen := make(map[string]bool, len(gotResp.Items))
+				for _, s := range gotResp.Items {
 					seen[s.ID] = true
 				}
 				for _, expected := range sd.Scenarios {

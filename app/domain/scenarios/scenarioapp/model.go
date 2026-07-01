@@ -31,14 +31,9 @@ func (app Scenario) Encode() ([]byte, string, error) {
 	return data, "application/json", err
 }
 
-// Scenarios is a slice wrapper so it implements web.Encoder directly.
+// Scenarios is a slice wrapper used internally to build the paginated
+// query.Result[Scenario] response for GET /v1/scenarios.
 type Scenarios []Scenario
-
-// Encode implements the web.Encoder interface.
-func (app Scenarios) Encode() ([]byte, string, error) {
-	data, err := json.Marshal(app)
-	return data, "application/json", err
-}
 
 func toAppScenario(bus scenariobus.Scenario) Scenario {
 	return Scenario{
