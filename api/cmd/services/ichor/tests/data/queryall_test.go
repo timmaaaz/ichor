@@ -36,15 +36,15 @@ func queryAll200(sd apitest.SeedData) []apitest.Table {
 				expList := exp.(*dataapp.TableConfigList)
 
 				// Sort both slices by ID for consistent comparison
-				sort.Slice(gotList.Items, func(i, j int) bool {
-					return gotList.Items[i].ID < gotList.Items[j].ID
+				sort.Slice(*gotList, func(i, j int) bool {
+					return (*gotList)[i].ID < (*gotList)[j].ID
 				})
-				sort.Slice(expList.Items, func(i, j int) bool {
-					return expList.Items[i].ID < expList.Items[j].ID
+				sort.Slice(*expList, func(i, j int) bool {
+					return (*expList)[i].ID < (*expList)[j].ID
 				})
 
 				// Normalize JSON fields
-				dbtest.NormalizeJSONFields(gotList.Items, expList.Items)
+				dbtest.NormalizeJSONFields(*gotList, *expList)
 
 				return cmp.Diff(gotList, expList)
 			},

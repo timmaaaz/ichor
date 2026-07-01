@@ -80,8 +80,6 @@ func queryByName200(sd apitest.SeedData) []apitest.Table {
 func queryByUser200(sd apitest.SeedData) []apitest.Table {
 	compare := dataapp.TableConfigList{}
 
-	exp := dataapp.TableConfigList{}
-
 	tmp := []tablebuilder.StoredConfig{}
 	tmp = append(tmp, *sd.SimpleTableConfig)
 	tmp = append(tmp, *sd.ComplexTableConfig)
@@ -90,7 +88,7 @@ func queryByUser200(sd apitest.SeedData) []apitest.Table {
 	tmp = append(tmp, *sd.BarChartConfig)
 	tmp = append(tmp, *sd.PieChartConfig)
 
-	exp.Items = dataapp.ToAppTableConfigs(tmp)
+	exp := dataapp.TableConfigList(dataapp.ToAppTableConfigs(tmp))
 
 	return []apitest.Table{
 		{
@@ -106,15 +104,15 @@ func queryByUser200(sd apitest.SeedData) []apitest.Table {
 				expList := exp.(*dataapp.TableConfigList)
 
 				// Sort both slices by ID first
-				sort.Slice(gotList.Items, func(i, j int) bool {
-					return gotList.Items[i].ID < gotList.Items[j].ID
+				sort.Slice(*gotList, func(i, j int) bool {
+					return (*gotList)[i].ID < (*gotList)[j].ID
 				})
-				sort.Slice(expList.Items, func(i, j int) bool {
-					return expList.Items[i].ID < expList.Items[j].ID
+				sort.Slice(*expList, func(i, j int) bool {
+					return (*expList)[i].ID < (*expList)[j].ID
 				})
 
 				// Now normalize JSON fields on the sorted slices
-				dbtest.NormalizeJSONFields(gotList.Items, expList.Items)
+				dbtest.NormalizeJSONFields(*gotList, *expList)
 
 				return cmp.Diff(gotList, expList)
 			},
