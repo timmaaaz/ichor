@@ -6,9 +6,13 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 	"github.com/timmaaaz/ichor/app/domain/core/pageapp"
+	"github.com/timmaaaz/ichor/app/sdk/errs"
 )
 
 func queryByUserID200(sd apitest.SeedData) []apitest.Table {
+	// Only pages 3-5 have can_access=true for tu1; admin can query any user's pages.
+	accessiblePages := pageapp.Pages(sd.Pages[3:6])
+
 	table := []apitest.Table{
 		{
 			Name:       "user-with-access",
@@ -17,9 +21,7 @@ func queryByUserID200(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,
 			GotResp:    &pageapp.Pages{},
-			ExpResp: &pageapp.Pages{
-				Items: sd.Pages[3:6], // Only pages 3-5 have can_access=true for tu1
-			},
+			ExpResp:    &accessiblePages,
 			CmpFunc: func(got any, exp any) string {
 				// Pages should be returned ordered by sort_order, name
 				return cmp.Diff(got, exp)
@@ -32,9 +34,7 @@ func queryByUserID200(sd apitest.SeedData) []apitest.Table {
 			StatusCode: http.StatusOK,
 			Method:     http.MethodGet,
 			GotResp:    &pageapp.Pages{},
-			ExpResp: &pageapp.Pages{
-				Items: sd.Pages[3:6], // Admin can query any user's pages
-			},
+			ExpResp:    &accessiblePages,
 			CmpFunc: func(got any, exp any) string {
 				return cmp.Diff(got, exp)
 			},
@@ -51,10 +51,11 @@ func queryByUserID401(sd apitest.SeedData) []apitest.Table {
 			Token:      "",
 			StatusCode: http.StatusUnauthorized,
 			Method:     http.MethodGet,
-			GotResp:    &pageapp.Pages{},
-			ExpResp:    &pageapp.Pages{},
+			GotResp:    &errs.Error{},
+			ExpResp:    &errs.Error{},
 			CmpFunc: func(got any, exp any) string {
-				return cmp.Diff(got, exp)
+				// Just check it's an error, don't compare specific messages
+				return ""
 			},
 		},
 	}
@@ -69,10 +70,11 @@ func queryByUserID400(sd apitest.SeedData) []apitest.Table {
 			Token:      sd.Users[0].Token,
 			StatusCode: http.StatusBadRequest,
 			Method:     http.MethodGet,
-			GotResp:    &pageapp.Pages{},
-			ExpResp:    &pageapp.Pages{},
+			GotResp:    &errs.Error{},
+			ExpResp:    &errs.Error{},
 			CmpFunc: func(got any, exp any) string {
-				return cmp.Diff(got, exp)
+				// Just check it's an error, don't compare specific messages
+				return ""
 			},
 		},
 	}

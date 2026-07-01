@@ -110,5 +110,5 @@ func (api *api) queryByUserID(ctx context.Context, r *http.Request) web.Encoder 
 		return errs.NewError(err)
 	}
 
-	return pageapp.Pages{Items: pages}
+	return pageapp.Pages(pages)
 }

@@ -35,9 +35,9 @@ func (app Page) Encode() ([]byte, string, error) {
 	return data, "application/json", err
 }
 
-type Pages struct {
-	Items []Page `json:"items"`
-}
+// Pages is the unpaged collection of pages a user may access. It marshals as a
+// bare JSON array.
+type Pages []Page
 
 func (app Pages) Encode() ([]byte, string, error) {
 	data, err := json.Marshal(app)
