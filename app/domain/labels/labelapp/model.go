@@ -32,14 +32,8 @@ func (app Label) Encode() ([]byte, string, error) {
 	return data, "application/json", err
 }
 
-// Labels is a slice wrapper so it implements web.Encoder directly.
+// Labels is a slice wrapper used by converters and test fixtures.
 type Labels []Label
-
-// Encode implements the web.Encoder interface.
-func (app Labels) Encode() ([]byte, string, error) {
-	data, err := json.Marshal(app)
-	return data, "application/json", err
-}
 
 func toAppLabel(bus labelbus.LabelCatalog) Label {
 	return Label{

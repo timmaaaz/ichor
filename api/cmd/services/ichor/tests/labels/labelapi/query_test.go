@@ -9,6 +9,7 @@ import (
 	"github.com/timmaaaz/ichor/api/sdk/http/apitest"
 	"github.com/timmaaaz/ichor/app/domain/labels/labelapp"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/app/sdk/query"
 )
 
 func query200(sd apitest.SeedData) []apitest.Table {
@@ -19,7 +20,7 @@ func query200(sd apitest.SeedData) []apitest.Table {
 			Token:      sd.Admins[0].Token,
 			Method:     http.MethodGet,
 			StatusCode: http.StatusOK,
-			GotResp:    &labelapp.Labels{},
+			GotResp:    &query.Result[labelapp.Label]{},
 			ExpResp:    nil,
 			// We can't easily diff against a fixed slice — the seedFrontend
 			// chain inserts ~39 catalog labels in addition to the four this
@@ -27,9 +28,9 @@ func query200(sd apitest.SeedData) []apitest.Table {
 			// What we *can* assert: every test-seeded label appears in the
 			// response, in order.
 			CmpFunc: func(got, _ any) string {
-				gotResp := got.(*labelapp.Labels)
-				seen := make(map[string]bool, len(*gotResp))
-				for _, lc := range *gotResp {
+				gotResp := got.(*query.Result[labelapp.Label])
+				seen := make(map[string]bool, len(gotResp.Items))
+				for _, lc := range gotResp.Items {
 					seen[lc.ID] = true
 				}
 				for _, expected := range sd.Labels {
