@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/timmaaaz/ichor/app/sdk/errs"
+	"github.com/timmaaaz/ichor/app/sdk/query"
 	"github.com/timmaaaz/ichor/business/domain/labels/labelbus"
 	"github.com/timmaaaz/ichor/business/sdk/order"
 	"github.com/timmaaaz/ichor/business/sdk/page"
@@ -147,28 +148,33 @@ func (a *App) QueryByID(ctx context.Context, labelID uuid.UUID) (Label, error) {
 	return toAppLabel(lc), nil
 }
 
-// Query returns catalog labels matching the optional Type filter. No Count
-// call is exposed on the Business yet, so this returns a plain slice with
-// standard pagination.
-func (a *App) Query(ctx context.Context, qp QueryParams) (Labels, error) {
+// Query returns catalog labels matching the optional Type filter as a
+// paginated result.
+func (a *App) Query(ctx context.Context, qp QueryParams) (query.Result[Label], error) {
 	pg, err := page.Parse(qp.Page, qp.Rows)
 	if err != nil {
-		return nil, errs.NewFieldsError("page", err)
+		return query.Result[Label]{}, errs.NewFieldsError("page", err)
 	}
 
 	filter, err := parseFilter(qp)
 	if err != nil {
-		return nil, errs.NewFieldsError("filter", err)
+		return query.Result[Label]{}, errs.NewFieldsError("filter", err)
 	}
 
 	orderBy, err := order.Parse(orderByFields, qp.OrderBy, defaultOrderBy)
 	if err != nil {
-		return nil, errs.NewFieldsError("orderby", err)
+		return query.Result[Label]{}, errs.NewFieldsError("orderby", err)
 	}
 
 	labels, err := a.bus.Query(ctx, filter, orderBy, pg)
 	if err != nil {
-		return nil, errs.Newf(errs.Internal, "query: %s", err)
+		return query.Result[Label]{}, errs.Newf(errs.Internal, "query: %s", err)
 	}
-	return toAppLabels(labels), nil
+
+	total, err := a.bus.Count(ctx, filter)
+	if err != nil {
+		return query.Result[Label]{}, errs.Newf(errs.Internal, "count: %s", err)
+	}
+
+	return query.NewResult(toAppLabels(labels), total, pg), nil
 }
