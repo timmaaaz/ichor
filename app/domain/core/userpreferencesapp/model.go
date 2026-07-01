@@ -40,10 +40,9 @@ func ToAppUserPreferences(bus []userpreferencesbus.UserPreference) []UserPrefere
 	return app
 }
 
-// UserPreferences is a collection wrapper that implements the Encoder interface.
-type UserPreferences struct {
-	Items []UserPreference `json:"items"`
-}
+// UserPreferences is the unpaged collection of a user's preferences. It marshals
+// as a bare JSON array.
+type UserPreferences []UserPreference
 
 // Encode implements the web.Encoder interface.
 func (app UserPreferences) Encode() ([]byte, string, error) {

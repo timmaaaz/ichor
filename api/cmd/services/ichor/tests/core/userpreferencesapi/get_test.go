@@ -47,26 +47,24 @@ func getAll200(sd apitest.SeedData) []apitest.Table {
 			Method:     http.MethodGet,
 			GotResp:    &userpreferencesapp.UserPreferences{},
 			ExpResp: &userpreferencesapp.UserPreferences{
-				Items: []userpreferencesapp.UserPreference{
-					{
-						UserID: sd.Admins[0].ID.String(),
-						Key:    "floor.font_scale",
-						Value:  json.RawMessage(`"large"`),
-					},
-					{
-						UserID: sd.Admins[0].ID.String(),
-						Key:    "floor.theme",
-						Value:  json.RawMessage(`"dark"`),
-					},
+				{
+					UserID: sd.Admins[0].ID.String(),
+					Key:    "floor.font_scale",
+					Value:  json.RawMessage(`"large"`),
+				},
+				{
+					UserID: sd.Admins[0].ID.String(),
+					Key:    "floor.theme",
+					Value:  json.RawMessage(`"dark"`),
 				},
 			},
 			CmpFunc: func(got, exp any) string {
 				gotResp := got.(*userpreferencesapp.UserPreferences)
 				expResp := exp.(*userpreferencesapp.UserPreferences)
 
-				for i := range expResp.Items {
-					if i < len(gotResp.Items) {
-						expResp.Items[i].UpdatedDate = gotResp.Items[i].UpdatedDate
+				for i := range *expResp {
+					if i < len(*gotResp) {
+						(*expResp)[i].UpdatedDate = (*gotResp)[i].UpdatedDate
 					}
 				}
 
