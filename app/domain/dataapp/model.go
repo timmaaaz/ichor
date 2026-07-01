@@ -42,9 +42,9 @@ type TableConfig struct {
 	IsSystem    bool            `json:"is_system"`
 }
 
-type TableConfigList struct {
-	Items []TableConfig `json:"items"`
-}
+// TableConfigList is the unpaged collection of stored table configs. It marshals
+// as a bare JSON array.
+type TableConfigList []TableConfig
 
 // Encode implements the encoder interface.
 func (app TableConfig) Encode() ([]byte, string, error) {
@@ -81,13 +81,7 @@ func ToAppTableConfigs(configs []tablebuilder.StoredConfig) []TableConfig {
 }
 
 func ToAppTableConfigList(bus []tablebuilder.StoredConfig) TableConfigList {
-	items := make([]TableConfig, len(bus))
-	for i, item := range bus {
-		items[i] = ToAppTableConfig(item)
-	}
-	return TableConfigList{
-		Items: items,
-	}
+	return TableConfigList(ToAppTableConfigs(bus))
 }
 
 // =============================================================================
@@ -412,10 +406,6 @@ type RelationshipInfo struct {
 	ToTable    string `json:"to_table"`
 	ToColumn   string `json:"to_column"`
 	Type       string `json:"type"` // "one-to-one", "one-to-many", "many-to-one"
-}
-
-type TableDataList struct {
-	Items []TableData `json:"items"`
 }
 
 // Encode implements the encoder interface.

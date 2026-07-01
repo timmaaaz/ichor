@@ -21,18 +21,17 @@ import (
 //   - unpaged    -> bare-array wrapper (type Entities []Entity)
 //
 // A struct that exposes json:"items" WITHOUT json:"total" is query.Result[T]
-// with its pagination fields amputated and matches neither shape. The entries
-// below are known deviations awaiting the frontend-driven reshape (they feed
-// dynamic/config-driven UI, so changing them is cross-cutting and must be
-// sequenced from the FE). Do NOT add to this list: a NEW violation must be
+// with its pagination fields amputated and matches neither shape.
+//
+// This list is now EMPTY: every originally-grandfathered type (Pages,
+// UserPreferences, TableConfigList) has been reshaped to a documented shape.
+// It is retained as a tripwire — do NOT add to it: a NEW violation must be
 // fixed to a documented shape, not grandfathered.
 //
 // Keys are package-qualified ("pkg.Type"), not bare type names: a bare-name
 // allowlist would silently exempt an unrelated, newly-introduced type in a
 // different package that happens to share one of these names.
-var grandfathered = map[string]bool{
-	"dataapp.TableConfigList": true, // app/domain/dataapp
-}
+var grandfathered = map[string]bool{}
 
 // Test_ResponseEnvelope_ItemsRequiresTotal enforces that any app-layer response
 // type (one that implements Encode) exposing a json:"items" field also exposes
