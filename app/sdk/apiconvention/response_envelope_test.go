@@ -60,7 +60,8 @@ func Test_ResponseEnvelope_ItemsRequiresTotal(t *testing.T) {
 // Test_Grandfathered_StillViolate keeps the allowlist honest: every grandfathered
 // type must still be a detected violation. If one no longer is (e.g. it was
 // reshaped to a documented convention), this fails so the stale entry gets
-// removed. It also proves the detector actually fires.
+// removed. While the allowlist is empty this is a no-op — the detector's
+// positive path is instead covered by Test_Detector_FlagsKnownViolation.
 func Test_Grandfathered_StillViolate(t *testing.T) {
 	found := detectItemsWithoutTotal(t)
 
@@ -72,9 +73,41 @@ func Test_Grandfathered_StillViolate(t *testing.T) {
 	}
 }
 
+// Test_Detector_FlagsKnownViolation exercises the detector against a controlled
+// fixture (testdata/positivefixture) that deliberately violates the convention:
+// a type with json:"items", no json:"total", and an Encode method. It fails if
+// the detector stops flagging that fixture.
+//
+// This restores the positive-detection coverage that was lost when the
+// grandfathered allowlist — previously the only thing forcing the detector to
+// return a known hit — was drained to empty. Without this test, the whole
+// detection pipeline (walk → parse → collectEncoders → structHasJSONKey) could
+// silently break and both other guard tests would still pass.
+func Test_Detector_FlagsKnownViolation(t *testing.T) {
+	const want = "positivefixture.KnownViolation"
+
+	found := detectItemsWithoutTotalIn(t, filepath.Join("testdata", "positivefixture"))
+
+	if _, ok := found[want]; !ok {
+		t.Fatalf("detector failed to flag the known json:\"items\"-without-\"total\" "+
+			"fixture %q — the guard's detection path has regressed.\nfound: %v", want, found)
+	}
+}
+
 // detectItemsWithoutTotal scans app/domain for types that implement Encode and
 // expose json:"items" but not json:"total". Returns qualified name
 // ("pkg.Type") -> source position.
+func detectItemsWithoutTotal(t *testing.T) map[string]string {
+	t.Helper()
+	return detectItemsWithoutTotalIn(t, filepath.Join(repoRoot(t), "app", "domain"))
+}
+
+// detectItemsWithoutTotalIn is the directory-parameterized core of the detector.
+// It is split out from detectItemsWithoutTotal so the detection path can also be
+// exercised against a controlled testdata fixture (see
+// Test_Detector_FlagsKnownViolation): with the grandfathered allowlist drained
+// to empty, that fixture is the only thing that would fail if this logic
+// silently stopped detecting anything.
 //
 // Known limitation (not fixed here — documented follow-up): encoder detection
 // via collectEncoders is syntactic — it looks for an `Encode` FuncDecl with a
@@ -83,13 +116,12 @@ func Test_Grandfathered_StillViolate(t *testing.T) {
 // encoder and is therefore never scanned by this guard. Resolving that would
 // require full method-set resolution (effectively a mini type-checker), which
 // is out of scope for a stdlib-only static guard.
-func detectItemsWithoutTotal(t *testing.T) map[string]string {
+func detectItemsWithoutTotalIn(t *testing.T, root string) map[string]string {
 	t.Helper()
 
-	domainDir := filepath.Join(repoRoot(t), "app", "domain")
 	out := map[string]string{}
 
-	err := filepath.WalkDir(domainDir, func(path string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -125,7 +157,7 @@ func detectItemsWithoutTotal(t *testing.T) map[string]string {
 		return nil
 	})
 	if err != nil {
-		t.Fatalf("walking app/domain: %v", err)
+		t.Fatalf("walking %s: %v", root, err)
 	}
 
 	return out
@@ -175,7 +207,11 @@ func collectStructs(pkg *ast.Package) map[string]*ast.StructType {
 	return out
 }
 
-// isEncodeSig reports whether ft matches `() ([]byte, string, error)`.
+// isEncodeSig reports whether ft is a 0-parameter, 3-result method — the shape
+// of `Encode() ([]byte, string, error)`. It checks arity only, not the result
+// types: collectEncoders already gates on the method name being "Encode", and
+// every such method in app/domain returns exactly ([]byte, string, error), so
+// an arity check is sufficient to identify web response encoders here.
 func isEncodeSig(ft *ast.FuncType) bool {
 	if ft.Params != nil && ft.Params.NumFields() != 0 {
 		return false
