@@ -2,6 +2,7 @@ package nulltypes
 
 import (
 	"database/sql"
+	"database/sql/driver"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -34,6 +35,18 @@ func (n *NullRawMessage) Scan(value interface{}) error {
 		return fmt.Errorf("unsupported type for NullRawMessage: %T", value)
 	}
 	return nil
+}
+
+// Value implements the driver.Valuer interface for NullRawMessage. It writes the
+// inner JSON payload (not the {Data, Valid} wrapper struct) and SQL NULL when
+// invalid, mirroring sql.NullString's Scanner/Valuer symmetry. Without this,
+// pgx JSON-marshals the whole struct into JSONB columns as
+// {"Data":...,"Valid":true}, corrupting the stored value.
+func (n NullRawMessage) Value() (driver.Value, error) {
+	if !n.Valid || len(n.Data) == 0 {
+		return nil, nil
+	}
+	return []byte(n.Data), nil
 }
 
 func ToNullableUUID(u uuid.UUID) sql.NullString {
